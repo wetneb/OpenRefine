@@ -139,6 +139,7 @@ public class UrlFetchingTests extends RefineTest {
 		true);
 	ProcessManager pm = project.getProcessManager();
         Process process = op.createProcess(project, options);
+        Thread.sleep(500); // make sure the operation only starts when the project is fully ready
 	process.startPerforming(pm);
 	Assert.assertTrue(process.isRunning());
 	try {
