@@ -131,5 +131,6 @@
 	<classpathentry kind="lib" path="main/webapp/WEB-INF/lib/libthrift-0.10.0.jar"/>
         <classpathentry kind="lib" path="extensions/wikidata/module/MOD-INF/lib/wdtk-datamodel-0.9.0-SNAPSHOT-jar-with-dependencies.jar" sourcepath="extensions/wikidata/module/MOD-INF/lib-src/wdtk-datamodel-0.9.0-SNAPSHOT-sources.jar"/>
         <classpathentry kind="lib" path="extensions/wikidata/module/MOD-INF/lib/wdtk-wikibaseapi-0.9.0-SNAPSHOT.jar" sourcepath="extensions/wikidata/module/MOD-INF/lib-src/wdtk-wikibaseapi-0.9.0-SNAPSHOT-sources.jar"/>
+        <classpathentry kind="lib" path="extensions/wikidata/module/MOD-INF/lib/shexjava-jar-with-dependencies.jar"/>
 	<classpathentry kind="output" path="main/webapp/WEB-INF/classes"/>
 </classpath>
