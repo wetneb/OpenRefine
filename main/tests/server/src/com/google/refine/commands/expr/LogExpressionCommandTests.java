@@ -1,7 +1,6 @@
 
 package com.google.refine.commands.expr;
 
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
@@ -26,9 +25,7 @@ public class LogExpressionCommandTests extends CommandTestBase {
     @BeforeMethod
     public void setUpCommand() {
         command = new LogExpressionCommand();
-        ProjectManager.singleton = mock(ProjectManager.class);
-        prefStore = new PreferenceStore();
-        when(ProjectManager.singleton.getPreferenceStore()).thenReturn(prefStore);
+        prefStore = ProjectManager.singleton.getPreferenceStore();
     }
 
     @Override
