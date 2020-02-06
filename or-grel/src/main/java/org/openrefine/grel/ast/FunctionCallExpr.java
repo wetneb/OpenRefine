@@ -50,6 +50,8 @@ import org.openrefine.grel.PureFunction;
  * the result of the expression.
  */
 public class FunctionCallExpr implements Evaluable {
+
+    private static final long serialVersionUID = -7793494352606403242L;
     final protected Function    _function;
     final private Evaluable[] _args;
     

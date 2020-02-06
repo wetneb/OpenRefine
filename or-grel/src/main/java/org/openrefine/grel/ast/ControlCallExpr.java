@@ -43,6 +43,8 @@ import org.openrefine.grel.Control;
  * An abstract syntax tree node encapsulating a control call, such as "if".
  */
 public class ControlCallExpr extends PureArgumentsExpr {
+
+    private static final long serialVersionUID = 7404947308121024234L;
     final protected Control     _control;
     
     public ControlCallExpr(Evaluable[] args, Control c) {
