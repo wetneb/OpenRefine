@@ -33,13 +33,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.openrefine.model.changes;
 
-import java.util.Collections;
-
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.function.Function;
 import org.openrefine.history.Change;
-import org.openrefine.history.dag.DagSlice;
-import org.openrefine.history.dag.TransformationSlice;
 import org.openrefine.model.Cell;
 import org.openrefine.model.GridState;
 import org.openrefine.model.Row;
@@ -106,8 +102,4 @@ public class CellChange implements Change {
 		return false;
 	}
 
-	@Override
-	public DagSlice getDagSlice() {
-		return new TransformationSlice(columnName, Collections.emptySet());
-	}
 }

@@ -8,7 +8,6 @@ import java.util.List;
 
 import org.apache.spark.api.java.JavaPairRDD;
 import org.openrefine.SparkBasedTest;
-import org.openrefine.history.dag.DagSlice;
 import org.openrefine.model.Cell;
 import org.openrefine.model.Column;
 import org.openrefine.model.ColumnMetadata;
@@ -41,11 +40,7 @@ public class HistoryEntryManagerTests extends SparkBasedTest {
             return false;
         }
 
-        @Override
-        public DagSlice getDagSlice() {
-            return null;
-        }
-	};
+    };
 
     @BeforeMethod
     public void setUp() throws NotImmediateOperationException {

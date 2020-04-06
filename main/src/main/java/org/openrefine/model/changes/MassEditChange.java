@@ -11,8 +11,6 @@ import org.apache.spark.api.java.function.Function2;
 import org.openrefine.browsing.EngineConfig;
 import org.openrefine.expr.Evaluable;
 import org.openrefine.expr.ExpressionUtils;
-import org.openrefine.history.dag.DagSlice;
-import org.openrefine.history.dag.TransformationSlice;
 import org.openrefine.model.Cell;
 import org.openrefine.model.ColumnModel;
 import org.openrefine.model.GridState;
@@ -95,13 +93,6 @@ public class MassEditChange extends EngineDependentChange {
 	@Override
 	public boolean isImmediate() {
 		return true;
-	}
-
-	@Override
-	public DagSlice getDagSlice() {
-		Set<String> dependencies = new HashSet<>(_evaluable.getColumnDependencies(_columnName));
-		dependencies.addAll(_engineConfig.getColumnDependencies());
-		return new TransformationSlice(_columnName, dependencies);
 	}
 
 }
