@@ -1,5 +1,6 @@
 package org.openrefine.model.changes;
 
+import java.io.Serializable;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -17,25 +18,32 @@ import org.openrefine.model.Row;
 import org.openrefine.model.RowMapper;
 import org.openrefine.model.RowScanMapper;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 /**
- * Transforms a table with a record structure to by spreading non-null values
- * in the rows below, in a specific column.
+ * Transforms a table without a record structure to blanking out values
+ * which are identical to those on the previous row, creating a record structure.
  * 
  * @author Antonin Delpeuch
  *
  */
-public class FillDownChange extends EngineDependentChange {
+public class BlankDownChange extends EngineDependentChange {
 	
 	protected final String _columnName;
 	
-    public FillDownChange(
+	@JsonCreator
+    public BlankDownChange(
+            @JsonProperty("engineConfig")
             EngineConfig engineConfig,
+            @JsonProperty("columnName")
             String columnName
         ) {
 		super(engineConfig);
 		_columnName = columnName;
 	}
 	
+	@JsonProperty("columnName")
 	public String getColumnName() {
 		return _columnName;
 	}
@@ -50,12 +58,13 @@ public class FillDownChange extends EngineDependentChange {
 		}
 		Engine engine = getEngine(state);
 		if (Mode.RecordBased.equals(_engineConfig.getMode())) {
-			// simple map of records, since a filled down value cannot spread beyond a record boundary
+			// Simple map of records
 			return state.mapRecords(
 					RecordMapper.conditionalMapper(engine.combinedRecordFilters(), recordMapper(index), RecordMapper.IDENTITY),
 					model);
+			
 		} else {
-			// scan map, because we need to remember the last non-null cell
+			// We need to remember the cell from the previous row, so we use a scan map
 			return state.mapRows(RowScanMapper.conditionalMapper(engine.combinedRowFilters(), rowScanMapper(index), RowMapper.IDENTITY), model);
 		}
 	}
@@ -67,15 +76,18 @@ public class FillDownChange extends EngineDependentChange {
 
 			@Override
 			public List<Row> call(Record record) {
-				Cell lastNonBlankCell = null;
+				Cell lastCell = null;
 				List<Row> result = new LinkedList<>();
 				for (Row row : record.getRows()) {
-					if (row.isCellBlank(columnIndex)) {
-						result.add(row.withCell(columnIndex, lastNonBlankCell));
+					Serializable cellValue = row.getCellValue(columnIndex);
+					if (lastCell != null
+							&& ExpressionUtils.isNonBlankData(cellValue)
+							&& cellValue.equals(lastCell.getValue())) {
+						result.add(row.withCell(columnIndex, null));
 					} else {
-						lastNonBlankCell = row.getCell(columnIndex);
 						result.add(row);
 					}
+					lastCell = row.getCell(columnIndex);
 				}
 				return result;
 			}
@@ -95,10 +107,12 @@ public class FillDownChange extends EngineDependentChange {
 
 			@Override
 			public Cell combine(Cell left, Cell right) {
-				if (right != null && ExpressionUtils.isNonBlankData(right.getValue())) {
-					return right;
-				} else {
+				if (right != null && right.value == null) {
+					// Cell.NULL is used as sentinel, for rows that are skipped by facets.
+					// null cells are simply represented by right == null
 					return left;
+				} else {
+					return right;
 				}
 			}
 
@@ -108,9 +122,12 @@ public class FillDownChange extends EngineDependentChange {
 			}
 
 			@Override
-			public Row map(Cell lastNonBlankCell, long rowId, Row row) {
-				if (!ExpressionUtils.isNonBlankData(row.getCellValue(columnIndex))) {
-					return row.withCell(columnIndex, lastNonBlankCell);
+			public Row map(Cell lastCell, long rowId, Row row) {
+				Serializable cellValue = row.getCellValue(columnIndex);
+				if (ExpressionUtils.isNonBlankData(cellValue)
+						&& lastCell != null
+						&& cellValue.equals(lastCell.getValue())) {
+					return row.withCell(columnIndex, null);
 				} else {
 					return row;
 				}
@@ -118,6 +135,7 @@ public class FillDownChange extends EngineDependentChange {
 			
 		};
 	}
+
 
 	@Override
 	public boolean isImmediate() {

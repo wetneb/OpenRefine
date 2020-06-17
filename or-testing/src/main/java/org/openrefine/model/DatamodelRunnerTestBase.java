@@ -300,15 +300,28 @@ public abstract class DatamodelRunnerTestBase {
         Assert.assertEquals(rows.get(1).getRow().getCellValue(1), "1_concat");
     }
     
-    public static StatefulRowMapper<String> statefulRowMapper = new StatefulRowMapper<String>() {
+    public static RowScanMapper<String> statefulRowMapper = new RowScanMapper<String>() {
 
-        private static final long serialVersionUID = 4722456736235728503L;
+        private static final long serialVersionUID = -2411339705543951236L;
 
         @Override
-        public RowAndState<String> call(String state, long rowIndex, Row row) {
-            String cell = row.getCellValue(1).toString();
-            String newState = state + cell;
-            return new RowAndState<String>(row.withCell(1, new Cell(newState, null)), newState);
+        public String feed(long rowId, Row row) {
+            return row.getCellValue(1).toString();
+        }
+
+        @Override
+        public String combine(String left, String right) {
+            return left + right;
+        }
+
+        @Override
+        public String unit() {
+            return "";
+        }
+
+        @Override
+        public Row map(String state, long rowId, Row row) {
+            return row.withCell(1, new Cell(state + row.getCellValue(1).toString(), null));
         }
         
     };
@@ -316,7 +329,7 @@ public abstract class DatamodelRunnerTestBase {
     @Test
     public void testStatefullyMapRows() {
         GridState mapped = simpleGrid.mapRows(
-                statefulRowMapper, "", simpleGrid.getColumnModel());
+                statefulRowMapper, simpleGrid.getColumnModel());
         
         List<IndexedRow> rows = mapped.collectRows();
         Assert.assertEquals(rows.get(0).getRow().getCellValue(1), "b");

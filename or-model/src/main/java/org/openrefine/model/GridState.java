@@ -2,6 +2,7 @@ package org.openrefine.model;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
@@ -209,11 +210,10 @@ public interface GridState {
      * 
      * @param <S> the type of state kept by the mapper
      * @param mapper the mapper to apply to the grid
-     * @param initialState the state in which the first row should be mapped
      * @param newColumnModel the column model to apply to the new grid
      * @return
      */
-    public <S> GridState mapRows(StatefulRowMapper<S> mapper, S initialState, ColumnModel newColumnModel);
+    public <S extends Serializable> GridState mapRows(RowScanMapper<S> mapper, ColumnModel newColumnModel);
     
     /**
      * Returns a new grid state, where the records have been mapped by the mapper
