@@ -1,6 +1,7 @@
 package org.openrefine.history;
 
 import org.openrefine.model.GridState;
+import org.openrefine.model.changes.Change;
 
 public class ChangeStub implements Change {
 
