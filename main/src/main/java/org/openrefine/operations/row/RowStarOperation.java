@@ -37,14 +37,13 @@ import org.openrefine.browsing.EngineConfig;
 import org.openrefine.model.GridState;
 import org.openrefine.model.Row;
 import org.openrefine.model.RowMapper;
-import org.openrefine.model.changes.Change;
-import org.openrefine.model.changes.RowMapChange;
-import org.openrefine.operations.EngineDependentOperation;
+import org.openrefine.model.changes.ChangeContext;
+import org.openrefine.operations.ImmediateRowMapOperation;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class RowStarOperation extends EngineDependentOperation {
+public class RowStarOperation extends ImmediateRowMapOperation {
     final protected boolean _starred;
 
     @JsonCreator
@@ -67,28 +66,12 @@ public class RowStarOperation extends EngineDependentOperation {
         return (_starred ? "Star rows" : "Unstar rows");
     }
 
-    @Override
-    public Change createChange() {
-    	return new RowStarChange(getEngineConfig());
-    }
-    
-    public class RowStarChange extends RowMapChange {
 
-		public RowStarChange(EngineConfig engineConfig) {
-			super(engineConfig);
-		}
-		
-		@Override
-		public RowMapper getPositiveRowMapper(GridState grid) {
-			return rowMapper(_starred);
-		}
+	@Override
+	public RowMapper getPositiveRowMapper(GridState grid, ChangeContext context) {
+		return rowMapper(_starred);
+	}
 
-		@Override
-		public boolean isImmediate() {
-			return true;
-		}
-    }
-    
     protected static RowMapper rowMapper(boolean starred) {
     	return new RowMapper() {
 
