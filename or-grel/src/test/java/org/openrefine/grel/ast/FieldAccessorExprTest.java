@@ -2,11 +2,10 @@ package org.openrefine.grel.ast;
 
 import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertNull;
 
 import org.testng.annotations.Test;
-
-import org.openrefine.expr.Evaluable;
 
 public class FieldAccessorExprTest extends ExprTestBase {
     
@@ -25,6 +24,7 @@ public class FieldAccessorExprTest extends ExprTestBase {
         when(unanalyzable.toString()).thenReturn("bar");
         GrelExpr ev = new FieldAccessorExpr(unanalyzable, "foo");
         assertNull(ev.getColumnDependencies(baseColumn));
+        assertFalse(ev.isLocal());
     }
     
     @Test
