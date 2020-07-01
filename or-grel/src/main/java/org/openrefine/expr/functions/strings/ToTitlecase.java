@@ -40,6 +40,8 @@ import org.openrefine.grel.ControlFunctionRegistry;
 import org.openrefine.grel.PureFunction;
 
 public class ToTitlecase extends PureFunction {
+
+    private static final long serialVersionUID = 4173141031075676198L;
     final static private char[] delimiters = { ' ', '\t', '\r', '\n', '.' };
     
     @Override
