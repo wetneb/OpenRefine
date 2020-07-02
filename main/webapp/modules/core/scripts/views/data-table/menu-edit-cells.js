@@ -458,12 +458,12 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
       label: $.i18n('core-views/join-cells')+"...",
       click: doJoinMultiValueCells
     },
-    {},
+/*    {},
     {
       id: "core/cluster",
       label: $.i18n('core-views/cluster-edit')+"...",
       click: function() { new ClusteringDialog(column.name, "value"); }
-    },
+    }, */
     {},
     {
       id: "core/replace",

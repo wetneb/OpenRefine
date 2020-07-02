@@ -67,6 +67,7 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
         );
       }
     },
+/*
     {
       id: "core/numeric-facet",
       label:  $.i18n('core-views/numeric-facet'),
@@ -103,7 +104,7 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
       click: function() {
         new ScatterplotDialog(column.name);
       }
-    },
+    }, */
     {},
     {
       id: "core/custom-text-facet",
@@ -112,13 +113,13 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
         doFilterByExpressionPrompt(null, "list");
       }
     },
-    {
+/*    {
       id: "core/custom-numeric-facet",
       label: $.i18n('core-views/custom-numeric')+'...',
       click: function() {
         doFilterByExpressionPrompt(null, "range");
       }
-    },
+    }, */
     {
       id: "core/customized-facets",
       label: $.i18n('core-views/custom-facets'),
@@ -138,7 +139,7 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
           }
         },
         {},
-        {
+/*        {
           id: "core/duplicates-facet",
           label: $.i18n('core-views/duplicates-facet'),
           click: function() {
@@ -152,7 +153,7 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
                 }
             );
           }
-        },
+        }, 
         {},
         {
           id: "core/numeric-log-facet",
@@ -230,7 +231,7 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
             );
           }
         },
-        {},
+        {}, */
         {
           id: "core/error-facet",
           label: $.i18n('core-views/facet-error'),
@@ -290,7 +291,7 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
       ]
     }
   ]);
-
+/*
   MenuSystem.insertAfter(menu, [ "core/facet" ], [
     {
       label: $.i18n('core-views/text-filter'),
@@ -307,4 +308,5 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
       }
     }
   ]);
+*/
 });

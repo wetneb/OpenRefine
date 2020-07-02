@@ -252,13 +252,14 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
   };
 
   MenuSystem.appendTo(menu, [ "core/reconcile" ], [
+/*
     {
       id: "core/reconcile",
       label: $.i18n('core-views/start-recon')+'...',
       tooltip: $.i18n('core-views/recon-text-fb'),
       click: doReconcile
-    },
-    {},
+    }, 
+    {}, */
     {
       id: "core/facets",
       label: $.i18n('core-views/facets'),
@@ -308,7 +309,7 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
             );
           }
         },
-        {},
+        {}, /*
         {
           id: "core/by-best-candidates-score",
           label: $.i18n('core-views/best-score'),
@@ -325,7 +326,7 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
                 }
             );
           }
-        },
+        }, */
         {
           id: "core/by-best-candidates-type-match",
           label: $.i18n('core-views/best-type-match'),
@@ -360,8 +361,8 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
             );
           }
         },
-        {},
-        {
+        {}, /*
+        { 
           id: "core/by-best-candidates-name-edit-distance",
           label: $.i18n('core-views/best-edit-dist'),
           click: function() {
@@ -395,7 +396,7 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
             );
           }
         },
-        {},
+        {}, */
         {
           id: "core/by-best-candidates-types",
           label: $.i18n('core-views/best-type'),
