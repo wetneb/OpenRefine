@@ -111,14 +111,14 @@ public class ExcelImporterTests extends ImporterTest {
 
         ArrayNode sheets = ParsingUtilities.mapper.createArrayNode();
         sheets.add(ParsingUtilities.mapper.readTree("{name: \"file-source#Test Sheet 0\", fileNameAndSheetIndex: \"file-source#0\", rows: 31, selected: true}"));
-        whenGetArrayOption("sheets", options, sheets);
+        options.set("sheets", sheets);
         
-        whenGetIntegerOption("ignoreLines", options, 0);
-        whenGetIntegerOption("headerLines", options, 0);
-        whenGetIntegerOption("skipDataLines", options, 0);
-        whenGetIntegerOption("limit", options, -1);
-        whenGetBooleanOption("storeBlankCellsAsNulls",options,true);
-        
+        options.put("ignoreLines", 0);
+        options.put("headerLines", 0);
+        options.put("skipDataLines", 0);
+        options.put("limit", -1);
+        options.put("storeBlankCellsAsNulls", true);
+
         InputStream stream = new FileInputStream(xlsFile);
         
         GridState grid = null;
@@ -140,11 +140,8 @@ public class ExcelImporterTests extends ImporterTest {
         Assert.assertEquals((String)rows.get(1).getCellValue(4)," Row 1 Col 5");
         Assert.assertNull((String)rows.get(1).getCellValue(5));
 
-        verify(options, times(1)).get("ignoreLines");
-        verify(options, times(1)).get("headerLines");
-        verify(options, times(1)).get("skipDataLines");
-        verify(options, times(1)).get("limit");
-        verify(options, times(1)).get("storeBlankCellsAsNulls");
+        assertTrue(ParsingUtilities.isDate(rows.get(1).getCellValue(2))); // Calendar
+        assertTrue(ParsingUtilities.isDate(rows.get(1).getCellValue(3))); // Date
     }
     
     @Test
@@ -152,13 +149,13 @@ public class ExcelImporterTests extends ImporterTest {
 
         ArrayNode sheets = ParsingUtilities.mapper.createArrayNode();
         sheets.add(ParsingUtilities.mapper.readTree("{name: \"file-source#Test Sheet 0\", fileNameAndSheetIndex: \"file-source#0\", rows: 31, selected: true}"));
-        whenGetArrayOption("sheets", options, sheets);
+        options.set("sheets", sheets);
         
-        whenGetIntegerOption("ignoreLines", options, 0);
-        whenGetIntegerOption("headerLines", options, 0);
-        whenGetIntegerOption("skipDataLines", options, 0);
-        whenGetIntegerOption("limit", options, -1);
-        whenGetBooleanOption("storeBlankCellsAsNulls",options,true);
+        options.put("ignoreLines", 0);
+        options.put("headerLines", 0);
+        options.put("skipDataLines", 0);
+        options.put("limit", -1);
+        options.put("storeBlankCellsAsNulls", true);
         
         InputStream stream = new FileInputStream(xlsxFile);
         
@@ -180,12 +177,6 @@ public class ExcelImporterTests extends ImporterTest {
         
         Assert.assertEquals((String)rows.get(1).getCellValue(4)," Row 1 Col 5");
         Assert.assertNull((String)rows.get(1).getCellValue(5));
-
-        verify(options, times(1)).get("ignoreLines");
-        verify(options, times(1)).get("headerLines");
-        verify(options, times(1)).get("skipDataLines");
-        verify(options, times(1)).get("limit");
-        verify(options, times(1)).get("storeBlankCellsAsNulls");
     }
     
     private static File createSpreadsheet(boolean xml) {
