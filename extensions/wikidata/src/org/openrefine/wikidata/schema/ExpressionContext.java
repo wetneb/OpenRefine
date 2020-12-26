@@ -40,6 +40,7 @@ import org.openrefine.wikidata.qa.QAWarningStore;
 public class ExpressionContext {
 
     private String baseIRI;
+    private String mediaWikiApiEndpoint;
     private long rowId;
     private Row row;
     private ColumnModel columnModel;
@@ -50,6 +51,8 @@ public class ExpressionContext {
      * 
      * @param baseIRI
      *            the siteIRI of the schema
+     * @param mediaWikiApiEndpoint
+     *            the MediaWiki API endpoint of the Wikibase
      * @param rowID
      *            the id of the row currently visited
      * @param row
@@ -60,9 +63,10 @@ public class ExpressionContext {
      *            where to store the issues encountered when evaluating (can be set
      *            to null if these issues should be ignored)
      */
-    public ExpressionContext(String baseIRI, long rowID, Row row, ColumnModel columnModel, QAWarningStore warningStore) {
+    public ExpressionContext(String baseIRI, String mediaWikiApiEndpoint, long rowID, Row row, ColumnModel columnModel, QAWarningStore warningStore) {
         Validate.notNull(baseIRI);
         this.baseIRI = baseIRI;
+        this.mediaWikiApiEndpoint = mediaWikiApiEndpoint;
         this.rowId = rowID;
         Validate.notNull(row);
         this.row = row;
@@ -73,6 +77,10 @@ public class ExpressionContext {
 
     public String getBaseIRI() {
         return baseIRI;
+    }
+
+    public String getMediaWikiApiEndpoint() {
+        return mediaWikiApiEndpoint;
     }
 
     /**

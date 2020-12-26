@@ -89,4 +89,14 @@ public class WbItemDocumentExprTest extends WbExpressionTest<ItemUpdate> {
     public void testSerialize() {
         JacksonSerializationTest.canonicalSerialization(WbItemDocumentExpr.class, expr, jsonRepresentation);
     }
+
+    @Test(expectedExceptions = UnsupportedOperationException.class)
+    public void testUnmodifiableNameDescsList() {
+        expr.getNameDescs().clear();
+    }
+
+    @Test(expectedExceptions = UnsupportedOperationException.class)
+    public void testUnmodifiableStatementGroupsList() {
+        expr.getStatementGroups().clear();
+    }
 }

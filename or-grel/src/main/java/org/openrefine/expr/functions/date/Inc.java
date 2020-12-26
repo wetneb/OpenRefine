@@ -37,9 +37,10 @@ import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalUnit;
 
-import org.openrefine.expr.EvalError;
 import org.openrefine.grel.ControlFunctionRegistry;
 import org.openrefine.grel.PureFunction;
+
+import org.openrefine.expr.EvalError;
 
 public class Inc extends PureFunction {
 

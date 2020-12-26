@@ -35,12 +35,13 @@ package org.openrefine.grel.controls;
 
 import java.util.Properties;
 
-import org.openrefine.expr.Evaluable;
-import org.openrefine.expr.ExpressionUtils;
 import org.openrefine.grel.Control;
 import org.openrefine.grel.ControlFunctionRegistry;
 import org.openrefine.grel.ast.GrelExpr;
 import org.openrefine.grel.ast.VariableExpr;
+
+import org.openrefine.expr.Evaluable;
+import org.openrefine.expr.ExpressionUtils;
 
 public class ForNonBlank implements Control {
     @Override

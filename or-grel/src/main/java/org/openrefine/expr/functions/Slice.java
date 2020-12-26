@@ -35,10 +35,11 @@ package org.openrefine.expr.functions;
 
 import java.util.List;
 
+import org.openrefine.grel.PureFunction;
+
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.openrefine.expr.ExpressionUtils;
 import org.openrefine.expr.HasFieldsList;
-import org.openrefine.grel.PureFunction;
 
 public class Slice extends PureFunction {
 

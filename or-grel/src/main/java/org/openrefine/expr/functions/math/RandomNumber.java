@@ -35,9 +35,10 @@ package org.openrefine.expr.functions.math;
 
 import java.util.concurrent.ThreadLocalRandom;
 
-import org.openrefine.expr.EvalError;
 import org.openrefine.grel.ControlFunctionRegistry;
 import org.openrefine.grel.PureFunction;
+
+import org.openrefine.expr.EvalError;
 
 public class RandomNumber extends PureFunction {
 

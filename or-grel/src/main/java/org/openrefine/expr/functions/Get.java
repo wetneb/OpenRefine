@@ -35,13 +35,14 @@ package org.openrefine.expr.functions;
 
 import java.util.List;
 
+import org.openrefine.grel.PureFunction;
+
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.openrefine.expr.ExpressionUtils;
 import org.openrefine.expr.HasFields;
 import org.openrefine.expr.HasFieldsList;
 import org.openrefine.expr.util.JsonValueConverter;
-import org.openrefine.grel.PureFunction;
 
 public class Get extends PureFunction {
 

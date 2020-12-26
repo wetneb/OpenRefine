@@ -37,9 +37,9 @@ import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 
 import org.apache.commons.lang3.StringUtils;
+import org.openrefine.grel.PureFunction;
 
 import org.openrefine.expr.EvalError;
-import org.openrefine.grel.PureFunction;
 
 public class Diff extends PureFunction {
 

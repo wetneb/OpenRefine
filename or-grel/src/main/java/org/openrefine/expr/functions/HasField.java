@@ -33,9 +33,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.openrefine.expr.functions;
 
+import org.openrefine.grel.PureFunction;
+
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.openrefine.expr.HasFields;
-import org.openrefine.grel.PureFunction;
 
 public class HasField extends PureFunction {
 

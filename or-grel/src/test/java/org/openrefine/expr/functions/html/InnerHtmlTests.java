@@ -26,6 +26,7 @@
  ******************************************************************************/
 package org.openrefine.expr.functions.html;
 
+import org.openrefine.expr.functions.html.InnerHtml;
 import org.testng.annotations.Test;
 
 import org.openrefine.util.ParsingUtilities;

@@ -26,6 +26,7 @@
  ******************************************************************************/
 package org.openrefine.expr.functions.strings;
 
+import org.openrefine.expr.functions.strings.SplitByLengths;
 import org.testng.annotations.Test;
 
 import org.openrefine.util.ParsingUtilities;

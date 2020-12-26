@@ -36,9 +36,10 @@ package org.openrefine.expr.functions;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 
-import org.openrefine.expr.EvalError;
 import org.openrefine.grel.ControlFunctionRegistry;
 import org.openrefine.grel.PureFunction;
+
+import org.openrefine.expr.EvalError;
 import org.openrefine.util.StringUtils;
 
 public class ToString extends PureFunction {

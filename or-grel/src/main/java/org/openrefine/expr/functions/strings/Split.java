@@ -36,10 +36,10 @@ package org.openrefine.expr.functions.strings;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
-
-import org.openrefine.expr.EvalError;
 import org.openrefine.grel.ControlFunctionRegistry;
 import org.openrefine.grel.PureFunction;
+
+import org.openrefine.expr.EvalError;
 
 public class Split extends PureFunction {
 

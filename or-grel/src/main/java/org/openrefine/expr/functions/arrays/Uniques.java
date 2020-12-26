@@ -33,15 +33,17 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.openrefine.expr.functions.arrays;
 
-import java.util.HashSet;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+
+import org.openrefine.grel.ControlFunctionRegistry;
+import org.openrefine.grel.PureFunction;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.openrefine.expr.EvalError;
 import org.openrefine.expr.ExpressionUtils;
-import org.openrefine.grel.ControlFunctionRegistry;
-import org.openrefine.grel.PureFunction;
 import org.openrefine.util.JSONUtilities;
 
 public class Uniques extends PureFunction {
@@ -50,25 +52,18 @@ public class Uniques extends PureFunction {
     public Object call(Object[] args) {
         if (args.length == 1) {
             Object v = args[0];
-            
+
             if (v != null) {
                 if (v instanceof ArrayNode) {
                     v = JSONUtilities.toArray((ArrayNode) v);
                 }
-                
-                if (v.getClass().isArray() || v instanceof List<?>) {
-                    Set<Object> set = null;
-                    
-                    if (v.getClass().isArray()) {
-                        Object[] a = (Object[]) v;
-                        
-                        set = new HashSet<Object>(a.length);
-                        for (Object element : a) {
-                            set.add(element);
-                        }
-                    } else {
-                        set = new HashSet<Object>(ExpressionUtils.toObjectList(v));
-                    }
+                Set<Object> set = null;
+                if (v.getClass().isArray()) {
+                    set = new LinkedHashSet<Object>(Arrays.asList((Object[]) v));
+                } else if (v instanceof List<?>) {
+                    set = new LinkedHashSet<Object>(ExpressionUtils.toObjectList(v));
+                }
+                if (set != null) {
                     return set.toArray();
                 }
             }

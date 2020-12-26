@@ -35,10 +35,10 @@ package org.openrefine.expr.functions.xml;
 
 import org.jsoup.Jsoup;
 import org.jsoup.parser.Parser;
-
-import org.openrefine.expr.EvalError;
 import org.openrefine.grel.ControlFunctionRegistry;
 import org.openrefine.grel.PureFunction;
+
+import org.openrefine.expr.EvalError;
 
 public class ParseXml extends PureFunction {
 

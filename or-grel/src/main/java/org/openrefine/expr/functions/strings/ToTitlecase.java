@@ -33,11 +33,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.openrefine.expr.functions.strings;
 
-import org.apache.commons.lang3.text.WordUtils;
-
-import org.openrefine.expr.EvalError;
+import org.apache.commons.text.WordUtils;
 import org.openrefine.grel.ControlFunctionRegistry;
 import org.openrefine.grel.PureFunction;
+
+import org.openrefine.expr.EvalError;
 
 public class ToTitlecase extends PureFunction {
 

@@ -35,9 +35,10 @@ package org.openrefine.expr.functions.strings;
 
 import java.io.IOException;
 
-import org.openrefine.expr.EvalError;
 import org.openrefine.grel.ControlFunctionRegistry;
 import org.openrefine.grel.PureFunction;
+
+import org.openrefine.expr.EvalError;
 import org.openrefine.util.ParsingUtilities;
 
 public class ParseJson extends PureFunction {

@@ -26,6 +26,7 @@
  ******************************************************************************/
 package org.openrefine.expr.functions.booleans;
 
+import org.openrefine.expr.functions.booleans.Or;
 import org.testng.annotations.Test;
 
 import org.openrefine.util.ParsingUtilities;

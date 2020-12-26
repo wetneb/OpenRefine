@@ -40,7 +40,6 @@ import java.util.regex.Pattern;
 import org.openrefine.expr.Evaluable;
 import org.openrefine.expr.LanguageSpecificParser;
 import org.openrefine.expr.ParsingException;
-import org.openrefine.expr.functions.arrays.ArgsToArray;
 import org.openrefine.grel.Scanner.NumberToken;
 import org.openrefine.grel.Scanner.RegexToken;
 import org.openrefine.grel.Scanner.Token;

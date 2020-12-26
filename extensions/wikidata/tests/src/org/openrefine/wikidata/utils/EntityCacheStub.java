@@ -1,6 +1,8 @@
 package org.openrefine.wikidata.utils;
 
 import java.io.InputStream;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import org.wikidata.wdtk.datamodel.helpers.Datamodel;
 import org.wikidata.wdtk.datamodel.helpers.DatamodelMapper;
@@ -9,7 +11,6 @@ import org.wikidata.wdtk.datamodel.interfaces.EntityDocument;
 import org.wikidata.wdtk.datamodel.interfaces.EntityIdValue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.wikidata.wdtk.wikibaseapi.BasicApiConnection;
 
 /**
  * Stub of EntityCache class, to fetch entities from a local cache instead
@@ -22,7 +23,7 @@ public class EntityCacheStub extends EntityCache {
 	private ObjectMapper mapper =  new DatamodelMapper(Datamodel.SITE_WIKIDATA);
 	
 	public EntityCacheStub() {
-		super(BasicApiConnection.getWikidataApiConnection());
+		super(null, null);
 	}
 	
 	@Override
@@ -38,4 +39,9 @@ public class EntityCacheStub extends EntityCache {
 		}
         return null;
     }
+
+    @Override
+	public List<EntityDocument> getMultipleDocuments(List<EntityIdValue> entityIds) {
+		return entityIds.stream().map(id -> get(id)).collect(Collectors.toList());
+	}
 }

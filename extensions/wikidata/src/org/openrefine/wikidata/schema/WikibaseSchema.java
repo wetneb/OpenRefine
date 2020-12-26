@@ -25,6 +25,7 @@ package org.openrefine.wikidata.schema;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.openrefine.browsing.Engine;
@@ -58,9 +59,16 @@ public class WikibaseSchema implements OverlayModel {
     final static Logger logger = LoggerFactory.getLogger("RdfSchema");
 
     @JsonProperty("itemDocuments")
-    protected List<WbItemDocumentExpr> itemDocumentExprs = new ArrayList<WbItemDocumentExpr>();
+    protected List<WbItemDocumentExpr> itemDocumentExprs = new ArrayList<>();
 
-    protected String baseIri = "http://www.wikidata.org/entity/";
+    @JsonProperty("siteIri")
+    protected String siteIri;
+
+    @JsonProperty("mediaWikiApiEndpoint")
+    protected String mediaWikiApiEndpoint;
+
+    @JsonIgnore
+    protected String editGroupsURLSchema;
 
     /**
      * Constructor.
@@ -68,33 +76,45 @@ public class WikibaseSchema implements OverlayModel {
     public WikibaseSchema() {
 
     }
-    
+
     /**
      * Constructor for deserialization via Jackson
      */
     @JsonCreator
-    public WikibaseSchema(@JsonProperty("itemDocuments") List<WbItemDocumentExpr> exprs) {
+    public WikibaseSchema(@JsonProperty("itemDocuments") List<WbItemDocumentExpr> exprs,
+                          @JsonProperty("siteIri") String siteIri,
+                          @JsonProperty("mediaWikiApiEndpoint") String mediaWikiApiEndpoint,
+                          @JsonProperty("editGroupsURLSchema") String editGroupsURLSchema) {
         this.itemDocumentExprs = exprs;
+        this.siteIri = siteIri;
+        this.mediaWikiApiEndpoint = mediaWikiApiEndpoint;
+        this.editGroupsURLSchema = editGroupsURLSchema;
     }
 
     /**
      * @return the site IRI of the Wikibase instance referenced by this schema
      */
-    @JsonIgnore
-    public String getBaseIri() {
-        return baseIri;
+    @JsonProperty("siteIri")
+    public String getSiteIri() {
+        return siteIri;
     }
 
     /**
      * @return the list of document expressions for this schema
      */
-    @JsonIgnore
+    @JsonProperty("itemDocuments")
     public List<WbItemDocumentExpr> getItemDocumentExpressions() {
-        return itemDocumentExprs;
+        return Collections.unmodifiableList(itemDocumentExprs);
     }
-    
-    public void setItemDocumentExpressions(List<WbItemDocumentExpr> exprs) {
-        this.itemDocumentExprs = exprs;
+
+    @JsonProperty("mediaWikiApiEndpoint")
+    public String getMediaWikiApiEndpoint() {
+        return mediaWikiApiEndpoint;
+    }
+
+    @JsonIgnore
+    public String getEditGroupsURLSchema() {
+        return editGroupsURLSchema;
     }
 
     /**
@@ -140,7 +160,8 @@ public class WikibaseSchema implements OverlayModel {
         List<ItemUpdate> result = new ArrayList<>();
         for (IndexedRow indexedRow : grid.iterateRows(engine.combinedRowFilters(), SortingConfig.NO_SORTING)) {
         	ExpressionContext ctxt = new ExpressionContext(
-        			baseIri,
+        			siteIri,
+        			mediaWikiApiEndpoint,
         			indexedRow.getIndex(),
         			indexedRow.getRow(),
         			grid.getColumnModel(),

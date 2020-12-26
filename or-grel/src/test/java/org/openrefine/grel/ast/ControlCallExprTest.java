@@ -6,11 +6,12 @@ import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertTrue;
 
+import org.openrefine.grel.Control;
+import org.openrefine.grel.ast.ControlCallExpr;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import org.openrefine.expr.Evaluable;
-import org.openrefine.grel.Control;
 
 public class ControlCallExprTest extends ExprTestBase {
     
