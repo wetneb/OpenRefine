@@ -44,11 +44,7 @@ import java.util.stream.Collectors;
 import org.openrefine.ProjectMetadata;
 import org.openrefine.expr.ExpressionUtils;
 import org.openrefine.importing.ImportingJob;
-import org.openrefine.model.Cell;
-import org.openrefine.model.ColumnModel;
-import org.openrefine.model.DatamodelRunner;
-import org.openrefine.model.GridState;
-import org.openrefine.model.Row;
+import org.openrefine.model.*;
 import org.openrefine.util.JSONUtilities;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -184,5 +180,29 @@ public class TabularParserHelper {
         
         return runner.create(columnModel, rows, Collections.emptyMap());
     }
-	
+
+    /**
+     * Adds a column to the grid, with the same string content in all cells. The column
+     * is added at the beginning of the grid.
+     *
+     * @param columnName the name of the column to add
+     * @param cellValue the constant value in this column
+     * @param grid the original grid to start from
+     * @return
+     */
+    public static GridState prependColumn(String columnName, String cellValue, GridState grid) {
+        ColumnModel newColumnModel = grid.getColumnModel().insertUnduplicatedColumn(0, new ColumnMetadata(columnName));
+        Cell constantCell = new Cell(cellValue, null);
+        return grid.mapRows(new RowMapper() {
+
+            private static final long serialVersionUID = 2400882733484689173L;
+
+            @Override
+            public Row call(long rowId, Row row) {
+                return row.insertCell(0, constantCell);
+            }
+
+        }, newColumnModel);
+    }
+
 }
