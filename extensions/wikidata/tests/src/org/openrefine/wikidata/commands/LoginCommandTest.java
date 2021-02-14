@@ -1,5 +1,6 @@
 package org.openrefine.wikidata.commands;
 
+
 import static org.mockito.Mockito.when;
 import static org.testng.Assert.assertEquals;
 
@@ -11,6 +12,7 @@ import org.openrefine.commands.Command;
 import org.openrefine.util.TestUtils;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
+
 
 public class LoginCommandTest extends CommandTest {
     

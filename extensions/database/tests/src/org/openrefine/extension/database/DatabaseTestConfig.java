@@ -7,11 +7,9 @@ import org.openrefine.extension.database.DatabaseServiceException;
 import org.openrefine.extension.database.mariadb.MariaDBDatabaseService;
 import org.openrefine.extension.database.mysql.MySQLDatabaseService;
 import org.openrefine.extension.database.pgsql.PgSQLDatabaseService;
-import org.testng.annotations.AfterSuite;
-import org.testng.annotations.BeforeSuite;
-import org.testng.annotations.Optional;
-import org.testng.annotations.Parameters;
+import org.testng.annotations.*;
 
+@Test(groups = { "requiresMySQL", "requiresPgSQL", "requiresMariaDB", "requiresSQLite" })
 public class DatabaseTestConfig extends DBExtensionTests {
     
     private DatabaseConfiguration mysqlDbConfig;

@@ -23,9 +23,14 @@
  ******************************************************************************/
 package org.openrefine.wikidata.qa.scrutinizers;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.openrefine.wikidata.qa.ConstraintFetcher;
 import org.openrefine.wikidata.qa.MockConstraintFetcher;
 import org.openrefine.wikidata.testing.TestingData;
 import org.testng.annotations.Test;

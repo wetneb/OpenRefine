@@ -7,9 +7,9 @@ import org.wikidata.wdtk.datamodel.helpers.DatamodelMapper;
 import org.wikidata.wdtk.datamodel.implementation.EntityDocumentImpl;
 import org.wikidata.wdtk.datamodel.interfaces.EntityDocument;
 import org.wikidata.wdtk.datamodel.interfaces.EntityIdValue;
-import org.wikidata.wdtk.wikibaseapi.BasicApiConnection;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.wikidata.wdtk.wikibaseapi.BasicApiConnection;
 
 /**
  * Stub of EntityCache class, to fetch entities from a local cache instead

@@ -23,16 +23,24 @@
  ******************************************************************************/
 package org.openrefine.wikidata.qa.scrutinizers;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.openrefine.wikidata.qa.ConstraintFetcher;
 import org.openrefine.wikidata.qa.MockConstraintFetcher;
 import org.openrefine.wikidata.testing.TestingData;
+import org.openrefine.wikidata.updates.ItemUpdate;
+import org.openrefine.wikidata.updates.ItemUpdateBuilder;
 import org.testng.annotations.Test;
 import org.wikidata.wdtk.datamodel.helpers.Datamodel;
 import org.wikidata.wdtk.datamodel.interfaces.Claim;
+import org.wikidata.wdtk.datamodel.interfaces.ItemIdValue;
+import org.wikidata.wdtk.datamodel.interfaces.PropertyIdValue;
 import org.wikidata.wdtk.datamodel.interfaces.Snak;
 import org.wikidata.wdtk.datamodel.interfaces.SnakGroup;
 import org.wikidata.wdtk.datamodel.interfaces.Statement;

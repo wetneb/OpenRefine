@@ -23,8 +23,24 @@
  ******************************************************************************/
 package org.openrefine.wikidata.qa.scrutinizers;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import java.util.Collections;
+import java.util.List;
+
+import org.openrefine.wikidata.qa.ConstraintFetcher;
 import org.openrefine.wikidata.testing.TestingData;
 import org.testng.annotations.Test;
+import org.wikidata.wdtk.datamodel.helpers.Datamodel;
+import org.wikidata.wdtk.datamodel.implementation.StatementImpl;
+import org.wikidata.wdtk.datamodel.interfaces.ItemIdValue;
+import org.wikidata.wdtk.datamodel.interfaces.PropertyIdValue;
+import org.wikidata.wdtk.datamodel.interfaces.Snak;
+import org.wikidata.wdtk.datamodel.interfaces.SnakGroup;
+import org.wikidata.wdtk.datamodel.interfaces.Statement;
 
 public class UnsourcedScrutinizerTest extends StatementScrutinizerTest {
 
