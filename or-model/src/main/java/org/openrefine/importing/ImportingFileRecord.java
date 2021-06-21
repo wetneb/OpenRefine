@@ -6,6 +6,8 @@ import java.io.IOException;
 import org.apache.hadoop.fs.ContentSummary;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -19,6 +21,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  *
  */
 public class ImportingFileRecord {
+    
+    private final static Logger logger = LoggerFactory.getLogger(ImportingFileRecord.class);
 	
 	private final String _sparkURI;
 	private String _location;
