@@ -1,12 +1,16 @@
 package org.openrefine.model.changes;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
+import org.openrefine.browsing.Engine;
 import org.openrefine.model.Cell;
 import org.openrefine.model.ColumnMetadata;
 import org.openrefine.model.ColumnModel;
 import org.openrefine.model.GridState;
 import org.openrefine.model.ModelException;
+import org.openrefine.model.Record;
 import org.openrefine.model.Row;
 import org.openrefine.model.recon.LazyReconStats;
 import org.openrefine.model.recon.ReconConfig;
@@ -33,6 +37,7 @@ public class ColumnChangeByChangeData implements Change {
 	private final String      _changeDataId;
 	private final int         _columnIndex;
 	private final String      _columnName;
+	private final Engine.Mode _engineMode;
 	private final ReconConfig _reconConfig;
 	private ReconStats        _reconStats;
 	
@@ -44,6 +49,8 @@ public class ColumnChangeByChangeData implements Change {
 			int columnIndex,
 			@JsonProperty("columnName")
 			String columnName,
+			@JsonProperty("mode")
+			Engine.Mode mode,
 			@JsonProperty("reconConfig")
 			ReconConfig reconConfig,
 			@JsonProperty("reconStats")
@@ -51,6 +58,7 @@ public class ColumnChangeByChangeData implements Change {
 		_changeDataId = changeDataId;
 		_columnIndex = columnIndex;
 		_columnName = columnName;
+		_engineMode = mode;
 		_reconConfig = reconConfig;
 		_reconStats = reconStats;
 	}
@@ -70,6 +78,11 @@ public class ColumnChangeByChangeData implements Change {
 		return _columnName;
 	}
 	
+	@JsonProperty("mode")
+	public Engine.Mode getMode() {
+	    return _engineMode;
+	}
+	
 	@JsonProperty("reconConfig")
 	public ReconConfig getReconConfig() {
 	    return _reconConfig;
@@ -82,31 +95,44 @@ public class ColumnChangeByChangeData implements Change {
 
 	@Override
 	public GridState apply(GridState projectState, ChangeContext context) throws DoesNotApplyException {
-		ChangeData<Cell> changeData = null;
-		try {
-			changeData = context.getChangeData(_changeDataId, new CellChangeDataSerializer());
-		} catch (IOException e) {
-			throw new DoesNotApplyException(String.format("Unable to retrieve change data '%s'", _changeDataId));
-		}
-		RowChangeDataJoiner<Cell> joiner = new Joiner(_columnIndex, _columnName != null);
-		ColumnModel columnModel = projectState.getColumnModel();
-		if (_columnName != null) {
-    		ColumnMetadata column = new ColumnMetadata(_columnName)
-    		        .withReconConfig(_reconConfig)
-    		        .withReconStats(_reconStats);
+       ColumnModel columnModel = projectState.getColumnModel();
+        if (_columnName != null) {
+            ColumnMetadata column = new ColumnMetadata(_columnName)
+                    .withReconConfig(_reconConfig)
+                    .withReconStats(_reconStats);
+            try {
+                columnModel = projectState.getColumnModel().insertColumn(_columnIndex, column);
+            } catch(ModelException e) {
+                throw new Change.DoesNotApplyException(
+                        String.format("A column with name '{}' cannot be added as the name conflicts with an existing column", _columnName));
+            }
+        } else if (_reconConfig != null) {
+            columnModel = columnModel
+                    .withReconConfig(_columnIndex, _reconConfig)
+                    .withReconStats(_columnIndex, _reconStats);
+        }
+	    
+        Joiner joiner = new Joiner(_columnIndex, _columnName != null);
+        
+        GridState joined;
+        if (Engine.Mode.RowBased.equals(_engineMode)) {
+    		ChangeData<Cell> changeData = null;
     		try {
-    			columnModel = projectState.getColumnModel().insertColumn(_columnIndex, column);
-    		} catch(ModelException e) {
-    			throw new Change.DoesNotApplyException(
-    					String.format("A column with name '{}' cannot be added as the name conflicts with an existing column", _columnName));
+    			changeData = context.getChangeData(_changeDataId, new CellChangeDataSerializer());
+    		} catch (IOException e) {
+    			throw new DoesNotApplyException(String.format("Unable to retrieve change data '%s'", _changeDataId));
     		}
-		} else if (_reconConfig != null) {
-		    columnModel = columnModel
-		            .withReconConfig(_columnIndex, _reconConfig)
-		            .withReconStats(_columnIndex, _reconStats);
-		}
-		
-		GridState joined = projectState.join(changeData, joiner, columnModel);
+    		joined = projectState.join(changeData, joiner, columnModel);
+        } else {
+            ChangeData<List<Cell>> changeData = null;
+            try {
+                changeData = context.getChangeData(_changeDataId, new CellListChangeDataSerializer());
+            } catch (IOException e) {
+                throw new DoesNotApplyException(String.format("Unable to retrieve change data '%s'", _changeDataId));
+            }
+            joined = projectState.join(changeData, joiner, columnModel);
+        }
+        
 		if (_reconConfig != null && _reconStats == null) {
 		    joined = LazyReconStats.updateReconStats(joined, _columnIndex);
 		    _reconStats = joined.getColumnModel().getColumns().get(_columnIndex).getReconStats();
@@ -119,7 +145,7 @@ public class ColumnChangeByChangeData implements Change {
 		return false;
 	}
 
-    public static class Joiner implements RowChangeDataJoiner<Cell> {
+    public static class Joiner implements RowChangeDataJoiner<Cell>, RecordChangeDataJoiner<List<Cell>> {
         
         private static final long serialVersionUID = 8332780210267820528L;
         private final int _columnIndex;
@@ -141,6 +167,19 @@ public class ColumnChangeByChangeData implements Change {
                     return row;
                 }
             }
+        }
+
+        @Override
+        public List<Row> call(Record record, List<Cell> changeData) {
+            List<Row> rows = record.getRows();
+            List<Row> result = new ArrayList<>(rows.size());
+            if (rows.size() != changeData.size()) {
+                throw new IllegalArgumentException(String.format("Change data and record do not have the same size at row %d", record.getStartRowId()));
+            }
+            for (int i = 0; i != rows.size(); i++) {
+                result.add(call(record.getStartRowId() + i, rows.get(i), changeData.get(i)));
+            }
+            return result;
         }
         
     }
