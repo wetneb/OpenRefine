@@ -76,7 +76,7 @@ public class WikitextImporterTests extends ImporterTest {
     @BeforeMethod
     public void setUp() {
         super.setUp();
-        importer = new WikitextImporter(runner());
+        importer = new WikitextImporter();
         mockedRecons = new HashMap<>();
     }
 

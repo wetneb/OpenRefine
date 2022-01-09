@@ -36,6 +36,7 @@ package org.openrefine.importing;
 import java.util.List;
 
 import org.openrefine.ProjectMetadata;
+import org.openrefine.model.DatamodelRunner;
 import org.openrefine.model.GridState;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -45,13 +46,15 @@ public interface ImportingParser {
      * Create data sufficient for the parser UI on the client side to do its work.
      * For example, an XML parser UI would need to know some sample elements so it
      * can let the user pick which the path to the record elements.
-     * 
+     * @param runner 
      * @param job
      * @param fileRecords
      * @param format
+     * 
      * @return ObjectNode options
      */
     public ObjectNode createParserUIInitializationData(
+        DatamodelRunner runner,
         ImportingJob job,
         List<ImportingFileRecord> fileRecords,
         String format
@@ -59,7 +62,7 @@ public interface ImportingParser {
     
     /**
      * 
-     * @param project
+     * @param runner TODO
      * @param metadata
      * @param job
      * @param fileRecords
@@ -69,13 +72,14 @@ public interface ImportingParser {
      * @param options
      *            custom options put together by the UI corresponding to this
      *            parser, which the parser should understand
+     * @param project
      */
     public GridState parse(
+        DatamodelRunner runner,
         ProjectMetadata metadata,
         ImportingJob job,
         List<ImportingFileRecord> fileRecords,
         String format,
-        long limit,
-        ObjectNode options
+        long limit, ObjectNode options
     ) throws Exception;
 }

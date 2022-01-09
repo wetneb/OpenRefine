@@ -78,6 +78,7 @@ import org.openrefine.ProjectMetadata;
 import org.openrefine.importers.ImporterUtilities;
 import org.openrefine.importing.ImportingJob.ImportingJobConfig;
 import org.openrefine.importing.ImportingJob.RetrievalRecord;
+import org.openrefine.model.DatamodelRunner;
 import org.openrefine.model.GridState;
 import org.openrefine.model.Project;
 import org.openrefine.model.changes.CachedGridStore;
@@ -771,7 +772,7 @@ public class ImportingUtilities {
         return NumberFormat.getIntegerInstance().format(bytes);
     }
     
-    static public void previewParse(ImportingJob job, String format, ObjectNode optionObj, List<Exception> exceptions) {
+    static public void previewParse(ImportingJob job, String format, ObjectNode optionObj, DatamodelRunner runner, List<Exception> exceptions) {
         ImportingFormat record = FormatRegistry.getFormatToRecord().get(format);
         if (record == null || record.parser == null) {
             // TODO: what to do?
@@ -781,12 +782,12 @@ public class ImportingUtilities {
         try {
         	job.metadata = createProjectMetadata(optionObj);
 	        GridState state = record.parser.parse(
+	            runner,
 	            job.metadata,
 	            job,
 	            job.getSelectedFileRecords(),
 	            format,
-	            100,
-	            optionObj
+	            100, optionObj
 	        );
 	        // this is a preview, so we will not need to store any change data on this project
 	        job.setProject(new Project(state, new LazyChangeDataStore(), new LazyCachedGridStore()));
@@ -799,8 +800,8 @@ public class ImportingUtilities {
             final ImportingJob job,
             final String format,
             final ObjectNode optionObj,
-            final List<Exception> exceptions,
-            boolean synchronous) {
+            final DatamodelRunner runner,
+            final List<Exception> exceptions, boolean synchronous) {
         final ImportingFormat record = FormatRegistry.getFormatToRecord().get(format);
         if (record == null || record.parser == null) {
             // TODO: what to do?
@@ -812,13 +813,13 @@ public class ImportingUtilities {
         long projectId = Project.generateID();
         if (synchronous) {
             createProjectSynchronously(
-                job, format, optionObj, exceptions, record, projectId);
+                job, format, optionObj, exceptions, record, projectId, runner);
         } else {
             new Thread() {
                 @Override
                 public void run() {
                     createProjectSynchronously(
-                        job, format, optionObj, exceptions, record, projectId);
+                        job, format, optionObj, exceptions, record, projectId, runner);
                 }
             }.start();
         }
@@ -831,21 +832,22 @@ public class ImportingUtilities {
         final ObjectNode optionObj,
         final List<Exception> exceptions,
         final ImportingFormat record,
-        final long projectId
+        final long projectId,
+        final DatamodelRunner runner
     ) {
         ProjectMetadata pm = createProjectMetadata(optionObj);
         Project newProject = null;
         try {
 	        GridState state = record.parser.parse(
+	            runner,
 	            pm,
 	            job,
 	            job.getSelectedFileRecords(),
 	            format,
-	            -1,
-	            optionObj
+	            -1, optionObj
 	        );
-	        ChangeDataStore dataStore = ProjectManager.singleton.getChangeDataStore(projectId);
-	        CachedGridStore gridStore = ProjectManager.singleton.getCachedGridStore(projectId);
+	        ChangeDataStore dataStore = ProjectManager.singleton.getChangeDataStore(projectId, runner);
+	        CachedGridStore gridStore = ProjectManager.singleton.getCachedGridStore(projectId, runner);
 	        newProject = new Project(projectId, state, dataStore, gridStore);
 			job.setProject(newProject);
         } catch(Exception e) {
@@ -857,7 +859,7 @@ public class ImportingUtilities {
                 
                 ProjectManager.singleton.registerProject(newProject, pm);
                 try {
-                    ProjectManager.singleton.reloadProjectFromWorkspace(projectId);
+                    ProjectManager.singleton.reloadProjectFromWorkspace(projectId, runner);
                     job.setProjectID(newProject.getId());
                     job.setState("created-project");
                 } catch (IOException e) {

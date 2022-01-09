@@ -35,16 +35,16 @@ package org.openrefine.expr.functions;
 
 import java.util.Properties;
 
-import org.openrefine.grel.ControlFunctionRegistry;
-import org.openrefine.grel.Function;
 import org.openrefine.LookupCacheManager;
 import org.openrefine.LookupCacheManager.ProjectLookup;
 import org.openrefine.ProjectManager;
 import org.openrefine.expr.EvalError;
 import org.openrefine.expr.WrappedCell;
-import org.openrefine.model.Project;
+import org.openrefine.grel.ControlFunctionRegistry;
+import org.openrefine.grel.Function;
 import org.openrefine.util.GetProjectIDException;
 import org.openrefine.util.LookupException;
+
 public class Cross implements Function {
 
     private static final long serialVersionUID = 1124002039493869757L;

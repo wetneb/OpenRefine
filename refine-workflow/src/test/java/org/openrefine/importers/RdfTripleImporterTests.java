@@ -60,7 +60,7 @@ public class RdfTripleImporterTests extends ImporterTest {
     @BeforeMethod
     public void setUp(){
         super.setUp();
-        SUT = new RdfTripleImporter(runner());
+        SUT = new RdfTripleImporter();
         JSONUtilities.safePut(options, "base-url", "http://rdf.freebase.com");
     }
 
@@ -150,7 +150,7 @@ public class RdfTripleImporterTests extends ImporterTest {
         String sampleRdf = "<http://rdf.freebase.com/ns/en.bob_dylan> <http://rdf.freebase.com/ns/common.topic.alias>\"Robert Zimmerman\"@en.";
         StringReader input = new StringReader(sampleRdf);
         
-        SUT = new RdfTripleImporter(runner(), RdfTripleImporter.Mode.N3);
+        SUT = new RdfTripleImporter(RdfTripleImporter.Mode.N3);
         GridState grid = parseOneFile(SUT, input);
 
         ColumnModel columnModel = grid.getColumnModel();
@@ -183,7 +183,7 @@ public class RdfTripleImporterTests extends ImporterTest {
                 + "</rdf:RDF>\n";
 
         StringReader input = new StringReader(sampleRdf);
-        SUT = new RdfTripleImporter(runner(), RdfTripleImporter.Mode.RDFXML);
+        SUT = new RdfTripleImporter(RdfTripleImporter.Mode.RDFXML);
         GridState grid = parseOneFile(SUT, input);
 
         ColumnModel columnModel = grid.getColumnModel();
@@ -212,7 +212,7 @@ public class RdfTripleImporterTests extends ImporterTest {
                         
         StringReader input = new StringReader(sampleRdf);
         
-        SUT = new RdfTripleImporter(runner(), RdfTripleImporter.Mode.N3);
+        SUT = new RdfTripleImporter(RdfTripleImporter.Mode.N3);
         GridState grid = parseOneFile(SUT, input);
 
         ColumnModel columnModel = grid.getColumnModel();
@@ -240,7 +240,7 @@ public class RdfTripleImporterTests extends ImporterTest {
                         
         StringReader input = new StringReader(sampleRdf);
         
-        SUT = new RdfTripleImporter(runner(), RdfTripleImporter.Mode.TTL);
+        SUT = new RdfTripleImporter(RdfTripleImporter.Mode.TTL);
         GridState grid = parseOneFile(SUT, input);
 
         ColumnModel columnModel = grid.getColumnModel();
@@ -265,7 +265,7 @@ public class RdfTripleImporterTests extends ImporterTest {
                         
         StringReader input = new StringReader(sampleRdf);
         
-        SUT = new RdfTripleImporter(runner(), RdfTripleImporter.Mode.NT);
+        SUT = new RdfTripleImporter(RdfTripleImporter.Mode.NT);
         GridState grid = parseOneFile(SUT, input);
 
         ColumnModel columnModel = grid.getColumnModel();
@@ -292,7 +292,7 @@ public class RdfTripleImporterTests extends ImporterTest {
 
         StringReader input = new StringReader(sampleRdf);
 
-        SUT = new RdfTripleImporter(runner(), RdfTripleImporter.Mode.TTL);
+        SUT = new RdfTripleImporter(RdfTripleImporter.Mode.TTL);
         GridState grid = parseOneFile(SUT, input);
 
         String[] columns = {"subject",
@@ -340,7 +340,7 @@ public class RdfTripleImporterTests extends ImporterTest {
                         
         StringReader input = new StringReader(sampleJsonld);
         
-        SUT = new RdfTripleImporter(runner(), RdfTripleImporter.Mode.JSONLD);
+        SUT = new RdfTripleImporter(RdfTripleImporter.Mode.JSONLD);
         GridState grid = parseOneFile(SUT, input);
 
         ColumnModel columnModel = grid.getColumnModel();

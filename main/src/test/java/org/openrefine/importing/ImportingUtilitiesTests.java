@@ -234,7 +234,7 @@ public class ImportingUtilitiesTests extends ImporterTest {
     }
 
     /**
-     * This tests both exploding a zip archive into it's constituent files
+     * This tests both exploding a zip archive into its constituent files
      * as well as importing them all (both) and making sure that the
      * recording of archive names and file names works correctly.
      *
@@ -276,15 +276,15 @@ public class ImportingUtilitiesTests extends ImporterTest {
         JSONUtilities.safePut(options, "includeArchiveFileName", true);
         JSONUtilities.safePut(options, "includeFileSources", true);
 
-        ImportingParserBase parser = new SeparatorBasedImporter(runner());
+        ImportingParserBase parser = new SeparatorBasedImporter();
         List<Exception> exceptions = new ArrayList<Exception>();
         GridState grid = parser.parse(
+                runner,
                 metadata,
                 job,
                 IteratorUtils.toList(fileRecords.iterator()),
                 "tsv",
-                -1,
-                options
+                -1, options
                 );
         assertEquals(exceptions.size(), 0);
 

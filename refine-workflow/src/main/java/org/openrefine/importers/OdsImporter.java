@@ -40,12 +40,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TimeZone;
 
 import org.odftoolkit.odfdom.doc.OdfDocument;
 import org.odftoolkit.odfdom.doc.table.OdfTable;
@@ -74,16 +71,15 @@ public class OdsImporter extends InputStreamImporter {
     
     private final TabularParserHelper tabularParserHelper;
 
-    public OdsImporter(DatamodelRunner runner) {
-        super(runner);
-        tabularParserHelper = new TabularParserHelper(runner);
+    public OdsImporter() {
+        tabularParserHelper = new TabularParserHelper();
     }
 
     
     @Override
-    public ObjectNode createParserUIInitializationData(ImportingJob job,
-            List<ImportingFileRecord> fileRecords, String format) {
-        ObjectNode options = super.createParserUIInitializationData(job, fileRecords, format);
+    public ObjectNode createParserUIInitializationData(DatamodelRunner runner,
+            ImportingJob job, List<ImportingFileRecord> fileRecords, String format) {
+        ObjectNode options = super.createParserUIInitializationData(runner, job, fileRecords, format);
 
         ArrayNode sheetRecords = ParsingUtilities.mapper.createArrayNode();
         JSONUtilities.safePut(options, "sheetRecords", sheetRecords);
@@ -129,12 +125,12 @@ public class OdsImporter extends InputStreamImporter {
 
     @Override
     public GridState parseOneFile(
+            DatamodelRunner runner,
             ProjectMetadata metadata,
             ImportingJob job,
             String fileSource,
             String archiveFileName,
-            InputStream inputStream,
-            long limit, ObjectNode options
+            InputStream inputStream, long limit, ObjectNode options
     ) throws Exception {
         OdfDocument odfDoc;
         try {
@@ -193,12 +189,12 @@ public class OdsImporter extends InputStreamImporter {
             };
 
             grids.add(tabularParserHelper.parseOneFile(
+                    runner,
                     metadata,
                     job,
                     fileSource + "#" + table.getTableName(),
                     archiveFileName,
-                    dataReader,
-                    limit, options
+                    dataReader, limit, options
             ));
         }
         
