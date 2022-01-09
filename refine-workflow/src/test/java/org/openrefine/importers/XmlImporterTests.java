@@ -79,7 +79,7 @@ public class XmlImporterTests extends ImporterTest {
     @BeforeMethod
     public void setUp(){
         super.setUp();
-        SUT = new XmlImporter(runner());
+        SUT = new XmlImporter();
         expectedGrid = createGrid(new String[] {
         		"book - id", "book - author", "book - title", "book - publish_date"
         }, new Serializable[][] {
