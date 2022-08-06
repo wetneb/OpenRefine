@@ -106,6 +106,7 @@ public class RefineTest extends PowerMockTestCase {
     @BeforeSuite
     public void init() { 
         System.setProperty("log4j.configuration", "tests.log4j.properties");
+        System.setProperty("refine.runner.class", "org.openrefine.model.TestingDatamodelRunner");
         try {
             workspaceDir = TestUtils.createTempDirectory("openrefine-test-workspace-dir");
             File jsonPath = new File(workspaceDir, "workspace.json");
