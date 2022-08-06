@@ -176,37 +176,48 @@ public class RefineServlet extends Butterfly {
             String commandKey = getCommandKey(request);
             Command command = commands.get(commandKey);
             if (command != null) {
-                if (request.getMethod().equals("GET")) {
-                    if (!logger.isTraceEnabled() && command.logRequests()) {
-                        logger.info("GET {}", request.getPathInfo());
+                ClassLoader oldClassLoader = Thread.currentThread().getContextClassLoader();
+                try {
+                    // Set the classloader to the ButterflyClassLoader so that commands can
+                    // access classes from other butterfly modules. This was introduced to make
+                    // the datamodel runner pluggable, so that runners can be provided
+                    // by extensions.
+                    Thread.currentThread().setContextClassLoader(s_singleton._classLoader);
+                    if (request.getMethod().equals("GET")) {
+                        if (!logger.isTraceEnabled() && command.logRequests()) {
+                            logger.info("GET {}", request.getPathInfo());
+                        }
+                        logger.trace("> GET {}", commandKey);
+                        command.doGet(request, response);
+                        logger.trace("< GET {}", commandKey);
+                    } else if (request.getMethod().equals("POST")) {
+                        if (!logger.isTraceEnabled() && command.logRequests()) {
+                            logger.info("POST {}", request.getPathInfo());
+                        }
+                        logger.trace("> POST {}", commandKey);
+                        command.doPost(request, response);
+                        logger.trace("< POST {}", commandKey);
+                    } else if (request.getMethod().equals("PUT")) {
+                        if (!logger.isTraceEnabled() && command.logRequests()) {
+                            logger.info("PUT {}", request.getPathInfo());
+                        }
+                        logger.trace("> PUT {}", commandKey);
+                        command.doPut(request, response);
+                        logger.trace("< PUT {}", commandKey);
+                    } else if (request.getMethod().equals("DELETE")) {
+                        if (!logger.isTraceEnabled() && command.logRequests()) {
+                            logger.info("DELETE {}", request.getPathInfo());
+                        }
+                        logger.trace("> DELETE {}", commandKey);
+                        command.doDelete(request, response);
+                        logger.trace("< DELETE {}", commandKey);
+                    } else {
+                        response.sendError(HttpStatus.SC_METHOD_NOT_ALLOWED);
                     }
-                    logger.trace("> GET {}", commandKey);
-                    command.doGet(request, response);
-                    logger.trace("< GET {}", commandKey);
-                } else if (request.getMethod().equals("POST")) {
-                    if (!logger.isTraceEnabled() && command.logRequests()) {
-                        logger.info("POST {}", request.getPathInfo());
-                    }
-                    logger.trace("> POST {}", commandKey);
-                    command.doPost(request, response);
-                    logger.trace("< POST {}", commandKey);
-                } else if (request.getMethod().equals("PUT")) {
-                    if (!logger.isTraceEnabled() && command.logRequests()) {
-                        logger.info("PUT {}", request.getPathInfo());
-                    }
-                    logger.trace("> PUT {}", commandKey);
-                    command.doPut(request, response);
-                    logger.trace("< PUT {}", commandKey);
-                } else if (request.getMethod().equals("DELETE")) {
-                    if (!logger.isTraceEnabled() && command.logRequests()) {
-                        logger.info("DELETE {}", request.getPathInfo());
-                    }
-                    logger.trace("> DELETE {}", commandKey);
-                    command.doDelete(request, response);
-                    logger.trace("< DELETE {}", commandKey);
-                } else {
-                    response.sendError(HttpStatus.SC_METHOD_NOT_ALLOWED);
+                } finally {
+                    Thread.currentThread().setContextClassLoader(oldClassLoader);
                 }
+
             } else {
                 response.sendError(HttpStatus.SC_NOT_FOUND);
             }
@@ -299,7 +310,7 @@ public class RefineServlet extends Butterfly {
      * Register a single command. Used by extensions.
      *
      * @param module the module the command belongs to
-     * @param name command verb for command
+     * @param commandName command verb for command
      * @param commandObject object implementing the command
      *            
      * @return true if command was loaded and registered successfully
@@ -322,7 +333,7 @@ public class RefineServlet extends Butterfly {
     }
 
     /**
-     * @deprecated use {@link RefineModel.getUserAgent()} instead.
+     * @deprecated use {@link RefineModel#getUserAgent()} instead.
      */
     @Deprecated
     static public String getUserAgent() {
