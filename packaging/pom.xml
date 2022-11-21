@@ -310,6 +310,12 @@
                     <arg line="&quot;${mac.build.directory}/OpenRefine.app/Contents/Resources/webapp/WEB-INF/&quot;" />
                 </exec>
 
+                <!-- remove any existing DMG (hdiutil fails otherwise) -->
+                <exec dir="${project.build.directory}" os="Mac OS X" executable="rm">
+                    <arg value="-f"/>
+                    <arg value="${mac.dmg.path}"/>
+                </exec>
+
                 <!-- Create DMG (Mac OS X) -->
                 <exec dir="${project.build.directory}" os="Mac OS X" executable="hdiutil">
                     <arg value="create"/>
