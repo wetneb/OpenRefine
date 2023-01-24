@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.openrefine.browsing.Engine;
+import org.openrefine.history.GridPreservation;
 import org.openrefine.history.dag.DagSlice;
 import org.openrefine.model.Cell;
 import org.openrefine.model.ColumnMetadata;
@@ -22,8 +23,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 /**
  * Adds a new column based on data fetched from an external process. If no column name is supplied, then the change will
  * replace the column at the given index instead (merging with existing contents in rows not covered by the change
- * data).
- * 
+ * data). <br/>
  * New recon config and stats can be supplied for the column changed or created. If a recon config and no recon stats
  * are provided, the change computes the new recon stats on the fly.
  * 
@@ -78,7 +78,7 @@ public class ColumnChangeByChangeData implements Change {
     }
 
     @Override
-    public GridState apply(GridState projectState, ChangeContext context) throws DoesNotApplyException {
+    public ChangeResult apply(GridState projectState, ChangeContext context) throws DoesNotApplyException {
         ColumnModel columnModel = projectState.getColumnModel();
         if (_columnName != null) {
             ColumnMetadata column = new ColumnMetadata(_columnName)
@@ -115,18 +115,14 @@ public class ColumnChangeByChangeData implements Change {
             }
             joined = projectState.join(changeData, joiner, columnModel);
         }
-        return joined;
+        return new ChangeResult(joined,
+                GridPreservation.PRESERVES_ROWS, // TODO add record preservation metadata on Joiner
+                null);
     }
 
     @Override
     public boolean isImmediate() {
         return false;
-    }
-
-    @Override
-    public DagSlice getDagSlice() {
-        // TODO Auto-generated method stub
-        return null;
     }
 
     public static class Joiner implements RowChangeDataJoiner<Cell>, RecordChangeDataJoiner<List<Cell>> {

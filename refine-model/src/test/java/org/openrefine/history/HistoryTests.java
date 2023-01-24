@@ -54,6 +54,7 @@ import org.openrefine.model.changes.CachedGridStore;
 import org.openrefine.model.changes.Change;
 import org.openrefine.model.changes.Change.DoesNotApplyException;
 import org.openrefine.model.changes.ChangeDataStore;
+import org.openrefine.operations.Operation;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -67,6 +68,10 @@ public class HistoryTests {
     GridState intermediateState;
     GridState finalState;
     GridState newState;
+
+    Change.ChangeResult intermediateResult;
+    Change.ChangeResult finalResult;
+    Change.ChangeResult newResult;
 
     ColumnModel columnModel;
 
@@ -99,12 +104,18 @@ public class HistoryTests {
         firstEntry = mock(HistoryEntry.class);
         secondEntry = mock(HistoryEntry.class);
         newEntry = mock(HistoryEntry.class);
+        intermediateResult = mock(Change.ChangeResult.class);
+        finalResult = mock(Change.ChangeResult.class);
+        newResult = mock(Change.ChangeResult.class);
 
-        when(firstChange.apply(eq(initialState), any())).thenReturn(intermediateState);
+        when(firstChange.apply(eq(initialState), any())).thenReturn(intermediateResult);
+        when(intermediateResult.getGrid()).thenReturn(intermediateState);
         when(firstChange.isImmediate()).thenReturn(false);
-        when(secondChange.apply(eq(intermediateState), any())).thenReturn(finalState);
+        when(secondChange.apply(eq(intermediateState), any())).thenReturn(finalResult);
+        when(finalResult.getGrid()).thenReturn(intermediateState);
         when(secondChange.isImmediate()).thenReturn(true);
-        when(newChange.apply(eq(intermediateState), any())).thenReturn(newState);
+        when(newChange.apply(eq(intermediateState), any())).thenReturn(newResult);
+        when(newResult.getGrid()).thenReturn(newState);
         when(newChange.isImmediate()).thenReturn(true);
 
         when(initialState.getColumnModel()).thenReturn(columnModel);
@@ -172,11 +183,13 @@ public class HistoryTests {
         Change thirdChange = mock(Change.class);
         GridState thirdState = mock(GridState.class);
         GridState fourthState = mock(GridState.class);
+        Change.ChangeResult changeResult = mock(Change.ChangeResult.class);
 
         when(gridStore.listCachedGridIds()).thenReturn(Collections.singleton(secondChangeId));
         when(gridStore.getCachedGrid(secondChangeId)).thenReturn(thirdState);
         when(thirdEntry.getChange()).thenReturn(thirdChange);
-        when(thirdChange.apply(eq(thirdState), any())).thenReturn(fourthState);
+        when(changeResult.getGrid()).thenReturn(fourthState);
+        when(thirdChange.apply(eq(thirdState), any())).thenReturn(changeResult);
 
         List<HistoryEntry> fullEntries = Arrays.asList(firstEntry, secondEntry, thirdEntry);
         History history = new History(initialState, dataStore, gridStore, fullEntries, 3);
@@ -195,14 +208,18 @@ public class HistoryTests {
         GridState fourthState = mock(GridState.class);
         GridState cachedSecondState = mock(GridState.class);
         GridState rederivedThirdState = mock(GridState.class);
+        Change.ChangeResult fourthResult = mock(Change.ChangeResult.class);
+        Change.ChangeResult rederivedThirdResult = mock(Change.ChangeResult.class);
         long thirdEntryId = 39827L;
 
         when(gridStore.listCachedGridIds()).thenReturn(Collections.emptySet());
         when(gridStore.cacheGrid(firstChangeId, intermediateState)).thenReturn(cachedSecondState);
         when(thirdEntry.getChange()).thenReturn(thirdChange);
-        when(thirdChange.apply(eq(finalState), any())).thenReturn(fourthState);
+        when(thirdChange.apply(eq(finalState), any())).thenReturn(fourthResult);
+        when(fourthResult.getGrid()).thenReturn(fourthState);
         when(thirdEntry.getId()).thenReturn(thirdEntryId);
-        when(secondChange.apply(eq(cachedSecondState), any())).thenReturn(rederivedThirdState);
+        when(secondChange.apply(eq(cachedSecondState), any())).thenReturn(rederivedThirdResult);
+        when(rederivedThirdResult.getGrid()).thenReturn(rederivedThirdState);
 
         List<HistoryEntry> fullEntries = Arrays.asList(firstEntry, secondEntry, thirdEntry);
         History history = new History(initialState, dataStore, gridStore, fullEntries, 3);
@@ -230,7 +247,7 @@ public class HistoryTests {
     }
 
     @Test
-    public void testEraseUndoneChanges() throws DoesNotApplyException {
+    public void testEraseUndoneChanges() throws DoesNotApplyException, Operation.NotImmediateOperationException {
         when(gridStore.listCachedGridIds()).thenReturn(Collections.emptySet());
 
         History history = new History(initialState, dataStore, gridStore, entries, 1);
@@ -240,7 +257,7 @@ public class HistoryTests {
         Assert.assertEquals(history.getEntries(), entries);
 
         // Adding an entry when there are undone changes erases those changes
-        history.addEntry(newEntry);
+        history.addEntry(newEntry.getId(), newEntry.getDescription(), newEntry.getOperation(), newEntry.getChange());
 
         Assert.assertEquals(history.getPosition(), 2);
         Assert.assertEquals(history.getCurrentGridState(), newState);

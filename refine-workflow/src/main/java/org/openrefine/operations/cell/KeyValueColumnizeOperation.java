@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.openrefine.expr.ExpressionUtils;
+import org.openrefine.history.GridPreservation;
 import org.openrefine.history.dag.DagSlice;
 import org.openrefine.model.Cell;
 import org.openrefine.model.ColumnMetadata;
@@ -106,7 +107,7 @@ public class KeyValueColumnizeOperation implements Operation {
     public class KeyValueColumnizeChange implements Change {
 
         @Override
-        public GridState apply(GridState projectState, ChangeContext context) throws DoesNotApplyException {
+        public ChangeResult apply(GridState projectState, ChangeContext context) throws DoesNotApplyException {
             ColumnModel columnModel = projectState.getColumnModel();
             int keyColumnIndex = columnModel.getColumnIndexByName(_keyColumnName);
             int valueColumnIndex = columnModel.getColumnIndexByName(_valueColumnName);
@@ -285,7 +286,10 @@ public class KeyValueColumnizeOperation implements Operation {
                 }
             }
 
-            return projectState.getDatamodelRunner().create(finalColumnModel, finalRows, projectState.getOverlayModels());
+            return new ChangeResult(
+                    projectState.getDatamodelRunner().create(finalColumnModel, finalRows, projectState.getOverlayModels()),
+                    GridPreservation.NO_ROW_PRESERVATION,
+                    null);
         }
 
         private List<Cell> getAvailableRow(List<List<Cell>> currentRows, List<List<Cell>> currentNotes, int index) {
@@ -332,12 +336,6 @@ public class KeyValueColumnizeOperation implements Operation {
         @Override
         public boolean isImmediate() {
             return true;
-        }
-
-        @Override
-        public DagSlice getDagSlice() {
-            // TODO Auto-generated method stub
-            return null;
         }
 
     }

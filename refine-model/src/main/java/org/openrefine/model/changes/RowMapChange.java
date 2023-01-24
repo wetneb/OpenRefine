@@ -6,6 +6,8 @@ import java.util.Map;
 import org.openrefine.browsing.Engine;
 import org.openrefine.browsing.Engine.Mode;
 import org.openrefine.browsing.EngineConfig;
+import org.openrefine.history.GridPreservation;
+import org.openrefine.history.dag.DagSlice;
 import org.openrefine.model.ColumnModel;
 import org.openrefine.model.GridState;
 import org.openrefine.model.RecordFilter;
@@ -146,8 +148,10 @@ public abstract class RowMapChange extends EngineDependentChange {
         return gridState;
     }
 
+    protected abstract DagSlice getDagSlice();
+
     @Override
-    public GridState apply(GridState projectState, ChangeContext context) throws DoesNotApplyException {
+    public ChangeResult apply(GridState projectState, ChangeContext context) throws DoesNotApplyException {
         Engine engine = getEngine(projectState);
         GridMap gridMap = getGridMap(projectState, context);
         RowInRecordMapper positiveMapper = gridMap.positiveMapper;
@@ -164,7 +168,11 @@ public abstract class RowMapChange extends EngineDependentChange {
                     RecordMapper.conditionalMapper(recordFilter, positiveMapper, negativeMapper),
                     newColumnModel);
         }
-        return postTransform(mappedState.withOverlayModels(newOverlayModels), context);
+        boolean recordsPreserved = positiveMapper.preservesRecordStructure() && negativeMapper.preservesRecordStructure();
+        return new ChangeResult(
+                postTransform(mappedState.withOverlayModels(newOverlayModels), context),
+                recordsPreserved ? GridPreservation.PRESERVES_RECORDS : GridPreservation.PRESERVES_ROWS,
+                null); // TODO: replace by getDagSlice()
     }
 
     /**

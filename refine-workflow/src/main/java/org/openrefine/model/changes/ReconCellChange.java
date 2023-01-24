@@ -1,6 +1,7 @@
 
 package org.openrefine.model.changes;
 
+import org.openrefine.history.GridPreservation;
 import org.openrefine.history.dag.DagSlice;
 import org.openrefine.model.Cell;
 import org.openrefine.model.ColumnModel;
@@ -33,7 +34,7 @@ public class ReconCellChange implements Change {
     }
 
     @Override
-    public GridState apply(GridState state, ChangeContext context) throws DoesNotApplyException {
+    public ChangeResult apply(GridState state, ChangeContext context) throws DoesNotApplyException {
         int columnIndex = state.getColumnModel().getColumnIndexByName(columnName);
         if (columnIndex == -1) {
             throw new ColumnNotFoundException(columnName);
@@ -42,7 +43,10 @@ public class ReconCellChange implements Change {
         ColumnModel newColumnModel = columnModel;
         // set judgment id on recon if changed
         Recon finalRecon = newRecon == null ? null : newRecon.withJudgmentHistoryEntry(context.getHistoryEntryId());
-        return state.mapRows(mapFunction(columnIndex, row, finalRecon), newColumnModel);
+        return new ChangeResult(
+                state.mapRows(mapFunction(columnIndex, row, finalRecon), newColumnModel),
+                GridPreservation.PRESERVES_RECORDS,
+                null);
     }
 
     static protected RowMapper mapFunction(int cellIndex, long rowId, Recon newRecon) {
@@ -72,12 +76,6 @@ public class ReconCellChange implements Change {
     public boolean isImmediate() {
         // this does not correspond to an operation
         return false;
-    }
-
-    @Override
-    public DagSlice getDagSlice() {
-        // TODO Auto-generated method stub
-        return null;
     }
 
 }

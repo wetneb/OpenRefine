@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.openrefine.browsing.EngineConfig;
+import org.openrefine.history.GridPreservation;
 import org.openrefine.history.dag.DagSlice;
 import org.openrefine.model.Cell;
 import org.openrefine.model.ColumnMetadata;
@@ -66,7 +67,7 @@ public class DataExtensionChange extends EngineDependentChange {
     }
 
     @Override
-    public GridState apply(GridState projectState, ChangeContext context) throws DoesNotApplyException {
+    public ChangeResult apply(GridState projectState, ChangeContext context) throws DoesNotApplyException {
         ChangeData<RecordDataExtension> changeData;
         try {
             changeData = context.getChangeData("extend", new DataExtensionSerializer());
@@ -90,18 +91,12 @@ public class DataExtensionChange extends EngineDependentChange {
         RecordChangeDataJoiner<RecordDataExtension> joiner = new DataExtensionJoiner(baseColumnId, _columnInsertIndex, _columnNames.size());
         GridState state = projectState.join(changeData, joiner, newColumnModel);
 
-        return state;
+        return new ChangeResult(state, GridPreservation.NO_ROW_PRESERVATION, null);
     }
 
     @Override
     public boolean isImmediate() {
         return false;
-    }
-
-    @Override
-    public DagSlice getDagSlice() {
-        // TODO Auto-generated method stub
-        return null;
     }
 
     public static class DataExtensionSerializer implements ChangeDataSerializer<RecordDataExtension> {

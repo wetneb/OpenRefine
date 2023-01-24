@@ -26,6 +26,7 @@ package org.openrefine.wikibase.operations;
 
 import static org.mockito.Mockito.mock;
 
+import org.openrefine.history.GridPreservation;
 import org.openrefine.model.GridState;
 import org.openrefine.model.changes.Change;
 import org.openrefine.model.changes.ChangeContext;
@@ -63,7 +64,9 @@ public class SaveWikibaseSchemaOperationTest extends OperationTest {
         Change change = operation.createChange();
         ChangeContext context = mock(ChangeContext.class);
 
-        GridState applied = change.apply(project.getCurrentGridState(), context);
+        Change.ChangeResult changeResult = change.apply(project.getCurrentGridState(), context);
+        Assert.assertEquals(changeResult.getGridPreservation(), GridPreservation.PRESERVES_RECORDS);
+        GridState applied = changeResult.getGrid();
 
         Assert.assertTrue(applied.getOverlayModels().get("wikibaseSchema") instanceof WikibaseSchema);
     }

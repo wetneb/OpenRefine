@@ -35,6 +35,7 @@ import java.util.Collections;
 
 import org.openrefine.RefineTest;
 import org.openrefine.browsing.EngineConfig;
+import org.openrefine.history.GridPreservation;
 import org.openrefine.model.Cell;
 import org.openrefine.model.ColumnMetadata;
 import org.openrefine.model.ColumnModel;
@@ -50,6 +51,7 @@ import org.openrefine.model.recon.StandardReconConfig;
 import org.openrefine.operations.OperationRegistry;
 import org.openrefine.util.ParsingUtilities;
 import org.openrefine.util.TestUtils;
+import org.testng.Assert;
 import org.testng.annotations.BeforeSuite;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
@@ -112,7 +114,9 @@ public class ReconMarkNewTopicsOperationTests extends RefineTest {
         ChangeContext context = mock(ChangeContext.class);
         when(context.getHistoryEntryId()).thenReturn(2891L);
 
-        GridState applied = change.apply(initialState, context);
+        Change.ChangeResult changeResult = change.apply(initialState, context);
+        Assert.assertEquals(changeResult.getGridPreservation(), GridPreservation.PRESERVES_RECORDS);
+        GridState applied = changeResult.getGrid();
 
         long commonReconId = applied.collectRows().get(0).getRow().getCell(1).recon.id;
         long otherReconId = applied.collectRows().get(2).getRow().getCell(1).recon.id;
@@ -147,7 +151,9 @@ public class ReconMarkNewTopicsOperationTests extends RefineTest {
         ChangeContext context = mock(ChangeContext.class);
         when(context.getHistoryEntryId()).thenReturn(2891L);
 
-        GridState applied = change.apply(initialState, context);
+        Change.ChangeResult changeResult = change.apply(initialState, context);
+        Assert.assertEquals(changeResult.getGridPreservation(), GridPreservation.PRESERVES_RECORDS);
+        GridState applied = changeResult.getGrid();
 
         long firstReconId = applied.collectRows().get(0).getRow().getCell(1).recon.id;
         long secondReconId = applied.collectRows().get(1).getRow().getCell(1).recon.id;
@@ -191,7 +197,9 @@ public class ReconMarkNewTopicsOperationTests extends RefineTest {
         ChangeContext context = mock(ChangeContext.class);
         when(context.getHistoryEntryId()).thenReturn(2891L);
 
-        GridState applied = change.apply(initialState, context);
+        Change.ChangeResult changeResult = change.apply(initialState, context);
+        Assert.assertEquals(changeResult.getGridPreservation(), GridPreservation.PRESERVES_RECORDS);
+        GridState applied = changeResult.getGrid();
 
         long commonReconId = applied.collectRows().get(0).getRow().getCell(1).recon.id;
         long otherReconId = applied.collectRows().get(2).getRow().getCell(1).recon.id;

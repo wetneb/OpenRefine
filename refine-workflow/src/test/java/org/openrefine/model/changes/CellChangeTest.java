@@ -8,6 +8,7 @@ import java.io.Serializable;
 import java.util.Arrays;
 
 import org.openrefine.RefineTest;
+import org.openrefine.history.GridPreservation;
 import org.openrefine.model.Cell;
 import org.openrefine.model.GridState;
 import org.openrefine.model.Project;
@@ -54,8 +55,10 @@ public class CellChangeTest extends RefineTest {
     public void testCellChange() throws DoesNotApplyException {
         Change change = new CellChange(0L, "foo", "changed");
 
-        GridState newGrid = change.apply(initialGrid, mock(ChangeContext.class));
+        Change.ChangeResult changeResult = change.apply(initialGrid, mock(ChangeContext.class));
+        GridState newGrid = changeResult.getGrid();
 
+        Assert.assertEquals(changeResult.getGridPreservation(), GridPreservation.PRESERVES_ROWS);
         Assert.assertEquals(newGrid.getRow(0L),
                 new Row(Arrays.asList(new Cell("changed", null), new Cell(1, null))));
         Assert.assertEquals(newGrid.getRow(1L),
