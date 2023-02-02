@@ -184,13 +184,6 @@ public class ReconOperationTests extends RefineTest {
     }
 
     @Test
-    public void serializeReconProcess() throws Exception {
-        ReconOperation op = ParsingUtilities.mapper.readValue(json, ReconOperation.class);
-        org.openrefine.process.Process process = op.createProcess(project);
-        TestUtils.isSerializedTo(process, String.format(processJson, process.hashCode()), ParsingUtilities.defaultWriter);
-    }
-
-    @Test
     public void testChangeDataProducer() {
         List<IndexedRow> batch1 = Arrays.asList(
                 new IndexedRow(0L, row1),
@@ -215,15 +208,7 @@ public class ReconOperationTests extends RefineTest {
     @Test
     public void testFullChange() throws Exception {
         ReconOperation operation = new ReconOperation(EngineConfig.ALL_ROWS, "column", reconConfig);
-        Process process = operation.createProcess(project);
-        process.startPerforming(project.getProcessManager());
-        Assert.assertTrue(process.isRunning());
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
-            Assert.fail("Test interrupted");
-        }
-        Assert.assertFalse(process.isRunning());
+        project.getHistory().addEntry(operation);
 
         ColumnModel reconciledColumnModel = new ColumnModel(Collections.singletonList(
                 new ColumnMetadata("column")
@@ -284,13 +269,7 @@ public class ReconOperationTests extends RefineTest {
 
         ReconOperation op = new ReconOperation(EngineConfig.reconstruct("{}"), "column", reconConfig);
 
-        Process process = op.createProcess(project);
-        runAndWait(project.getProcessManager(), process, 1000);
-        /*
-         * process.startPerforming(project.getProcessManager()); Assert.assertTrue(process.isRunning()); try {
-         * Thread.sleep(60000); } catch (InterruptedException e) { Assert.fail("Test interrupted"); }
-         * Assert.assertFalse(process.isRunning());
-         */
+        project.getHistory().addEntry(op);
 
         ColumnMetadata column = project.getColumnModel().getColumnByIndex(0);
 

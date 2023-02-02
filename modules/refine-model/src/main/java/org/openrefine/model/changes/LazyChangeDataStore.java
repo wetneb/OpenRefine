@@ -2,14 +2,11 @@
 package org.openrefine.model.changes;
 
 import java.io.IOException;
-import java.io.Serializable;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
+import java.util.function.Function;
 
+import org.openrefine.model.Runner;
+import org.openrefine.process.ProcessManager;
 import org.openrefine.process.ProgressReporter;
 
 /**
@@ -25,13 +22,21 @@ import org.openrefine.process.ProgressReporter;
 public class LazyChangeDataStore implements ChangeDataStore {
 
     private Map<String, ChangeData<?>> _changeData;
+    private Runner _runner;
+    private ProcessManager processManager = new ProcessManager();
 
-    public LazyChangeDataStore() {
+    public LazyChangeDataStore(Runner runner) {
         _changeData = new HashMap<>();
+        _runner = runner;
     }
 
     private String idPairToString(long historyEntryId, String dataId) {
         return String.format("%d/%s", historyEntryId, dataId);
+    }
+
+    @Override
+    public ProcessManager getProcessManager() {
+        return processManager;
     }
 
     @Override
@@ -47,6 +52,20 @@ public class LazyChangeDataStore implements ChangeDataStore {
         String key = idPairToString(historyEntryId, dataId);
         if (!_changeData.containsKey(key)) {
             throw new IllegalArgumentException(String.format("Change data with id %s does not exist", key));
+        }
+        return (ChangeData<T>) _changeData.get(key);
+    }
+
+    @Override
+    public <T> ChangeData<T> retrieveOrCompute(
+            long historyEntryId,
+            String dataId,
+            ChangeDataSerializer<T> serializer,
+            Function<ChangeData<T>, ChangeData<T>> completionProcess, String description) throws IOException {
+        String key = idPairToString(historyEntryId, dataId);
+        if (!_changeData.containsKey(key)) {
+            ChangeData<T> computed = completionProcess.apply(_runner.create(Collections.emptyList()));
+            _changeData.put(key, computed);
         }
         return (ChangeData<T>) _changeData.get(key);
     }

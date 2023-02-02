@@ -44,6 +44,15 @@ public class LongRunningProcessTests {
             return null;
         }
 
+        @Override
+        public long getHistoryEntryId() {
+            return 1234L;
+        }
+
+        @Override
+        public String getChangeDataId() {
+            return "recon";
+        }
     }
 
     @Test
@@ -53,7 +62,8 @@ public class LongRunningProcessTests {
         TestUtils.isSerializedTo(process, "{"
                 + "\"id\":" + hashCode + ","
                 + "\"description\":\"some description\","
-                + "\"immediate\":false,"
+                + "\"historyEntryId\":1234,"
+                + "\"changeDataId\":\"recon\","
                 + "\"status\":\"pending\","
                 + "\"progress\":0}", ParsingUtilities.defaultWriter);
     }

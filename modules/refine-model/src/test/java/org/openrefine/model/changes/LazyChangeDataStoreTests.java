@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 import java.io.IOException;
 import java.util.Optional;
 
+import org.openrefine.model.Runner;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
@@ -14,10 +15,11 @@ public class LazyChangeDataStoreTests {
 
     LazyChangeDataStore SUT;
     MySerializer serializer = mock(MySerializer.class);
+    Runner runner = mock(Runner.class);
 
     @BeforeMethod
     public void setUpSUT() {
-        SUT = new LazyChangeDataStore();
+        SUT = new LazyChangeDataStore(runner);
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)

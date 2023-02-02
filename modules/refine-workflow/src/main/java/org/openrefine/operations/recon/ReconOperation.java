@@ -33,56 +33,42 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.openrefine.operations.recon;
 
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import org.openrefine.browsing.Engine;
 import org.openrefine.browsing.EngineConfig;
 import org.openrefine.browsing.Engine.Mode;
-import org.openrefine.history.History;
-import org.openrefine.history.HistoryEntry;
+import org.openrefine.expr.ParsingException;
 import org.openrefine.model.Cell;
 import org.openrefine.model.ColumnModel;
-import org.openrefine.model.Grid;
 import org.openrefine.model.IndexedRow;
-import org.openrefine.model.Project;
 import org.openrefine.model.Row;
 import org.openrefine.model.RowFilter;
-import org.openrefine.model.changes.CellChangeDataSerializer;
-import org.openrefine.model.changes.Change;
-import org.openrefine.model.changes.ChangeData;
-import org.openrefine.model.changes.ColumnChangeByChangeData;
-import org.openrefine.model.changes.RowChangeDataProducer;
+import org.openrefine.model.changes.*;
 import org.openrefine.model.recon.Recon;
 import org.openrefine.model.recon.ReconConfig;
 import org.openrefine.model.recon.ReconJob;
-import org.openrefine.model.recon.StandardReconConfig;
 import org.openrefine.operations.EngineDependentOperation;
-import org.openrefine.process.LongRunningProcess;
-import org.openrefine.process.Process;
-import org.openrefine.process.ProcessManager;
-import org.openrefine.util.ParsingUtilities;
+import org.openrefine.overlay.OverlayModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 
 /**
  * Runs reconciliation on a column.
+ * <p>
+ * TODO restore records mode
  */
 public class ReconOperation extends EngineDependentOperation {
 
@@ -102,12 +88,23 @@ public class ReconOperation extends EngineDependentOperation {
     }
 
     @Override
-    public Process createProcess(Project project) throws Exception {
-        return new ReconProcess(
-                project.getHistory(),
-                project.getProcessManager(),
-                new Engine(project.getCurrentGrid(), getEngineConfig()),
-                getDescription());
+    public Change createChange() throws ParsingException {
+        return new ColumnChangeByChangeData(
+                "recon",
+                _columnName,
+                null,
+                _engineConfig,
+                _reconConfig) {
+            @Override
+            public RowInRecordChangeDataProducer<Cell> getChangeDataProducer(int columnIndex, String columnName, ColumnModel columnModel, Map<String, OverlayModel> overlayModels, ChangeContext changeContext) {
+                return new  ReconChangeDataProducer(
+                            columnName,
+                columnIndex,
+                _reconConfig,
+                changeContext.getHistoryEntryId(),
+                columnModel);
+            }
+        };
     }
 
     @Override
@@ -125,6 +122,35 @@ public class ReconOperation extends EngineDependentOperation {
         return _columnName;
     }
 
+    // TODO: migrate those to the frontend.
+    /*
+    protected final String _addJudgmentFacetJson = "{\n" +
+            "  \"action\" : \"createFacet\",\n" +
+            "  \"facetConfig\" : {\n" +
+            "  \"columnName\" : \"" + _columnName + "\",\n" +
+            "  \"expression\" : \"forNonBlank(cell.recon.judgment, v, v, if(isNonBlank(value), \\\"(unreconciled)\\\", \\\"(blank)\\\"))\",\n"
+            +
+            "    \"name\" : \"" + _columnName + ": judgment\"\n" +
+            "    },\n" +
+            "    \"facetOptions\" : {\n" +
+            "      \"scroll\" : false\n" +
+            "    },\n" +
+            "    \"facetType\" : \"list\"\n" +
+            " }";
+    protected final String _addScoreFacetJson = "{\n" +
+            "  \"action\" : \"createFacet\",\n" +
+            "  \"facetConfig\" : {\n" +
+            "    \"columnName\" : \"" + _columnName + "\",\n" +
+            "    \"expression\" : \"cell.recon.best.score\",\n" +
+            "    \"mode\" : \"range\",\n" +
+            "    \"name\" : \"" + _columnName + ": best candidate's score\"\n" +
+            "         },\n" +
+            "         \"facetType\" : \"range\"\n" +
+            "}";
+            */
+
+
+    /*
     public class ReconProcess extends LongRunningProcess implements Runnable {
 
         final protected History _history;
@@ -133,29 +159,7 @@ public class ReconOperation extends EngineDependentOperation {
         final protected long _historyEntryID;
         protected int _cellIndex;
 
-        protected final String _addJudgmentFacetJson = "{\n" +
-                "  \"action\" : \"createFacet\",\n" +
-                "  \"facetConfig\" : {\n" +
-                "  \"columnName\" : \"" + _columnName + "\",\n" +
-                "  \"expression\" : \"forNonBlank(cell.recon.judgment, v, v, if(isNonBlank(value), \\\"(unreconciled)\\\", \\\"(blank)\\\"))\",\n"
-                +
-                "    \"name\" : \"" + _columnName + ": judgment\"\n" +
-                "    },\n" +
-                "    \"facetOptions\" : {\n" +
-                "      \"scroll\" : false\n" +
-                "    },\n" +
-                "    \"facetType\" : \"list\"\n" +
-                " }";
-        protected final String _addScoreFacetJson = "{\n" +
-                "  \"action\" : \"createFacet\",\n" +
-                "  \"facetConfig\" : {\n" +
-                "    \"columnName\" : \"" + _columnName + "\",\n" +
-                "    \"expression\" : \"cell.recon.best.score\",\n" +
-                "    \"mode\" : \"range\",\n" +
-                "    \"name\" : \"" + _columnName + ": best candidate's score\"\n" +
-                "         },\n" +
-                "         \"facetType\" : \"range\"\n" +
-                "}";
+
         protected JsonNode _addJudgmentFacet, _addScoreFacet;
 
         public ReconProcess(
@@ -232,8 +236,9 @@ public class ReconOperation extends EngineDependentOperation {
 
         }
     }
+    */
 
-    protected static class ReconChangeDataProducer implements RowChangeDataProducer<Cell> {
+    protected static class ReconChangeDataProducer extends RowInRecordChangeDataProducer<Cell> {
 
         private static final long serialVersionUID = 881447948869363218L;
         transient private LoadingCache<ReconJob, Cell> cache = null;
@@ -282,7 +287,7 @@ public class ReconOperation extends EngineDependentOperation {
         }
 
         @Override
-        public Cell call(long rowId, Row row) {
+        public Cell call(org.openrefine.model.Record record, long rowId, Row row) {
             return callRowBatch(Collections.singletonList(new IndexedRow(rowId, row))).get(0);
         }
 
@@ -320,9 +325,6 @@ public class ReconOperation extends EngineDependentOperation {
 
     /**
      * Filter used to select only rows which have a non-blank value to reconcile.
-     * 
-     * @author Antonin Delpeuch
-     *
      */
     protected static class NonBlankRowFilter implements RowFilter {
 

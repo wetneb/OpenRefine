@@ -19,7 +19,7 @@
 
   <modules>
         <module>jython</module>
-        <module>wikibase</module>
+        <!-- <module>wikibase</module> disabled, to be migrated later -->
         <module>database</module>
         <module>gdata</module>
         <module>pc-axis</module>

@@ -40,9 +40,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public abstract class Process {
 
-    @JsonProperty("immediate")
-    abstract public boolean isImmediate();
-
     @JsonIgnore
     abstract public boolean isRunning();
 
@@ -60,4 +57,10 @@ public abstract class Process {
     public long getId() {
         return hashCode();
     }
+
+    @JsonProperty("historyEntryId")
+    abstract public long getHistoryEntryId();
+
+    @JsonProperty("changeDataId")
+    abstract public String getChangeDataId();
 }

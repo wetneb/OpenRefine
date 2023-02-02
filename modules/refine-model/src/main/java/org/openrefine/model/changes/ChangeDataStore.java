@@ -2,9 +2,10 @@
 package org.openrefine.model.changes;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.util.Optional;
+import java.util.function.Function;
 
+import org.openrefine.process.ProcessManager;
 import org.openrefine.process.ProgressReporter;
 
 /**
@@ -16,6 +17,8 @@ import org.openrefine.process.ProgressReporter;
  *
  */
 public interface ChangeDataStore {
+
+    ProcessManager getProcessManager();
 
     /**
      * Stores a {@link ChangeData}, which might imply explicitly computing all its values (if the store persists its
@@ -58,9 +61,17 @@ public interface ChangeDataStore {
             ChangeDataSerializer<T> serializer)
             throws IOException;
 
+    public <T> ChangeData<T> retrieveOrCompute(
+            long historyEntryId,
+            String dataId,
+            ChangeDataSerializer<T> serializer,
+            Function<ChangeData<T>, ChangeData<T>> completionProcess, String description)
+            throws IOException;
+
     /**
      * Discards all change data objects which belong to a given history entry id.
      */
     public void discardAll(long historyEntryId);
+
 
 }

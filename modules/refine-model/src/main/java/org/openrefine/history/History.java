@@ -34,6 +34,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package org.openrefine.history;
 
 import java.io.IOException;
+import java.text.ParseException;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -42,6 +43,7 @@ import java.util.Set;
 
 import org.apache.commons.lang.Validate;
 import org.openrefine.RefineModel;
+import org.openrefine.expr.ParsingException;
 import org.openrefine.model.Grid;
 import org.openrefine.model.changes.GridCache;
 import org.openrefine.model.changes.Change;
@@ -65,6 +67,9 @@ public class History {
 
     private static final Logger logger = LoggerFactory.getLogger(History.class);
 
+    // required for passing as ChangeContext to all changes (who can rely on this, for instance in the cross function)
+    @JsonProperty("projectId")
+    protected final long _projectId;
     @JsonProperty("entries")
     protected List<HistoryEntry> _entries;
     @JsonProperty("position")
@@ -96,7 +101,7 @@ public class History {
      * @param gridStore
      *            where to store intermediate cached grids
      */
-    public History(Grid initialGrid, ChangeDataStore dataStore, GridCache gridStore) {
+    public History(Grid initialGrid, ChangeDataStore dataStore, GridCache gridStore, long projectId) {
         _entries = new ArrayList<>();
         _states = new ArrayList<>();
         _cachedOnDisk = new ArrayList<>();
@@ -106,6 +111,7 @@ public class History {
         _cachedPosition = 0;
         _dataStore = dataStore;
         _gridStore = gridStore;
+        _projectId = projectId;
     }
 
     /**
@@ -127,8 +133,9 @@ public class History {
             ChangeDataStore dataStore,
             GridCache gridStore,
             List<HistoryEntry> entries,
-            int position) throws DoesNotApplyException {
-        this(initialGrid, dataStore, gridStore);
+            int position,
+            long projectId) throws DoesNotApplyException {
+        this(initialGrid, dataStore, gridStore, projectId);
         Set<Long> availableCachedStates = gridStore.listCachedGridIds();
         for (HistoryEntry entry : entries) {
             Grid grid = null;
@@ -193,7 +200,7 @@ public class History {
             // is always present
             Grid previous = getGrid(position - 1);
             HistoryEntry entry = _entries.get(position - 1);
-            ChangeContext context = ChangeContext.create(entry.getId(), _dataStore);
+            ChangeContext context = ChangeContext.create(entry.getId(), _projectId, _dataStore, entry.getDescription());
             Change change = entry.getChange();
             Grid newState = change.apply(previous, context).getGrid();
             _states.set(position, newState);
@@ -231,6 +238,17 @@ public class History {
         return _gridStore;
     }
 
+    public HistoryEntry addEntry(Operation operation) throws ParsingException, DoesNotApplyException {
+        return addEntry(operation.getDescription(), operation, operation.createChange());
+    }
+
+    public HistoryEntry addEntry(
+            String description,
+            Operation operation,
+            Change change) throws DoesNotApplyException {
+        return addEntry(HistoryEntry.allocateID(), description, operation, change);
+    }
+
     /**
      * Adds a {@link HistoryEntry} to the list of past histories. Adding a new entry clears all currently held future
      * histories
@@ -238,7 +256,7 @@ public class History {
     public HistoryEntry addEntry(long id,
             String description,
             Operation operation,
-            Change change) throws DoesNotApplyException, Operation.NotImmediateOperationException {
+            Change change) throws DoesNotApplyException {
         // Any new change will clear all future entries.
         if (_position != _entries.size()) {
 
@@ -260,7 +278,7 @@ public class History {
             _cachedOnDisk = _cachedOnDisk.subList(0, _position + 1);
         }
 
-        ChangeContext context = ChangeContext.create(id, _dataStore);
+        ChangeContext context = ChangeContext.create(id, _projectId, _dataStore, description);
         Change.ChangeResult changeResult = change.apply(getCurrentGrid(), context);
         Grid newState = changeResult.getGrid();
         HistoryEntry entry = new HistoryEntry(id, description, operation, change, changeResult.getGridPreservation());
