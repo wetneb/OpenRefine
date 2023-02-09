@@ -65,10 +65,10 @@ public class DataExtensionChange extends EngineDependentChange {
     @Override
     public ChangeResult apply(Grid projectState, ChangeContext context) throws DoesNotApplyException {
         /**
-         * This operation does not always respect the rows mode, because when fetching multiple values for the
-         * same row, the extra values are spread in the record of the given row. Therefore, the fetching is done
-         * in records mode at all times, but in rows mode we also pass down the row filter to the fetcher so
-         * that it can filter out rows that should not be fetched inside a given record.
+         * This operation does not always respect the rows mode, because when fetching multiple values for the same row,
+         * the extra values are spread in the record of the given row. Therefore, the fetching is done in records mode
+         * at all times, but in rows mode we also pass down the row filter to the fetcher so that it can filter out rows
+         * that should not be fetched inside a given record.
          */
 
         Engine engine = new Engine(projectState, _engineConfig);
@@ -82,8 +82,8 @@ public class DataExtensionChange extends EngineDependentChange {
         }
         ReconciledDataExtensionJob job = new ReconciledDataExtensionJob(_extension, _endpoint, _identifierSpace, _schemaSpace);
         DataExtensionProducer producer = new DataExtensionProducer(job, baseColumnId, rowFilter);
-        Function<ChangeData<RecordDataExtension>, ChangeData<RecordDataExtension>> changeDataCompletion =
-                incompleteChangeData -> projectState.mapRecords(engine.combinedRecordFilters(), producer);
+        Function<ChangeData<RecordDataExtension>, ChangeData<RecordDataExtension>> changeDataCompletion = incompleteChangeData -> projectState
+                .mapRecords(engine.combinedRecordFilters(), producer);
 
         ChangeData<RecordDataExtension> changeData;
         try {

@@ -29,11 +29,14 @@ public class ChangeContextImpl implements ChangeContext {
     }
 
     @Override
-    public String getChangeDescription() { return _changeDescription; }
+    public String getChangeDescription() {
+        return _changeDescription;
+    }
 
     @Override
-    public <T> ChangeData<T> getChangeData(String dataId, ChangeDataSerializer<T> serializer, Function<ChangeData<T>, ChangeData<T>> completionProcess) throws IOException {
-        return _dataStore.retrieveOrCompute(_historyEntryId, dataId, serializer, completionProcess, _changeDescription);
+    public <T> ChangeData<T> getChangeData(String dataId, ChangeDataSerializer<T> serializer,
+            Function<ChangeData<T>, ChangeData<T>> completionProcess) throws IOException {
+        return _dataStore.retrieveOrCompute(new ChangeDataId(_historyEntryId, dataId), serializer, completionProcess, _changeDescription);
     }
 
     @Override

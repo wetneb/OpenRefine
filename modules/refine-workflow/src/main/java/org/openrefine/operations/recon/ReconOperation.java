@@ -95,14 +95,16 @@ public class ReconOperation extends EngineDependentOperation {
                 null,
                 _engineConfig,
                 _reconConfig) {
+
             @Override
-            public RowInRecordChangeDataProducer<Cell> getChangeDataProducer(int columnIndex, String columnName, ColumnModel columnModel, Map<String, OverlayModel> overlayModels, ChangeContext changeContext) {
-                return new  ReconChangeDataProducer(
-                            columnName,
-                columnIndex,
-                _reconConfig,
-                changeContext.getHistoryEntryId(),
-                columnModel);
+            public RowInRecordChangeDataProducer<Cell> getChangeDataProducer(int columnIndex, String columnName, ColumnModel columnModel,
+                    Map<String, OverlayModel> overlayModels, ChangeContext changeContext) {
+                return new ReconChangeDataProducer(
+                        columnName,
+                        columnIndex,
+                        _reconConfig,
+                        changeContext.getHistoryEntryId(),
+                        columnModel);
             }
         };
     }
@@ -124,119 +126,16 @@ public class ReconOperation extends EngineDependentOperation {
 
     // TODO: migrate those to the frontend.
     /*
-    protected final String _addJudgmentFacetJson = "{\n" +
-            "  \"action\" : \"createFacet\",\n" +
-            "  \"facetConfig\" : {\n" +
-            "  \"columnName\" : \"" + _columnName + "\",\n" +
-            "  \"expression\" : \"forNonBlank(cell.recon.judgment, v, v, if(isNonBlank(value), \\\"(unreconciled)\\\", \\\"(blank)\\\"))\",\n"
-            +
-            "    \"name\" : \"" + _columnName + ": judgment\"\n" +
-            "    },\n" +
-            "    \"facetOptions\" : {\n" +
-            "      \"scroll\" : false\n" +
-            "    },\n" +
-            "    \"facetType\" : \"list\"\n" +
-            " }";
-    protected final String _addScoreFacetJson = "{\n" +
-            "  \"action\" : \"createFacet\",\n" +
-            "  \"facetConfig\" : {\n" +
-            "    \"columnName\" : \"" + _columnName + "\",\n" +
-            "    \"expression\" : \"cell.recon.best.score\",\n" +
-            "    \"mode\" : \"range\",\n" +
-            "    \"name\" : \"" + _columnName + ": best candidate's score\"\n" +
-            "         },\n" +
-            "         \"facetType\" : \"range\"\n" +
-            "}";
-            */
-
-
-    /*
-    public class ReconProcess extends LongRunningProcess implements Runnable {
-
-        final protected History _history;
-        final protected ProcessManager _manager;
-        final protected Engine _engine;
-        final protected long _historyEntryID;
-        protected int _cellIndex;
-
-
-        protected JsonNode _addJudgmentFacet, _addScoreFacet;
-
-        public ReconProcess(
-                History history,
-                ProcessManager manager,
-                Engine engine,
-                String description) {
-            super(description);
-            _history = history;
-            _manager = manager;
-            _engine = engine;
-            _historyEntryID = HistoryEntry.allocateID();
-            try {
-                _addJudgmentFacet = ParsingUtilities.mapper.readValue(_addJudgmentFacetJson, JsonNode.class);
-                _addScoreFacet = ParsingUtilities.mapper.readValue(_addScoreFacetJson, JsonNode.class);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
-        @JsonProperty("onDone")
-        public List<JsonNode> onDoneActions() {
-            List<JsonNode> onDone = new ArrayList<>();
-            onDone.add(_addJudgmentFacet);
-            if (_reconConfig instanceof StandardReconConfig) {
-                onDone.add(_addScoreFacet);
-            }
-            return onDone;
-        }
-
-        @Override
-        protected Runnable getRunnable() {
-            return this;
-        }
-
-        @Override
-        public void run() {
-            Grid state = _history.getCurrentGrid();
-            ColumnModel columnModel = state.getColumnModel();
-
-            int columnIndex = columnModel.getColumnIndexByName(_columnName);
-
-            RowFilter combined = RowFilter.conjunction(Arrays.asList(_engine.combinedRowFilters(), new NonBlankRowFilter(columnIndex)));
-            RowChangeDataProducer<Cell> rowMapper = new ReconChangeDataProducer(_columnName, columnIndex, _reconConfig, _historyEntryID,
-                    columnModel);
-            ChangeData<Cell> changeData = state.mapRows(combined, rowMapper);
-
-            try {
-                _history.getChangeDataStore().store(changeData, _historyEntryID, "recon", new CellChangeDataSerializer(),
-                        Optional.of(_reporter));
-
-                if (!_canceled) {
-                    Change reconChange = new ColumnChangeByChangeData(
-                            "recon",
-                            columnIndex,
-                            null,
-                            Mode.RowBased,
-                            _reconConfig);
-
-                    _history.addEntry(
-                            _historyEntryID,
-                            _description,
-                            ReconOperation.this,
-                            reconChange);
-                    _manager.onDoneProcess(this);
-                }
-            } catch (Exception e) {
-                if (_canceled) {
-                    _history.getChangeDataStore().discardAll(_historyEntryID);
-                } else {
-                    _manager.onFailedProcess(this, e);
-                }
-            }
-
-        }
-    }
-    */
+     * protected final String _addJudgmentFacetJson = "{\n" + "  \"action\" : \"createFacet\",\n" +
+     * "  \"facetConfig\" : {\n" + "  \"columnName\" : \"" + _columnName + "\",\n" +
+     * "  \"expression\" : \"forNonBlank(cell.recon.judgment, v, v, if(isNonBlank(value), \\\"(unreconciled)\\\", \\\"(blank)\\\"))\",\n"
+     * + "    \"name\" : \"" + _columnName + ": judgment\"\n" + "    },\n" + "    \"facetOptions\" : {\n" +
+     * "      \"scroll\" : false\n" + "    },\n" + "    \"facetType\" : \"list\"\n" + " }"; protected final String
+     * _addScoreFacetJson = "{\n" + "  \"action\" : \"createFacet\",\n" + "  \"facetConfig\" : {\n" +
+     * "    \"columnName\" : \"" + _columnName + "\",\n" + "    \"expression\" : \"cell.recon.best.score\",\n" +
+     * "    \"mode\" : \"range\",\n" + "    \"name\" : \"" + _columnName + ": best candidate's score\"\n" +
+     * "         },\n" + "         \"facetType\" : \"range\"\n" + "}";
+     */
 
     protected static class ReconChangeDataProducer extends RowInRecordChangeDataProducer<Cell> {
 

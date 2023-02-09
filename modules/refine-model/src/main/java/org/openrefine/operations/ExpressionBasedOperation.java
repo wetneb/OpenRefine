@@ -30,7 +30,6 @@ import org.openrefine.model.changes.RowInRecordChangeDataProducer;
 import org.openrefine.model.changes.RowMapChange;
 import org.openrefine.overlay.OverlayModel;
 
-
 /**
  * Base class for an operation which evaluates an expression on rows or records, and then uses it to derive the new
  * grid.
@@ -134,7 +133,6 @@ public abstract class ExpressionBasedOperation extends EngineDependentOperation 
 
         };
     }
-
 
     protected abstract Change getChangeForNonLocalExpression(String changeDataId, Evaluable evaluable);
 

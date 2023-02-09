@@ -182,8 +182,10 @@ public class ColumnAdditionByFetchingURLsOperation extends EngineDependentOperat
                 _newColumnName,
                 _engineConfig,
                 null) {
+
             @Override
-            public RowInRecordChangeDataProducer<Cell> getChangeDataProducer(int columnIndex, String columnName, ColumnModel columnModel, Map<String, OverlayModel> overlayModels, ChangeContext changeContext) {
+            public RowInRecordChangeDataProducer<Cell> getChangeDataProducer(int columnIndex, String columnName, ColumnModel columnModel,
+                    Map<String, OverlayModel> overlayModels, ChangeContext changeContext) {
                 RowInRecordChangeDataProducer<Cell> evaluatingChangeDataProducer = evaluatingChangeDataProducer(
                         columnIndex,
                         columnName,

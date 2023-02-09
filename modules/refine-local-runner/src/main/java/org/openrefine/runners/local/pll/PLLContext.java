@@ -46,7 +46,7 @@ public class PLLContext {
      *
      */
     public TextFilePLL textFile(String path, Charset encoding, boolean ignoreEarlyEOF) throws IOException {
-        return new TextFilePLL(this, path, encoding);
+        return new TextFilePLL(this, path, encoding, ignoreEarlyEOF);
     }
 
     /**

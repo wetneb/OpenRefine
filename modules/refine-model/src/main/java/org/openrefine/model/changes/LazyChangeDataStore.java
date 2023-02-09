@@ -12,26 +12,24 @@ import org.openrefine.process.ProgressReporter;
 /**
  * A {@link ChangeDataStore} which does not persist its change data, meaning that they do not have to be computed
  * explicitly.
- * 
+ * <p>
  * The {@link ChangeData} objects are simply stored in an in-memory map, to be restored later. This is suitable in
  * contexts where project data must not be persisted and workflows are meant to be run as pipelines from the import to
  * the export stage.
- * 
- *
  */
 public class LazyChangeDataStore implements ChangeDataStore {
 
-    private Map<String, ChangeData<?>> _changeData;
-    private Runner _runner;
-    private ProcessManager processManager = new ProcessManager();
+    private final Map<String, ChangeData<?>> _changeData;
+    private final Runner _runner;
+    private final ProcessManager processManager = new ProcessManager();
 
     public LazyChangeDataStore(Runner runner) {
         _changeData = new HashMap<>();
         _runner = runner;
     }
 
-    private String idPairToString(long historyEntryId, String dataId) {
-        return String.format("%d/%s", historyEntryId, dataId);
+    private String idPairToString(ChangeDataId changeDataId) {
+        return String.format("%d/%s", changeDataId.getHistoryEntryId(), changeDataId.getChangeDataId());
     }
 
     @Override
@@ -40,16 +38,16 @@ public class LazyChangeDataStore implements ChangeDataStore {
     }
 
     @Override
-    public <T> void store(ChangeData<T> data, long historyEntryId, String dataId,
-            ChangeDataSerializer<T> serializer, Optional<ProgressReporter> progressReporter) throws IOException {
-        _changeData.put(idPairToString(historyEntryId, dataId), data);
+    public <T> void store(ChangeData<T> data, ChangeDataId changeDataId,
+                          ChangeDataSerializer<T> serializer, Optional<ProgressReporter> progressReporter) throws IOException {
+        _changeData.put(idPairToString(changeDataId), data);
     }
 
     @SuppressWarnings("unchecked")
     @Override
-    public <T> ChangeData<T> retrieve(long historyEntryId, String dataId,
+    public <T> ChangeData<T> retrieve(ChangeDataId changeDataId,
             ChangeDataSerializer<T> serializer) throws IOException {
-        String key = idPairToString(historyEntryId, dataId);
+        String key = idPairToString(changeDataId);
         if (!_changeData.containsKey(key)) {
             throw new IllegalArgumentException(String.format("Change data with id %s does not exist", key));
         }
@@ -58,16 +56,20 @@ public class LazyChangeDataStore implements ChangeDataStore {
 
     @Override
     public <T> ChangeData<T> retrieveOrCompute(
-            long historyEntryId,
-            String dataId,
+            ChangeDataId changeDataId,
             ChangeDataSerializer<T> serializer,
             Function<ChangeData<T>, ChangeData<T>> completionProcess, String description) throws IOException {
-        String key = idPairToString(historyEntryId, dataId);
+        String key = idPairToString(changeDataId);
         if (!_changeData.containsKey(key)) {
             ChangeData<T> computed = completionProcess.apply(_runner.create(Collections.emptyList()));
             _changeData.put(key, computed);
         }
         return (ChangeData<T>) _changeData.get(key);
+    }
+
+    @Override
+    public boolean needsRefreshing(long historyEntryId) {
+        return false;
     }
 
     @Override

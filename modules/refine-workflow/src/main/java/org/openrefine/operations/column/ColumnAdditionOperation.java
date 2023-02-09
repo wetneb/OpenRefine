@@ -142,7 +142,8 @@ public class ColumnAdditionOperation extends ExpressionBasedOperation {
 
     protected static RowInRecordMapper mapper(int columnIndex, String baseColumnName, int columnInsertIndex, OnError onError,
             Evaluable eval, ColumnModel columnModel, Map<String, OverlayModel> overlayModels) {
-        RowInRecordChangeDataProducer<Cell> changeDataProducer = ColumnChangeByChangeData.evaluatingChangeDataProducer(columnIndex, baseColumnName, onError, eval, columnModel,
+        RowInRecordChangeDataProducer<Cell> changeDataProducer = ColumnChangeByChangeData.evaluatingChangeDataProducer(columnIndex,
+                baseColumnName, onError, eval, columnModel,
                 overlayModels,
                 0L);
         return new RowInRecordMapper() {
@@ -191,18 +192,19 @@ public class ColumnAdditionOperation extends ExpressionBasedOperation {
                 _newColumnName,
                 _engineConfig,
                 null) {
+
             @Override
             public RowInRecordChangeDataProducer<Cell> getChangeDataProducer(
                     int columnIndex, String columnName, ColumnModel columnModel,
                     Map<String, OverlayModel> overlayModels, ChangeContext changeContext) {
                 return evaluatingChangeDataProducer(
-                    columnIndex,
-                    columnName,
+                        columnIndex,
+                        columnName,
                         _onError,
-                evaluable,
-                columnModel,
-                overlayModels,
-                changeContext.getProjectId());
+                        evaluable,
+                        columnModel,
+                        overlayModels,
+                        changeContext.getProjectId());
             }
         };
     }

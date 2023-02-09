@@ -27,6 +27,7 @@
 
 package org.openrefine.process;
 
+import org.openrefine.model.changes.ChangeDataId;
 import org.openrefine.util.ParsingUtilities;
 import org.openrefine.util.TestUtils;
 import org.testng.annotations.Test;
@@ -45,13 +46,8 @@ public class LongRunningProcessTests {
         }
 
         @Override
-        public long getHistoryEntryId() {
-            return 1234L;
-        }
-
-        @Override
-        public String getChangeDataId() {
-            return "recon";
+        public ChangeDataId getChangeDataId() {
+            return new ChangeDataId(1234L, "recon");
         }
     }
 

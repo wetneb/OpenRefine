@@ -31,6 +31,7 @@ public interface ChangeContext {
      * Retrieves a {@link ChangeData} from the underlying {@link ChangeDataStore}. It must have been registered in the
      * store beforehand.
      */
-    <T> ChangeData<T> getChangeData(String dataId, ChangeDataSerializer<T> serializer, Function<ChangeData<T>, ChangeData<T>> completionProcess) throws IOException;
+    <T> ChangeData<T> getChangeData(String dataId, ChangeDataSerializer<T> serializer,
+            Function<ChangeData<T>, ChangeData<T>> completionProcess) throws IOException;
 
 }

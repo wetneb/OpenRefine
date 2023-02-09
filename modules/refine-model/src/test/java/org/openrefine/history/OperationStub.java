@@ -18,5 +18,4 @@ public class OperationStub implements Operation {
         return "some description";
     }
 
-
 }

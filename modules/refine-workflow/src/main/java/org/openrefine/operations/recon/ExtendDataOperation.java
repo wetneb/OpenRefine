@@ -94,7 +94,7 @@ public class ExtendDataOperation extends EngineDependentOperation {
         try {
             job.extend(Collections.emptySet());
         } catch (Exception e) {
-            throw new ParsingException("Unable to fetch column metadata from service: "+e.getMessage());
+            throw new ParsingException("Unable to fetch column metadata from service: " + e.getMessage());
         }
         List<String> columnNames = new ArrayList<>();
         for (ColumnInfo info : job.columns) {

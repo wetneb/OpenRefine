@@ -13,8 +13,6 @@ import org.openrefine.process.ProgressReporter;
  * for which part of the change it represents (such that changes can potentially register multiple change data)
  * <p>
  * A serializer is provided for both methods if they want to store the change data physically somewhere.
- * 
- *
  */
 public interface ChangeDataStore {
 
@@ -24,23 +22,16 @@ public interface ChangeDataStore {
      * Stores a {@link ChangeData}, which might imply explicitly computing all its values (if the store persists its
      * changes).
      *
-     * @param data
-     *            the data to store
-     * @param historyEntryId
-     *            the id of the change which generated this data
-     * @param dataId
-     *            the id of the dataset within the change
-     * @param serializer
-     *            to serialize the data to a file, for instance
-     * @param progressReporter
-     *            reports the progress of the change data computation and serialization
-     * @throws IOException
-     *             if serialization failed
+     * @param data             the data to store
+     * @param changeDataId     the id of the change data to store
+     * @param serializer       to serialize the data to a file, for instance
+     * @param progressReporter reports the progress of the change data computation and serialization
+     * @param changeDataId
+     * @throws IOException if serialization failed
      */
     public <T> void store(
             ChangeData<T> data,
-            long historyEntryId,
-            String dataId,
+            ChangeDataId changeDataId,
             ChangeDataSerializer<T> serializer,
             Optional<ProgressReporter> progressReporter)
             throws IOException;
@@ -48,30 +39,44 @@ public interface ChangeDataStore {
     /**
      * Loads back a {@link ChangeData} that has been persisted before.
      *
-     * @param historyEntryId
-     *            the id of the change which generated this data
-     * @param dataId
-     *            the id of the dataset within the change
+     * @param changeDataId
+     *            the id of the change data to retrieve
      * @param serializer
      *            the deserializer to read it back from a file
      */
     public <T> ChangeData<T> retrieve(
-            long historyEntryId,
-            String dataId,
+            ChangeDataId changeDataId,
             ChangeDataSerializer<T> serializer)
             throws IOException;
 
+    /**
+     * Retrieves a change data if it exists already, and if it does not (or is incomplete),
+     * start a process to finish computing it.
+     *
+     * @param changeDataId
+     *             the id of the change data to retrieve
+     * @param serializer
+     *             the serializer to read it back from a file and to write its completion if it is incomplete
+     * @param completionProcess
+     *             a function taking the existing state of the change data and returning the complete version
+     * @param description
+     *             a description of the completion process, to be reported to the user
+     */
     public <T> ChangeData<T> retrieveOrCompute(
-            long historyEntryId,
-            String dataId,
+            ChangeDataId changeDataId,
             ChangeDataSerializer<T> serializer,
             Function<ChangeData<T>, ChangeData<T>> completionProcess, String description)
             throws IOException;
 
     /**
+     * Returns true when a change data object is being fetched by a process and should
+     * therefore be refreshed as the process may have refreshed the contents on disk.
+     */
+    public boolean needsRefreshing(long historyEntryId);
+
+    /**
      * Discards all change data objects which belong to a given history entry id.
      */
     public void discardAll(long historyEntryId);
-
 
 }

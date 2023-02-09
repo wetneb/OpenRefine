@@ -37,6 +37,7 @@ import org.openrefine.history.HistoryEntry;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.openrefine.model.changes.ChangeDataId;
 
 public abstract class Process {
 
@@ -58,9 +59,6 @@ public abstract class Process {
         return hashCode();
     }
 
-    @JsonProperty("historyEntryId")
-    abstract public long getHistoryEntryId();
-
     @JsonProperty("changeDataId")
-    abstract public String getChangeDataId();
+    abstract public ChangeDataId getChangeDataId();
 }

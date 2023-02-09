@@ -22,9 +22,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import org.openrefine.overlay.OverlayModel;
 
 /**
- * Adds a new column based on data fetched from an external process. If no new column name is supplied, then the change will
- * replace the column with the given name (merging with existing contents in rows not covered by the change
- * data).
+ * Adds a new column based on data fetched from an external process. If no new column name is supplied, then the change
+ * will replace the column with the given name (merging with existing contents in rows not covered by the change data).
  * <p>
  * New recon config and stats can be supplied for the column changed or created. If a recon config and no recon stats
  * are provided, the change computes the new recon stats on the fly.
@@ -36,7 +35,6 @@ public abstract class ColumnChangeByChangeData implements Change {
     private final String _columnName;
     private final EngineConfig _engineConfig;
     private final ReconConfig _reconConfig;
-
 
     @JsonCreator
     public ColumnChangeByChangeData(
@@ -76,7 +74,6 @@ public abstract class ColumnChangeByChangeData implements Change {
     public ReconConfig getReconConfig() {
         return _reconConfig;
     }
-
 
     @Override
     public ChangeResult apply(Grid projectState, ChangeContext context) throws DoesNotApplyException {
@@ -203,7 +200,6 @@ public abstract class ColumnChangeByChangeData implements Change {
             String columnName,
             ColumnModel columnModel,
             Map<String, OverlayModel> overlayModels, ChangeContext changeContext);
-
 
     public static RowInRecordChangeDataProducer<Cell> evaluatingChangeDataProducer(
             int columnIndex,

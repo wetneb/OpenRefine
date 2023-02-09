@@ -4,6 +4,7 @@ package org.openrefine.model.changes;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
@@ -11,31 +12,34 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.io.FileUtils;
 import org.openrefine.model.Runner;
+import org.openrefine.process.Process;
 import org.openrefine.process.LongRunningProcess;
 import org.openrefine.process.ProcessManager;
 import org.openrefine.process.ProgressReporter;
 
 public class FileChangeDataStore implements ChangeDataStore {
 
-    private Runner _runner;
-    private File _baseDirectory;
-    private ProcessManager processManager = new ProcessManager();
+    private final Runner _runner;
+    private final File _baseDirectory;
+    private final ProcessManager processManager = new ProcessManager();
+    private final Set<ChangeDataId> _toRefresh;
 
     public FileChangeDataStore(Runner runner, File baseDirectory) {
         _runner = runner;
         _baseDirectory = baseDirectory;
+        _toRefresh = new HashSet<>();
     }
 
     /**
      * Associates to a pair of ids the location where we should store them.
      */
-    private File idsToFile(long historyEntryId, String dataId) {
-        return new File(historyEntryIdToFile(historyEntryId), dataId);
+    private File idsToFile(ChangeDataId changeDataId) {
+        return new File(historyEntryIdToFile(changeDataId.getHistoryEntryId()), changeDataId.getChangeDataId());
     }
 
-    private Set<String> changeDataIdsInProgress() {
+    private Set<ChangeDataId> changeDataIdsInProgress() {
         return processManager.getProcesses().stream()
-                .map(process -> String.format("%d/%s", process.getHistoryEntryId(), process.getChangeDataId()))
+                .map(Process::getChangeDataId)
                 .collect(Collectors.toSet());
     }
 
@@ -52,9 +56,9 @@ public class FileChangeDataStore implements ChangeDataStore {
     }
 
     @Override
-    public <T> void store(ChangeData<T> data, long historyEntryId, String dataId,
-            ChangeDataSerializer<T> serializer, Optional<ProgressReporter> progressReporter) throws IOException {
-        File file = idsToFile(historyEntryId, dataId);
+    public <T> void store(ChangeData<T> data, ChangeDataId changeDataId,
+                          ChangeDataSerializer<T> serializer, Optional<ProgressReporter> progressReporter) throws IOException {
+        File file = idsToFile(changeDataId);
         file.mkdirs();
         try {
             if (progressReporter.isPresent()) {
@@ -69,27 +73,29 @@ public class FileChangeDataStore implements ChangeDataStore {
     }
 
     @Override
-    public <T> ChangeData<T> retrieve(long historyEntryId, String dataId,
+    public <T> ChangeData<T> retrieve(ChangeDataId changeDataId,
             ChangeDataSerializer<T> serializer) throws IOException {
-        File file = idsToFile(historyEntryId, dataId);
-        return _runner.loadChangeData(file, serializer);
+        File file = idsToFile(changeDataId);
+        ChangeData<T> changeData = _runner.loadChangeData(file, serializer);
+        if (changeData.isComplete() && _toRefresh.contains(changeDataId)) {
+            _toRefresh.remove(changeDataId);
+        }
+        return changeData;
     }
 
     @Override
     public <T> ChangeData<T> retrieveOrCompute(
-            long historyEntryId,
-            String dataId,
+            ChangeDataId changeDataId,
             ChangeDataSerializer<T> serializer,
             Function<ChangeData<T>, ChangeData<T>> completionProcess, String description) throws IOException {
-        File file = idsToFile(historyEntryId, dataId);
-        String changeDataId = String.format("%d/%s", historyEntryId, dataId);
+        File file = idsToFile(changeDataId);
 
         ChangeData<T> storedChangeData;
         boolean storedChangedDataIsComplete;
         try {
             storedChangeData = _runner.loadChangeData(file, serializer);
             storedChangedDataIsComplete = storedChangeData.isComplete();
-        } catch(IOException e) {
+        } catch (IOException e) {
             storedChangeData = _runner.create(Collections.emptyList());
             storedChangedDataIsComplete = false;
         }
@@ -98,13 +104,18 @@ public class FileChangeDataStore implements ChangeDataStore {
             // queue a new process to compute the change data
             processManager.queueProcess(new ChangeDataStoringProcess<T>(description,
                     storedChangeData,
-                    historyEntryId,
-                    dataId,
+                    changeDataId,
                     this,
                     serializer,
                     completionProcess));
+            _toRefresh.add(changeDataId);
         }
         return storedChangeData;
+    }
+
+    @Override
+    public boolean needsRefreshing(long historyEntryId) {
+        return _toRefresh.stream().map(ChangeDataId::getHistoryEntryId).anyMatch(id -> id == historyEntryId);
     }
 
     @Override
@@ -120,9 +131,9 @@ public class FileChangeDataStore implements ChangeDataStore {
     }
 
     protected static class ChangeDataStoringProcess<T> extends LongRunningProcess implements Runnable {
+
         final ChangeData<T> storedChangeData;
-        final long historyEntryId;
-        final String changeDataId;
+        final ChangeDataId changeDataId;
         final ChangeDataStore changeDataStore;
         final ChangeDataSerializer<T> serializer;
         final Function<ChangeData<T>, ChangeData<T>> completionProcess;
@@ -130,13 +141,11 @@ public class FileChangeDataStore implements ChangeDataStore {
         public ChangeDataStoringProcess(
                 String description,
                 ChangeData<T> storedChangeData,
-                long historyEntryId,
-                String changeDataId,
+                ChangeDataId changeDataId,
                 ChangeDataStore changeDataStore,
                 ChangeDataSerializer<T> serializer, Function<ChangeData<T>, ChangeData<T>> completionProcess) {
             super(description);
             this.storedChangeData = storedChangeData;
-            this.historyEntryId = historyEntryId;
             this.changeDataId = changeDataId;
             this.changeDataStore = changeDataStore;
             this.serializer = serializer;
@@ -149,12 +158,7 @@ public class FileChangeDataStore implements ChangeDataStore {
         }
 
         @Override
-        public long getHistoryEntryId() {
-            return historyEntryId;
-        }
-
-        @Override
-        public String getChangeDataId() {
+        public ChangeDataId getChangeDataId() {
             return changeDataId;
         }
 
@@ -162,7 +166,8 @@ public class FileChangeDataStore implements ChangeDataStore {
         public void run() {
             ChangeData<T> newChangeData = completionProcess.apply(storedChangeData);
             try {
-                changeDataStore.store(newChangeData, historyEntryId, changeDataId, serializer, Optional.of(_reporter));
+                changeDataStore.store(newChangeData, changeDataId, serializer, Optional.of(_reporter));
+                _manager.onDoneProcess(this);
             } catch (IOException e) {
                 _manager.onFailedProcess(this, e);
             }
