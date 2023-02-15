@@ -91,6 +91,7 @@ public class ReconOperationTests extends RefineTest {
     private Row row1 = null;
     private Row row2 = null;
     private Row row3 = null;
+    private Row row4 = null;
     private Recon recon1 = null;
     private Recon recon2 = null;
     private Recon recon3 = null;
@@ -143,7 +144,8 @@ public class ReconOperationTests extends RefineTest {
                         { "value1" },
                         { "value2" },
                         { "value1" },
-                        { "value3" }
+                        { "value3" },
+                        { null }
                 });
 
         job1 = mock(ReconJob.class, withSettings().serializable());
@@ -171,11 +173,14 @@ public class ReconOperationTests extends RefineTest {
         row1 = state.getRow(0L);
         row2 = state.getRow(1L);
         row3 = state.getRow(3L);
+        row4 = state.getRow(4L);
 
         when(reconConfig.createJob(columnModel, 0L, row1, "column", row1.getCell(0))).thenReturn(job1);
         when(reconConfig.createJob(columnModel, 1L, row2, "column", row2.getCell(0))).thenReturn(job2);
         when(reconConfig.createJob(columnModel, 2L, row1, "column", row1.getCell(0))).thenReturn(job1);
         when(reconConfig.createJob(columnModel, 3L, row3, "column", row3.getCell(0))).thenReturn(job3);
+        when(reconConfig.createJob(columnModel, 4L, row4, "column", row4.getCell(0))).thenReturn(job3);
+
     }
 
     @Test
@@ -190,14 +195,15 @@ public class ReconOperationTests extends RefineTest {
                 new IndexedRow(1L, row2));
         List<IndexedRow> batch2 = Arrays.asList(
                 new IndexedRow(2L, row1),
-                new IndexedRow(3L, row3));
+                new IndexedRow(3L, row3),
+                new IndexedRow(4L, row4));
 
         ReconChangeDataProducer producer = new ReconChangeDataProducer("column", 0, reconConfig, 1234L, project.getColumnModel());
         List<Cell> results1 = producer.callRowBatch(batch1);
         List<Cell> results2 = producer.callRowBatch(batch2);
 
         Assert.assertEquals(results1, Arrays.asList(new Cell("value1", recon1), new Cell("value2", recon2)));
-        Assert.assertEquals(results2, Arrays.asList(new Cell("value1", recon1), new Cell("value3", recon3)));
+        Assert.assertEquals(results2, Arrays.asList(new Cell("value1", recon1), new Cell("value3", recon3), null));
         Assert.assertEquals(producer.getBatchSize(), 2);
         Assert.assertEquals(producer.call(0L, batch1.get(0).getRow()), new Cell("value1", recon1));
 
@@ -220,7 +226,8 @@ public class ReconOperationTests extends RefineTest {
                         { new Cell("value1", recon1) },
                         { new Cell("value2", recon2) },
                         { new Cell("value1", recon1) },
-                        { new Cell("value3", recon3) }
+                        { new Cell("value3", recon3) },
+                        { null }
                 })
                         .withColumnModel(reconciledColumnModel);
 

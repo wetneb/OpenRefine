@@ -168,7 +168,7 @@ public class FileChangeDataStore implements ChangeDataStore {
             try {
                 changeDataStore.store(newChangeData, changeDataId, serializer, Optional.of(_reporter));
                 _manager.onDoneProcess(this);
-            } catch (IOException e) {
+            } catch (Exception e) {
                 _manager.onFailedProcess(this, e);
             }
         }

@@ -198,15 +198,20 @@ public class ReconOperation extends EngineDependentOperation {
             List<ReconJob> reconJobs = new ArrayList<>(rows.size());
             for (IndexedRow indexedRow : rows) {
                 Row row = indexedRow.getRow();
-                reconJobs.add(reconConfig.createJob(
-                        columnModel,
-                        indexedRow.getIndex(),
-                        row,
-                        columnName,
-                        row.getCell(columnIndex)));
+                Cell cell = row.getCell(columnIndex);
+                if (cell != null) {
+                    reconJobs.add(reconConfig.createJob(
+                            columnModel,
+                            indexedRow.getIndex(),
+                            row,
+                            columnName,
+                            cell));
+                } else {
+                    reconJobs.add(null);
+                }
             }
             try {
-                Map<ReconJob, Cell> results = cache.getAll(reconJobs);
+                Map<ReconJob, Cell> results = cache.getAll(reconJobs.stream().filter(r -> r != null).collect(Collectors.toList()));
                 return reconJobs.stream().map(job -> results.get(job)).collect(Collectors.toList());
             } catch (ExecutionException e) {
                 // the `batchRecon` method should throw IOException, it currently does not.
