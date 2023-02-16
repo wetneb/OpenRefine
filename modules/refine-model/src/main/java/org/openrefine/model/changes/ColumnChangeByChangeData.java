@@ -3,10 +3,7 @@ package org.openrefine.model.changes;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
 
 import org.openrefine.browsing.Engine;
 import org.openrefine.browsing.EngineConfig;
@@ -106,7 +103,7 @@ public abstract class ColumnChangeByChangeData implements Change {
             ChangeData<Cell> changeData = null;
             try {
                 changeData = context.getChangeData(_changeDataId, new CellChangeDataSerializer(),
-                        partialChangeData -> getChangeDataRowBased(projectState, baseColumnIndex, context));
+                        partialChangeData -> getChangeDataRowBased(projectState, baseColumnIndex, context, partialChangeData));
             } catch (IOException e) {
                 throw new DoesNotApplyException(String.format("Unable to retrieve change data '%s'", _changeDataId));
             }
@@ -115,7 +112,7 @@ public abstract class ColumnChangeByChangeData implements Change {
             ChangeData<List<Cell>> changeData = null;
             try {
                 changeData = context.getChangeData(_changeDataId, new CellListChangeDataSerializer(),
-                        partialChangeData -> getChangeDataRecordBased(projectState, baseColumnIndex, context));
+                        partialChangeData -> getChangeDataRecordBased(projectState, baseColumnIndex, context, partialChangeData));
             } catch (IOException e) {
                 throw new DoesNotApplyException(String.format("Unable to retrieve change data '%s'", _changeDataId));
             }
@@ -131,7 +128,8 @@ public abstract class ColumnChangeByChangeData implements Change {
         return true;
     }
 
-    protected ChangeData<Cell> getChangeDataRowBased(Grid state, int columnIndex, ChangeContext changeContext) {
+    protected ChangeData<Cell> getChangeDataRowBased(Grid state, int columnIndex, ChangeContext changeContext,
+            Optional<ChangeData<Cell>> partialChangeData) {
         ColumnModel columnModel = state.getColumnModel();
         Engine engine = new Engine(state, _engineConfig);
 
@@ -139,11 +137,12 @@ public abstract class ColumnChangeByChangeData implements Change {
                 state.getOverlayModels(), changeContext);
 
         RowFilter filter = engine.combinedRowFilters();
-        ChangeData<Cell> changeData = state.mapRows(filter, changeDataProducer);
+        ChangeData<Cell> changeData = state.mapRows(filter, changeDataProducer, partialChangeData);
         return changeData;
     }
 
-    protected ChangeData<List<Cell>> getChangeDataRecordBased(Grid state, int columnIndex, ChangeContext changeContext) {
+    protected ChangeData<List<Cell>> getChangeDataRecordBased(Grid state, int columnIndex, ChangeContext changeContext,
+            Optional<ChangeData<List<Cell>>> partialChangeData) {
         ColumnModel columnModel = state.getColumnModel();
         Engine engine = new Engine(state, _engineConfig);
 
@@ -151,7 +150,7 @@ public abstract class ColumnChangeByChangeData implements Change {
                 state.getOverlayModels(), changeContext);
 
         RecordFilter filter = engine.combinedRecordFilters();
-        ChangeData<List<Cell>> changeData = state.mapRecords(filter, changeDataProducer);
+        ChangeData<List<Cell>> changeData = state.mapRecords(filter, changeDataProducer, partialChangeData);
         return changeData;
     }
 

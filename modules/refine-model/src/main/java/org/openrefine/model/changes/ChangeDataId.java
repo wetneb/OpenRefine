@@ -1,3 +1,4 @@
+
 package org.openrefine.model.changes;
 
 import java.util.Objects;
@@ -8,19 +9,19 @@ import java.util.Objects;
 public class ChangeDataId {
 
     private final long historyEntryId;
-    private final String changeDataId;
+    private final String subDirectory;
 
-    public ChangeDataId(long historyEntryId, String changeDataId) {
+    public ChangeDataId(long historyEntryId, String subDirectory) {
         this.historyEntryId = historyEntryId;
-        this.changeDataId = changeDataId;
+        this.subDirectory = subDirectory;
     }
 
     public long getHistoryEntryId() {
         return historyEntryId;
     }
 
-    public String getChangeDataId() {
-        return changeDataId;
+    public String getSubDirectory() {
+        return subDirectory;
     }
 
     @Override
@@ -28,19 +29,19 @@ public class ChangeDataId {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ChangeDataId that = (ChangeDataId) o;
-        return historyEntryId == that.historyEntryId && Objects.equals(changeDataId, that.changeDataId);
+        return historyEntryId == that.historyEntryId && Objects.equals(subDirectory, that.subDirectory);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(historyEntryId, changeDataId);
+        return Objects.hash(historyEntryId, subDirectory);
     }
 
     @Override
     public String toString() {
         return "ChangeDataId{" +
                 "historyEntryId=" + historyEntryId +
-                ", changeDataId='" + changeDataId + '\'' +
+                ", subDirectory='" + subDirectory + '\'' +
                 '}';
     }
 }

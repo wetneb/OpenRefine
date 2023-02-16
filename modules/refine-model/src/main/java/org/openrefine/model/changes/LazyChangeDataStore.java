@@ -29,7 +29,7 @@ public class LazyChangeDataStore implements ChangeDataStore {
     }
 
     private String idPairToString(ChangeDataId changeDataId) {
-        return String.format("%d/%s", changeDataId.getHistoryEntryId(), changeDataId.getChangeDataId());
+        return String.format("%d/%s", changeDataId.getHistoryEntryId(), changeDataId.getSubDirectory());
     }
 
     @Override
@@ -39,7 +39,7 @@ public class LazyChangeDataStore implements ChangeDataStore {
 
     @Override
     public <T> void store(ChangeData<T> data, ChangeDataId changeDataId,
-                          ChangeDataSerializer<T> serializer, Optional<ProgressReporter> progressReporter) throws IOException {
+            ChangeDataSerializer<T> serializer, Optional<ProgressReporter> progressReporter) throws IOException {
         _changeData.put(idPairToString(changeDataId), data);
     }
 
@@ -58,10 +58,10 @@ public class LazyChangeDataStore implements ChangeDataStore {
     public <T> ChangeData<T> retrieveOrCompute(
             ChangeDataId changeDataId,
             ChangeDataSerializer<T> serializer,
-            Function<ChangeData<T>, ChangeData<T>> completionProcess, String description) throws IOException {
+            Function<Optional<ChangeData<T>>, ChangeData<T>> completionProcess, String description) throws IOException {
         String key = idPairToString(changeDataId);
         if (!_changeData.containsKey(key)) {
-            ChangeData<T> computed = completionProcess.apply(_runner.create(Collections.emptyList()));
+            ChangeData<T> computed = completionProcess.apply(Optional.empty());
             _changeData.put(key, computed);
         }
         return (ChangeData<T>) _changeData.get(key);

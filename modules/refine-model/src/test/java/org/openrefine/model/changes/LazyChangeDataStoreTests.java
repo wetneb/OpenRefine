@@ -53,7 +53,7 @@ public class LazyChangeDataStoreTests {
     public void testRetrieveOrCompute() throws IOException {
         MyChangeData changeData = mock(MyChangeData.class);
         when(changeData.isComplete()).thenReturn(false);
-        Function<ChangeData<String>, ChangeData<String>> completionProcess = existingChangeData -> changeData;
+        Function<Optional<ChangeData<String>>, ChangeData<String>> completionProcess = existingChangeData -> changeData;
 
         ChangeDataId changeDataId = new ChangeDataId(456, "data");
         ChangeData<String> returnedChangeData = SUT.retrieveOrCompute(changeDataId, serializer, completionProcess, "description");

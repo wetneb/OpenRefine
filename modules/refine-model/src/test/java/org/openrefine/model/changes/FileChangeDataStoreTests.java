@@ -72,7 +72,7 @@ public class FileChangeDataStoreTests {
     public void testRetrieveOrCompute() throws IOException {
         ChangeDataId changeDataId = new ChangeDataId(456, "data");
         when(changeData.isComplete()).thenReturn(false);
-        Function<ChangeData<String>, ChangeData<String>> completionProcess = (oldChangeData -> changeData);
+        Function<Optional<ChangeData<String>>, ChangeData<String>> completionProcess = (oldChangeData -> changeData);
 
         ChangeData<String> returnedChangeData = SUT.retrieveOrCompute(changeDataId, serializer, completionProcess, "description");
 

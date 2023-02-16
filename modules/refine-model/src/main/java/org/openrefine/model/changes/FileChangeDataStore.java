@@ -34,7 +34,7 @@ public class FileChangeDataStore implements ChangeDataStore {
      * Associates to a pair of ids the location where we should store them.
      */
     private File idsToFile(ChangeDataId changeDataId) {
-        return new File(historyEntryIdToFile(changeDataId.getHistoryEntryId()), changeDataId.getChangeDataId());
+        return new File(historyEntryIdToFile(changeDataId.getHistoryEntryId()), changeDataId.getSubDirectory());
     }
 
     private Set<ChangeDataId> changeDataIdsInProgress() {
@@ -57,7 +57,7 @@ public class FileChangeDataStore implements ChangeDataStore {
 
     @Override
     public <T> void store(ChangeData<T> data, ChangeDataId changeDataId,
-                          ChangeDataSerializer<T> serializer, Optional<ProgressReporter> progressReporter) throws IOException {
+            ChangeDataSerializer<T> serializer, Optional<ProgressReporter> progressReporter) throws IOException {
         File file = idsToFile(changeDataId);
         file.mkdirs();
         try {
@@ -87,16 +87,16 @@ public class FileChangeDataStore implements ChangeDataStore {
     public <T> ChangeData<T> retrieveOrCompute(
             ChangeDataId changeDataId,
             ChangeDataSerializer<T> serializer,
-            Function<ChangeData<T>, ChangeData<T>> completionProcess, String description) throws IOException {
+            Function<Optional<ChangeData<T>>, ChangeData<T>> completionProcess, String description) throws IOException {
         File file = idsToFile(changeDataId);
 
-        ChangeData<T> storedChangeData;
+        Optional<ChangeData<T>> storedChangeData;
         boolean storedChangedDataIsComplete;
         try {
-            storedChangeData = _runner.loadChangeData(file, serializer);
-            storedChangedDataIsComplete = storedChangeData.isComplete();
+            storedChangeData = Optional.of(_runner.loadChangeData(file, serializer));
+            storedChangedDataIsComplete = storedChangeData.get().isComplete();
         } catch (IOException e) {
-            storedChangeData = _runner.create(Collections.emptyList());
+            storedChangeData = Optional.empty();
             storedChangedDataIsComplete = false;
         }
 
@@ -110,7 +110,7 @@ public class FileChangeDataStore implements ChangeDataStore {
                     completionProcess));
             _toRefresh.add(changeDataId);
         }
-        return storedChangeData;
+        return storedChangeData.orElse(_runner.create(Collections.emptyList()));
     }
 
     @Override
@@ -132,18 +132,18 @@ public class FileChangeDataStore implements ChangeDataStore {
 
     protected static class ChangeDataStoringProcess<T> extends LongRunningProcess implements Runnable {
 
-        final ChangeData<T> storedChangeData;
+        final Optional<ChangeData<T>> storedChangeData;
         final ChangeDataId changeDataId;
         final ChangeDataStore changeDataStore;
         final ChangeDataSerializer<T> serializer;
-        final Function<ChangeData<T>, ChangeData<T>> completionProcess;
+        final Function<Optional<ChangeData<T>>, ChangeData<T>> completionProcess;
 
         public ChangeDataStoringProcess(
                 String description,
-                ChangeData<T> storedChangeData,
+                Optional<ChangeData<T>> storedChangeData,
                 ChangeDataId changeDataId,
                 ChangeDataStore changeDataStore,
-                ChangeDataSerializer<T> serializer, Function<ChangeData<T>, ChangeData<T>> completionProcess) {
+                ChangeDataSerializer<T> serializer, Function<Optional<ChangeData<T>>, ChangeData<T>> completionProcess) {
             super(description);
             this.storedChangeData = storedChangeData;
             this.changeDataId = changeDataId;

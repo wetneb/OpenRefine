@@ -82,8 +82,8 @@ public class DataExtensionChange extends EngineDependentChange {
         }
         ReconciledDataExtensionJob job = new ReconciledDataExtensionJob(_extension, _endpoint, _identifierSpace, _schemaSpace);
         DataExtensionProducer producer = new DataExtensionProducer(job, baseColumnId, rowFilter);
-        Function<ChangeData<RecordDataExtension>, ChangeData<RecordDataExtension>> changeDataCompletion = incompleteChangeData -> projectState
-                .mapRecords(engine.combinedRecordFilters(), producer);
+        Function<Optional<ChangeData<RecordDataExtension>>, ChangeData<RecordDataExtension>> changeDataCompletion = incompleteChangeData -> projectState
+                .mapRecords(engine.combinedRecordFilters(), producer, incompleteChangeData);
 
         ChangeData<RecordDataExtension> changeData;
         try {

@@ -190,8 +190,10 @@ public class History {
     /**
      * Returns the state of the grid at a given index in the history
      *
-     * @param position a 0-based index in the list of successive grids
-     * @param refresh whether the grid should be refreshed if it depends on change data being currently fetched
+     * @param position
+     *            a 0-based index in the list of successive grids
+     * @param refresh
+     *            whether the grid should be refreshed if it depends on change data being currently fetched
      */
     protected Grid getGrid(int position, boolean refresh) throws DoesNotApplyException {
         Grid grid = _states.get(position);
