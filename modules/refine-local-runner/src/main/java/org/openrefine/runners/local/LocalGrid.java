@@ -412,7 +412,7 @@ public class LocalGrid implements Grid {
         grid
                 .values()
                 .map(LocalGrid::serializeIndexedRow, "serialize indexed row")
-                .saveAsTextFile(gridFile.getAbsolutePath(), progressReporter);
+                .saveAsTextFile(gridFile.getAbsolutePath(), progressReporter, 0);
 
         ParsingUtilities.saveWriter.writeValue(metadataFile, getMetadata());
     }
@@ -631,7 +631,8 @@ public class LocalGrid implements Grid {
                 runner,
                 data.filter(tuple -> tuple.getValue() != null),
                 grid.hasCachedPartitionSizes() ? grid.getPartitionSizes() : null,
-                () -> false);
+                () -> false,
+                rowMapper.getMaxConcurrency());
     }
 
     protected static <T> Stream<Tuple2<Long, T>> applyRowChangeDataMapper(RowChangeDataProducer<T> rowMapper,
@@ -700,7 +701,8 @@ public class LocalGrid implements Grid {
                 runner,
                 data.filter(tuple -> tuple.getValue() != null),
                 grid.hasCachedPartitionSizes() ? grid.getPartitionSizes() : null,
-                () -> false);
+                () -> false,
+                recordMapper.getMaxConcurrency());
     }
 
     /**
