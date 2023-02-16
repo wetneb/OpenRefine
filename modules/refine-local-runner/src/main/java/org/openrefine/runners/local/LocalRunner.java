@@ -129,7 +129,7 @@ public class LocalRunner implements Runner {
                 .mapToPair(indexedData -> Tuple2.of(indexedData.getId(), indexedData.getData()), "indexed data to Tuple2");
         pll = PairPLL.assumeSorted(pll);
 
-        return new LocalChangeData<T>(this, pll, null, isComplete);
+        return new LocalChangeData<T>(this, pll, null, isComplete, 0);
     }
 
     @Override
@@ -176,8 +176,8 @@ public class LocalRunner implements Runner {
                 .parallelize(defaultParallelism, withoutNulls)
                 .mapToPair(indexedData -> Tuple2.of(indexedData.getId(), indexedData.getData()), "indexed data to Tuple2");
         pll = PairPLL.assumeSorted(pll);
-        return new LocalChangeData<T>(this, pll, null, () -> true); // no need for parent partition sizes, since pll has
-                                                                    // cached ones
+        // no need for parent partition sizes, since pll has cached ones
+        return new LocalChangeData<T>(this, pll, null, () -> true, 0);
     }
 
     @Override
