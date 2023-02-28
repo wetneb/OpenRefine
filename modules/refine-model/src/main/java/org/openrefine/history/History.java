@@ -319,7 +319,7 @@ public class History {
         // Find the last expensive operation before the current one.
         int newCachedPosition = _position;
         while (newCachedPosition > 0 &&
-                isChangeExpensive(newCachedPosition - 1) && // we found an expensive change
+                !isChangeExpensive(newCachedPosition - 1) && // we found an expensive change
                 _states.get(newCachedPosition - 1) != null // or we found a grid that is not computed yet, meaning it
                                                            // (or anything before it) is not currently needed
         ) {
