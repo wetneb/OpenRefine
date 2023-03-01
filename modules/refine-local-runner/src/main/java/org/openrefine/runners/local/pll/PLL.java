@@ -637,7 +637,7 @@ public abstract class PLL<T> {
         GZIPOutputStream gos = null;
         try {
             fos = new FileOutputStream(partFile);
-            gos = new GZIPOutputStream(fos);
+            gos = new GZIPOutputStream(fos, 512, true);
             Writer writer = new OutputStreamWriter(gos);
             Stream<T> stream = iterate(partition);
             if (progressReporter.isPresent()) {
@@ -647,6 +647,7 @@ public abstract class PLL<T> {
                 try {
                     writer.write(row.toString());
                     writer.write('\n');
+                    writer.flush();
                 } catch (IOException e) {
                     throw new UncheckedIOException(e);
                 }
