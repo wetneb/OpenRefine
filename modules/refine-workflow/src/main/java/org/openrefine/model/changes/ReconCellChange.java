@@ -12,6 +12,9 @@ import org.openrefine.model.recon.Recon;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+/**
+ * A change which updates the recon field of a single cell in the project.
+ */
 public class ReconCellChange implements Change {
 
     @JsonProperty("rowId")
@@ -38,11 +41,10 @@ public class ReconCellChange implements Change {
             throw new ColumnNotFoundException(columnName);
         }
         ColumnModel columnModel = state.getColumnModel();
-        ColumnModel newColumnModel = columnModel;
         // set judgment id on recon if changed
         Recon finalRecon = newRecon == null ? null : newRecon.withJudgmentHistoryEntry(context.getHistoryEntryId());
         return new ChangeResult(
-                state.mapRows(mapFunction(columnIndex, row, finalRecon), newColumnModel),
+                state.mapRows(mapFunction(columnIndex, row, finalRecon), columnModel),
                 GridPreservation.PRESERVES_RECORDS);
     }
 
