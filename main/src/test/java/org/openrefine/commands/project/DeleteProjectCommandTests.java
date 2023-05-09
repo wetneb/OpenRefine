@@ -5,6 +5,7 @@ import org.openrefine.ProjectManager;
 import org.openrefine.ProjectMetadata;
 import org.openrefine.commands.Command;
 import org.openrefine.commands.CommandTestBase;
+import org.openrefine.model.Grid;
 import org.openrefine.model.Project;
 import org.openrefine.util.TestUtils;
 import org.testng.Assert;
@@ -37,6 +38,7 @@ public class DeleteProjectCommandTests extends CommandTestBase {
         when(project.getId()).thenReturn(1234L);
         Instant now = Instant.now();
         when(project.getLastSave()).thenReturn(now);
+        when(project.getCurrentGrid()).thenReturn(mock(Grid.class));
         ProjectMetadata projectMetadata = mock(ProjectMetadata.class);
         when(projectMetadata.getModified()).thenReturn(now);
 
