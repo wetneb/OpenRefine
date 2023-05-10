@@ -139,7 +139,7 @@ public class TransposeColumnsIntoRowsTests extends RefineTest {
                 });
 
         Operation op = new TransposeColumnsIntoRowsOperation(
-                "num1", -1, true, false, "a", true,":");
+                "num1", -1, true, false, "a", true, ":");
         Change change = op.createChange();
 
         Grid expected = createGrid(
