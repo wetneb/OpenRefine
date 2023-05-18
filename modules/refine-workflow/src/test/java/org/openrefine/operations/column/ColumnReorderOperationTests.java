@@ -107,8 +107,8 @@ public class ColumnReorderOperationTests extends RefineTest {
 
     @Test(expectedExceptions = Change.DoesNotApplyException.class)
     public void testDoesNotExist() throws DoesNotApplyException, ParsingException {
-        Change SUT = new ColumnReorderOperation(Arrays.asList("does_not_exist", "bar")).createChange();
-        SUT.apply(initialState, mock(ChangeContext.class));
+        Operation operation = new ColumnReorderOperation(Arrays.asList("does_not_exist", "bar"));
+        operation.apply(initialState, mock(ChangeContext.class));
     }
 
 }

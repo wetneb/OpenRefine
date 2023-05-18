@@ -38,10 +38,12 @@ import static org.mockito.Mockito.mock;
 import java.io.Serializable;
 
 import org.openrefine.RefineTest;
+import org.openrefine.expr.ParsingException;
 import org.openrefine.model.Grid;
 import org.openrefine.model.changes.Change;
 import org.openrefine.model.changes.Change.DoesNotApplyException;
 import org.openrefine.model.changes.ChangeContext;
+import org.openrefine.operations.Operation;
 import org.openrefine.operations.OperationRegistry;
 import org.openrefine.util.ParsingUtilities;
 import org.openrefine.util.TestUtils;
@@ -83,9 +85,9 @@ public class TransposeRowsIntoColumnsTests extends RefineTest {
     }
 
     @Test(expectedExceptions = DoesNotApplyException.class)
-    public void testDoesNotApply() throws DoesNotApplyException {
-        Change change = new TransposeRowsIntoColumnsOperation("d", 2).createChange();
-        change.apply(initial, mock(ChangeContext.class));
+    public void testDoesNotApply() throws DoesNotApplyException, ParsingException {
+        Operation operation = new TransposeRowsIntoColumnsOperation("d", 2);
+        operation.apply(initial, mock(ChangeContext.class));
     }
 
     @Test

@@ -46,6 +46,7 @@ import org.openrefine.model.IndexedRow;
 import org.openrefine.model.changes.Change;
 import org.openrefine.model.changes.Change.DoesNotApplyException;
 import org.openrefine.model.changes.ChangeContext;
+import org.openrefine.operations.Operation;
 import org.openrefine.operations.OperationRegistry;
 import org.openrefine.util.ParsingUtilities;
 import org.openrefine.util.TestUtils;
@@ -114,7 +115,7 @@ public class ColumnMoveOperationTests extends RefineTest {
 
     @Test
     public void testBackward() throws DoesNotApplyException, ParsingException {
-        Change SUT = new ColumnMoveOperation("hello", 1).createChange();
+        ColumnMoveOperation SUT = new ColumnMoveOperation("hello", 1);
         Change.ChangeResult changeResult = SUT.apply(initialState, mock(ChangeContext.class));
         Assert.assertEquals(changeResult.getGridPreservation(), GridPreservation.PRESERVES_RECORDS);
         Grid applied = changeResult.getGrid();
@@ -127,7 +128,7 @@ public class ColumnMoveOperationTests extends RefineTest {
 
     @Test(expectedExceptions = DoesNotApplyException.class)
     public void testColumnDoesNotExist() throws DoesNotApplyException, ParsingException {
-        Change SUT = new ColumnMoveOperation("not_found", 1).createChange();
+        Operation SUT = new ColumnMoveOperation("not_found", 1);
         SUT.apply(initialState, mock(ChangeContext.class));
     }
 }

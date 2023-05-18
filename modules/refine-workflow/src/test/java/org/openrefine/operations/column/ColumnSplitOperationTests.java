@@ -43,6 +43,7 @@ import org.openrefine.browsing.Engine;
 import org.openrefine.browsing.EngineConfig;
 import org.openrefine.expr.EvalError;
 import org.openrefine.expr.MetaParser;
+import org.openrefine.expr.ParsingException;
 import org.openrefine.grel.Parser;
 import org.openrefine.history.GridPreservation;
 import org.openrefine.model.Grid;
@@ -51,6 +52,7 @@ import org.openrefine.model.RowFilter;
 import org.openrefine.model.changes.Change;
 import org.openrefine.model.changes.Change.DoesNotApplyException;
 import org.openrefine.model.changes.ChangeContext;
+import org.openrefine.operations.Operation;
 import org.openrefine.operations.OperationRegistry;
 import org.openrefine.operations.column.ColumnSplitOperation.ColumnSplitChange;
 import org.openrefine.util.ParsingUtilities;
@@ -134,9 +136,9 @@ public class ColumnSplitOperationTests extends RefineTest {
     }
 
     @Test(expectedExceptions = Change.DoesNotApplyException.class)
-    public void testDoesNotExist() throws DoesNotApplyException {
-        Change SUT = new ColumnSplitOperation(EngineConfig.ALL_ROWS, "does_not_exist", false, false, new int[] { 1, 2 }).createChange();
-        SUT.apply(initialState, mock(ChangeContext.class));
+    public void testDoesNotExist() throws DoesNotApplyException, ParsingException {
+        Operation operation = new ColumnSplitOperation(EngineConfig.ALL_ROWS, "does_not_exist", false, false, new int[] { 1, 2 });
+        operation.apply(initialState, mock(ChangeContext.class));
     }
 
     @Test

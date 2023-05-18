@@ -133,11 +133,10 @@ public class ReconEditOperationTests extends RefineTest {
     public void testClear() throws DoesNotApplyException, ParsingException {
         Operation operation = new ReconEditOperation(0L, "bar", null, null, null, null, "b");
         Assert.assertEquals(operation.getDescription(), "Clear recon data for single cell on row 1, column bar, containing \"b\"");
-        Change change = operation.createChange();
 
         ChangeContext context = mock(ChangeContext.class);
         when(context.getHistoryEntryId()).thenReturn(6789L);
-        Change.ChangeResult changeResult = change.apply(initialGrid, context);
+        Change.ChangeResult changeResult = operation.apply(initialGrid, context);
         Grid newGrid = changeResult.getGrid();
 
         Assert.assertEquals(changeResult.getGridPreservation(), GridPreservation.PRESERVES_RECORDS);

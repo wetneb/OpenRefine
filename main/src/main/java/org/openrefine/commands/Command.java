@@ -274,6 +274,15 @@ public abstract class Command {
             historyEntry = entry;
         }
     }
+    
+    static protected void addHistoryEntryAndRespond(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            Project project,
+            String description,
+            Operation operation) throws Exception {
+    	addHistoryEntryAndRespond(request, response, project, description, operation, operation.createChange());
+    }
 
     static protected void addHistoryEntryAndRespond(
             HttpServletRequest request,

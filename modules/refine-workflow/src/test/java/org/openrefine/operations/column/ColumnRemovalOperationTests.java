@@ -47,6 +47,7 @@ import org.openrefine.model.IndexedRow;
 import org.openrefine.model.changes.Change;
 import org.openrefine.model.changes.Change.DoesNotApplyException;
 import org.openrefine.model.changes.ChangeContext;
+import org.openrefine.operations.Operation;
 import org.openrefine.operations.OperationRegistry;
 import org.openrefine.util.ParsingUtilities;
 import org.openrefine.util.TestUtils;
@@ -127,7 +128,7 @@ public class ColumnRemovalOperationTests extends RefineTest {
 
     @Test(expectedExceptions = DoesNotApplyException.class)
     public void testColumnNotFound() throws DoesNotApplyException, ParsingException {
-        Change SUT = new ColumnRemovalOperation(Collections.singletonList("not_found")).createChange();
+        Operation SUT = new ColumnRemovalOperation(Collections.singletonList("not_found"));
         SUT.apply(initialState, mock(ChangeContext.class));
     }
 }
