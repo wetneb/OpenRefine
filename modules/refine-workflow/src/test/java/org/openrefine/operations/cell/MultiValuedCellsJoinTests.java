@@ -98,14 +98,14 @@ public class MultiValuedCellsJoinTests extends RefineTest {
 
     @Test(expectedExceptions = DoesNotApplyException.class)
     public void testInvalidColumn() throws DoesNotApplyException, ParsingException {
-        Change SUT = new MultiValuedCellJoinOperation("does_not_exist", "key", ",").createChange();
+        Operation SUT = new MultiValuedCellJoinOperation("does_not_exist", "key", ",");
         SUT.apply(initialState, mock(ChangeContext.class));
     }
 
     @Test
     public void testJoin() throws DoesNotApplyException, ParsingException {
-        Change SUT = new MultiValuedCellJoinOperation("foo", "key", ",").createChange();
-        Change.ChangeResult changeResult = SUT.apply(initialState, mock(ChangeContext.class));
+        Operation operation = new MultiValuedCellJoinOperation("foo", "key", ",");
+        Change.ChangeResult changeResult = operation.apply(initialState, mock(ChangeContext.class));
         Assert.assertEquals(changeResult.getGridPreservation(), GridPreservation.NO_ROW_PRESERVATION);
         Grid state = changeResult.getGrid();
 

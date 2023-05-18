@@ -246,7 +246,7 @@ public class ColumnAdditionOperationTests extends RefineTest {
         long historyEntryId = 138908L;
         project.getHistory().getChangeDataStore().store(
                 incompleteChangeData, new ChangeDataId(historyEntryId, "eval"), serializer, Optional.empty());
-        project.getHistory().addEntry(historyEntryId, "operation", operation, operation.createChange());
+        project.getHistory().addEntry(historyEntryId, operation);
 
         Grid expected = createGrid(
                 new String[] { "foo", "bar", "newcolumn", "hello" },

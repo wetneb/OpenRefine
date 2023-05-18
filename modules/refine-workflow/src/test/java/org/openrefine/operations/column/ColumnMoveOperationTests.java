@@ -89,8 +89,8 @@ public class ColumnMoveOperationTests extends RefineTest {
 
     @Test
     public void testForward() throws DoesNotApplyException, ParsingException {
-        Change SUT = new ColumnMoveOperation("foo", 1).createChange();
-        Change.ChangeResult changeResult = SUT.apply(initialState, mock(ChangeContext.class));
+        Operation operation = new ColumnMoveOperation("foo", 1);
+        Change.ChangeResult changeResult = operation.apply(initialState, mock(ChangeContext.class));
         Assert.assertEquals(changeResult.getGridPreservation(), GridPreservation.PRESERVES_ROWS);
         Grid applied = changeResult.getGrid();
         List<IndexedRow> rows = applied.collectRows();
@@ -102,7 +102,7 @@ public class ColumnMoveOperationTests extends RefineTest {
 
     @Test
     public void testSamePosition() throws DoesNotApplyException, ParsingException {
-        Change SUT = new ColumnMoveOperation("bar", 1).createChange();
+        Operation SUT = new ColumnMoveOperation("bar", 1);
         Change.ChangeResult changeResult = SUT.apply(initialState, mock(ChangeContext.class));
         Assert.assertEquals(changeResult.getGridPreservation(), GridPreservation.PRESERVES_RECORDS);
         Grid applied = changeResult.getGrid();

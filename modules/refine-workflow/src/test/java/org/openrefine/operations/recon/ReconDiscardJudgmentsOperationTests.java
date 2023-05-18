@@ -88,13 +88,13 @@ public class ReconDiscardJudgmentsOperationTests extends RefineTest {
     }
 
     @Test
-    public void testReconDiscardJudgmentsOperation() throws DoesNotApplyException, ModelException {
-        Change change = new ReconDiscardJudgmentsOperation(EngineConfig.ALL_ROWS, "bar", false).createChange();
+    public void testReconDiscardJudgmentsOperation() throws DoesNotApplyException, ModelException, ParsingException {
+        Operation operation = new ReconDiscardJudgmentsOperation(EngineConfig.ALL_ROWS, "bar", false);
 
         ChangeContext context = mock(ChangeContext.class);
         when(context.getHistoryEntryId()).thenReturn(2891L);
 
-        Change.ChangeResult changeResult = change.apply(initialState, context);
+        Change.ChangeResult changeResult = operation.apply(initialState, context);
         Assert.assertEquals(changeResult.getGridPreservation(), GridPreservation.PRESERVES_RECORDS);
         Grid applied = changeResult.getGrid();
 

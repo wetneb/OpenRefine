@@ -101,9 +101,9 @@ public class KeyValueColumnizeTests extends RefineTest {
                         { "3", "b", "5" },
                         { "3", "d", "3" } });
 
-        Change change = new KeyValueColumnizeOperation(
-                "Cat", "Val", null).createChange();
-        Change.ChangeResult changeResult = change.apply(grid, mock(ChangeContext.class));
+        Operation operation = new KeyValueColumnizeOperation(
+                "Cat", "Val", null);
+        Change.ChangeResult changeResult = operation.apply(grid, mock(ChangeContext.class));
         Assert.assertEquals(changeResult.getGridPreservation(), GridPreservation.NO_ROW_PRESERVATION);
 
         Grid applied = changeResult.getGrid();
@@ -154,11 +154,11 @@ public class KeyValueColumnizeTests extends RefineTest {
                         { "fruit", "banana" },
                         { "price", "3.1" } });
 
-        Change change = new KeyValueColumnizeOperation(
+        Operation operation = new KeyValueColumnizeOperation(
                 "Key",
                 "Value",
-                null).createChange();
-        Change.ChangeResult changeResult = change.apply(grid, mock(ChangeContext.class));
+                null);
+        Change.ChangeResult changeResult = operation.apply(grid, mock(ChangeContext.class));
         Assert.assertEquals(changeResult.getGridPreservation(), GridPreservation.NO_ROW_PRESERVATION);
 
         Grid applied = changeResult.getGrid();
@@ -195,11 +195,11 @@ public class KeyValueColumnizeTests extends RefineTest {
                         { "price", "3.1", "legislation" }
                 });
 
-        Change change = new KeyValueColumnizeOperation(
+        Operation operation = new KeyValueColumnizeOperation(
                 "Key",
                 "Value",
-                "Notes").createChange();
-        Change.ChangeResult changeResult = change.apply(grid, mock(ChangeContext.class));
+                "Notes");
+        Change.ChangeResult changeResult = operation.apply(grid, mock(ChangeContext.class));
         Assert.assertEquals(changeResult.getGridPreservation(), GridPreservation.NO_ROW_PRESERVATION);
 
         Grid applied = changeResult.getGrid();
@@ -238,11 +238,11 @@ public class KeyValueColumnizeTests extends RefineTest {
                         { "price", "3.1", "56" }
                 });
 
-        Change change = new KeyValueColumnizeOperation(
+        Operation operation = new KeyValueColumnizeOperation(
                 "Key",
                 "Value",
-                null).createChange();
-        Change.ChangeResult changeResult = change.apply(grid, mock(ChangeContext.class));
+                null);
+        Change.ChangeResult changeResult = operation.apply(grid, mock(ChangeContext.class));
         Assert.assertEquals(changeResult.getGridPreservation(), GridPreservation.NO_ROW_PRESERVATION);
 
         Grid applied = changeResult.getGrid();

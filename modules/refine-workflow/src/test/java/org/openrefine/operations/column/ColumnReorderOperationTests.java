@@ -88,7 +88,7 @@ public class ColumnReorderOperationTests extends RefineTest {
 
     @Test
     public void testReorder() throws DoesNotApplyException, ParsingException {
-        Change SUT = new ColumnReorderOperation(Arrays.asList("hello", "bar")).createChange();
+        Operation SUT = new ColumnReorderOperation(Arrays.asList("hello", "bar"));
         Change.ChangeResult changeResult = SUT.apply(initialState, mock(ChangeContext.class));
         Assert.assertEquals(changeResult.getGridPreservation(), GridPreservation.PRESERVES_ROWS);
         Grid applied = changeResult.getGrid();

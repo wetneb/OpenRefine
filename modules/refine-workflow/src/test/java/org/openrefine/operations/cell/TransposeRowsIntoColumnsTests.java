@@ -91,8 +91,8 @@ public class TransposeRowsIntoColumnsTests extends RefineTest {
     }
 
     @Test
-    public void testTransposeRowsIntoColumns() throws DoesNotApplyException {
-        Change change = new TransposeRowsIntoColumnsOperation("b", 2).createChange();
+    public void testTransposeRowsIntoColumns() throws DoesNotApplyException, ParsingException {
+        Operation operation = new TransposeRowsIntoColumnsOperation("b", 2);
 
         Grid expected = createGrid(
                 new String[] { "a", "b 1", "b 2", "c" },
@@ -103,11 +103,11 @@ public class TransposeRowsIntoColumnsTests extends RefineTest {
                         { "10", null, null, "12" }
                 });
 
-        assertGridEquals(change.apply(initial, mock(ChangeContext.class)).getGrid(), expected);
+        assertGridEquals(operation.apply(initial, mock(ChangeContext.class)).getGrid(), expected);
     }
 
     @Test
-    public void testTransposeRecordsIntoRows() throws DoesNotApplyException {
+    public void testTransposeRecordsIntoRows() throws DoesNotApplyException, ParsingException {
         Grid initialRecords = createGrid(
                 new String[] { "a", "b", "c" },
                 new Serializable[][] {
@@ -117,7 +117,7 @@ public class TransposeRowsIntoColumnsTests extends RefineTest {
                         { null, "11", null }
                 });
 
-        Change change = new TransposeRowsIntoColumnsOperation("b", 2).createChange();
+        Operation operation = new TransposeRowsIntoColumnsOperation("b", 2);
 
         Grid expected = createGrid(
                 new String[] { "a", "b 1", "b 2", "c" },
@@ -126,7 +126,7 @@ public class TransposeRowsIntoColumnsTests extends RefineTest {
                         { "7", "8", "11", "9" }
                 });
 
-        assertGridEquals(change.apply(initialRecords, mock(ChangeContext.class)).getGrid(), expected);
+        assertGridEquals(operation.apply(initialRecords, mock(ChangeContext.class)).getGrid(), expected);
     }
 
 }

@@ -279,9 +279,8 @@ public abstract class Command {
             HttpServletRequest request,
             HttpServletResponse response,
             Project project,
-            String description,
             Operation operation) throws Exception {
-    	addHistoryEntryAndRespond(request, response, project, description, operation, operation.createChange());
+    	addHistoryEntryAndRespond(request, response, project, description, operation.getDescription(), operation.createChange());
     }
 
     static protected void addHistoryEntryAndRespond(

@@ -102,7 +102,7 @@ public class ColumnRemovalOperationTests extends RefineTest {
 
     @Test
     public void testRemoval() throws DoesNotApplyException, ParsingException {
-        Change SUT = new ColumnRemovalOperation(Collections.singletonList("foo")).createChange();
+        Operation SUT = new ColumnRemovalOperation(Collections.singletonList("foo"));
         Change.ChangeResult changeResult = SUT.apply(initialState, mock(ChangeContext.class));
         Assert.assertEquals(changeResult.getGridPreservation(), GridPreservation.PRESERVES_ROWS);
         Grid applied = changeResult.getGrid();
@@ -114,8 +114,8 @@ public class ColumnRemovalOperationTests extends RefineTest {
     }
 
     @Test
-    public void testMultipleColumns() throws DoesNotApplyException {
-        Change SUT = new ColumnRemovalOperation(Arrays.asList("foo", "bar")).createChange();
+    public void testMultipleColumns() throws DoesNotApplyException, ParsingException {
+        Operation SUT = new ColumnRemovalOperation(Arrays.asList("foo", "bar"));
         Change.ChangeResult changeResult = SUT.apply(initialState, mock(ChangeContext.class));
         Grid applied = changeResult.getGrid();
         Assert.assertEquals(changeResult.getGridPreservation(), GridPreservation.PRESERVES_ROWS);
