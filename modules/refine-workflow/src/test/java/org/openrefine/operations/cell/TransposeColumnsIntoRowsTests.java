@@ -8,8 +8,6 @@ import java.io.Serializable;
 import org.openrefine.RefineTest;
 import org.openrefine.expr.ParsingException;
 import org.openrefine.model.Grid;
-import org.openrefine.model.changes.Change;
-import org.openrefine.model.changes.Change.DoesNotApplyException;
 import org.openrefine.model.changes.ChangeContext;
 import org.openrefine.operations.Operation;
 import org.openrefine.operations.OperationRegistry;
@@ -52,7 +50,7 @@ public class TransposeColumnsIntoRowsTests extends RefineTest {
      * rows into columns operation.
      */
     @Test
-    public void testTransposeBackToRecords() throws DoesNotApplyException, ParsingException {
+    public void testTransposeBackToRecords() throws Operation.DoesNotApplyException, ParsingException {
         Grid initialRecords = createGrid(
                 new String[] { "a", "b 1", "b 2", "c" },
                 new Serializable[][] {
@@ -76,7 +74,7 @@ public class TransposeColumnsIntoRowsTests extends RefineTest {
     }
 
     @Test
-    public void testTransposeBackToRecordsNoLimit() throws DoesNotApplyException, ParsingException {
+    public void testTransposeBackToRecordsNoLimit() throws Operation.DoesNotApplyException, ParsingException {
         Grid initialRecords = createGrid(
                 new String[] { "a", "b 1", "b 2", "c" },
                 new Serializable[][] {
@@ -102,7 +100,7 @@ public class TransposeColumnsIntoRowsTests extends RefineTest {
     }
 
     @Test
-    public void testTransposeBackToRecordsKeyValue() throws DoesNotApplyException, ParsingException {
+    public void testTransposeBackToRecordsKeyValue() throws Operation.DoesNotApplyException, ParsingException {
         Grid initialRecords = createGrid(
                 new String[] { "a", "b 1", "b 2", "c" },
                 new Serializable[][] {
@@ -126,7 +124,7 @@ public class TransposeColumnsIntoRowsTests extends RefineTest {
     }
 
     @Test
-    public void testBlankValues() throws DoesNotApplyException, ParsingException {
+    public void testBlankValues() throws Operation.DoesNotApplyException, ParsingException {
         Grid initialRecords = createGrid(
                 new String[] { "num1", "num2" },
                 new Serializable[][] {
@@ -137,7 +135,6 @@ public class TransposeColumnsIntoRowsTests extends RefineTest {
 
         Operation op = new TransposeColumnsIntoRowsOperation(
                 "num1", -1, true, false, "a", true, ":");
-        Change change = op.createChange();
 
         Grid expected = createGrid(
                 new String[] { "a" },
@@ -149,6 +146,6 @@ public class TransposeColumnsIntoRowsTests extends RefineTest {
                         { "num2:9" }
                 });
 
-        assertGridEquals(change.apply(initialRecords, mock(ChangeContext.class)).getGrid(), expected);
+        assertGridEquals(op.apply(initialRecords, mock(ChangeContext.class)).getGrid(), expected);
     }
 }
