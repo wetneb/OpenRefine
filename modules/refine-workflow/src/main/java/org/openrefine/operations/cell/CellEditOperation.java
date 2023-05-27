@@ -60,7 +60,14 @@ public class CellEditOperation implements Operation {
         return new Operation.ChangeResult(
                 result,
                 recordsPreserved ? GridPreservation.PRESERVES_RECORDS : GridPreservation.PRESERVES_ROWS,
-                new TransformationSlice(columnName, Collections.emptySet()));
+                new TransformationSlice(columnName, Collections.emptySet())) {
+            
+            // additionally pass the resulting cell to the frontend so that it can update in place without refreshing the whole grid
+            @JsonProperty("cell")
+            public Cell getCell() {
+                return result.getRow(row).getCell(index);
+            }
+        };
     }
 
     static protected RowMapper mapFunction(int cellIndex, long rowId, Serializable newCellValue, int keyColumnIndex) {
@@ -126,4 +133,5 @@ public class CellEditOperation implements Operation {
         return type;
     }
 
+    
 }

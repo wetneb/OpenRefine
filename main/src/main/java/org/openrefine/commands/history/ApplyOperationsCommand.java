@@ -102,7 +102,6 @@ public class ApplyOperationsCommand extends Command {
         if (operation == null) {
             return new OperationApplicationResult("Cannot apply null operation");
         } else if (operation instanceof UnknownOperation) {
-            UnknownOperation unknownOperation = (UnknownOperation) operation;
             return new OperationApplicationResult("Unknown operation " + operation.getOperationId());
         }
 

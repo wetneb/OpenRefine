@@ -294,6 +294,11 @@ public class History {
         updateCachedPosition();
         return entry;
     }
+    
+    public static class OperationResult {
+        HistoryEntry historyEntry;
+        Operation.ChangeResult changeResult;
+    }
 
     protected void cacheIntermediateGridOnDisk(int position) throws Operation.DoesNotApplyException, IOException {
         Validate.isTrue(position > 0);
