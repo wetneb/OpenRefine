@@ -289,6 +289,9 @@ public abstract class ExpressionBasedOperation extends RowMapOperation {
                         }
                     }
                 }
+                if (newCell == null) {
+                    newCell = Cell.NULL;
+                }
                 return newCell;
             }
 
