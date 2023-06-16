@@ -49,6 +49,7 @@ import org.openrefine.expr.ParsingException;
 import org.openrefine.model.ColumnMetadata;
 import org.openrefine.model.ColumnModel;
 import org.openrefine.model.Grid;
+import org.openrefine.model.changes.ChangeDataId;
 import org.openrefine.model.changes.ChangeDataStore;
 import org.openrefine.model.changes.GridCache;
 import org.openrefine.operations.ChangeResult;
@@ -142,10 +143,13 @@ public class HistoryTests {
         when(secondEntry.getGridPreservation()).thenReturn(GridPreservation.PRESERVES_ROWS);
         when(newEntry.getGridPreservation()).thenReturn(GridPreservation.NO_ROW_PRESERVATION);
 
+        when(dataStore.getChangeDataIds(firstChangeId))
+                .thenReturn(Collections.singletonList(new ChangeDataId(firstChangeId, "data")));
+
         entries = Arrays.asList(firstEntry, secondEntry);
     }
 
-    @Test(enabled = false) // TODO reenable after restoring caching
+    @Test
     public void testConstruct() throws OperationException, ParsingException {
         when(gridStore.listCachedGridIds()).thenReturn(Collections.emptySet());
 

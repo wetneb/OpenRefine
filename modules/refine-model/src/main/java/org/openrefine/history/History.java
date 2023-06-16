@@ -368,8 +368,9 @@ public class History {
      * Determines if the change at the given index was expensive to compute or not.
      */
     private boolean isChangeExpensive(int index) {
-        // for now, we are disabling caching by considering all changes inexpensive. TODO reintroduce it
-        return false;
+        long historyEntryId = _entries.get(index).getId();
+        // any change that relies on externally stored data is judged expensive
+        return !_dataStore.getChangeDataIds(historyEntryId).isEmpty();
     }
 
     public void refreshCurrentGrid() {
