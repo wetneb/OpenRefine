@@ -43,11 +43,16 @@ import org.apache.commons.lang3.StringUtils;
 import org.openrefine.RefineServlet;
 import org.openrefine.browsing.Engine;
 import org.openrefine.browsing.EngineConfig;
+import org.openrefine.browsing.facets.FacetConfig;
+import org.openrefine.browsing.facets.ListFacet;
+import org.openrefine.expr.EvalError;
 import org.openrefine.history.GridPreservation;
 import org.openrefine.model.Cell;
+import org.openrefine.model.ColumnMetadata;
 import org.openrefine.model.ColumnModel;
 import org.openrefine.model.Grid;
 import org.openrefine.model.IndexedRow;
+import org.openrefine.model.ModelException;
 import org.openrefine.model.Row;
 import org.openrefine.model.changes.ChangeContext;
 import org.openrefine.model.changes.ChangeData;
@@ -106,6 +111,9 @@ public class PerformWikibaseEditsOperation extends EngineDependentOperation {
     @JsonProperty("tag")
     private String tagTemplate;
 
+    @JsonProperty("resultsColumnName")
+    private String resultsColumnName;
+
     @JsonCreator
     public PerformWikibaseEditsOperation(
             @JsonProperty("engineConfig") EngineConfig engineConfig,
@@ -114,7 +122,8 @@ public class PerformWikibaseEditsOperation extends EngineDependentOperation {
             @JsonProperty("batchSize") Integer batchSize,
             @JsonProperty("editGroupsUrlSchema") String editGroupsUrlSchema,
             @JsonProperty("maxEditsPerMinute") Integer maxEditsPerMinute,
-            @JsonProperty("tag") String tag) {
+            @JsonProperty("tag") String tag,
+            @JsonProperty("resultsColumnName") String resultsColumnName) {
         super(engineConfig);
         Validate.notNull(summary, "An edit summary must be provided.");
         Validate.notEmpty(summary, "An edit summary must be provided.");
@@ -133,6 +142,8 @@ public class PerformWikibaseEditsOperation extends EngineDependentOperation {
         this.tagTemplate = tag == null ? Manifest.DEFAULT_TAG_TEMPLATE : tag;
         // a fallback to Wikidata for backwards compatibility is done later on
         this.editGroupsUrlSchema = editGroupsUrlSchema;
+        // if null, no column is created for error reporting
+        this.resultsColumnName = resultsColumnName;
     }
 
     @Override
@@ -205,9 +216,34 @@ public class PerformWikibaseEditsOperation extends EngineDependentOperation {
         } catch (IOException e) {
             throw new IOOperationException(e);
         }
-        NewReconRowJoiner joiner = new NewReconRowJoiner();
-        Grid joined = projectState.join(changeData, joiner, projectState.getColumnModel());
-        return new ChangeResult(joined, GridPreservation.PRESERVES_RECORDS, null);
+
+        ColumnModel columnModel = projectState.getColumnModel();
+        int resultsColumnIndex = -1;
+        boolean insert = false;
+        ColumnModel newColumnModel = columnModel;
+        List<FacetConfig> createdFacets = new ArrayList<>();
+        if (resultsColumnName != null) {
+            resultsColumnIndex = columnModel.getColumnIndexByName(resultsColumnName);
+            if (resultsColumnIndex == -1) {
+                insert = true;
+                resultsColumnIndex = columnModel.getColumns().size();
+                try {
+                    newColumnModel = columnModel.insertColumn(resultsColumnIndex, new ColumnMetadata(resultsColumnName));
+                } catch (ModelException e) {
+                    // cannot happen: we checked earlier that the column does not exist.
+                }
+            }
+            // TODO localize
+            createdFacets.add(new ListFacet.ListFacetConfig(
+                    "Wikibase editing status",
+                    "grel:if(isError(value), 'failed edit', 'successful edit')",
+                    resultsColumnName));
+        }
+        String baseUrl = schema.getMediaWikiApiEndpoint();
+        baseUrl = baseUrl.substring(0, baseUrl.length() - "w/api.php".length());
+        NewReconRowJoiner joiner = new NewReconRowJoiner(resultsColumnIndex, insert, baseUrl);
+        Grid joined = projectState.join(changeData, joiner, newColumnModel);
+        return new ChangeResult(joined, GridPreservation.PRESERVES_RECORDS, createdFacets, null);
     }
 
     @Override
@@ -219,12 +255,15 @@ public class PerformWikibaseEditsOperation extends EngineDependentOperation {
 
         private final Map<Long, String> newEntities;
         private final List<String> errors;
+        private final List<Long> revisionIds;
 
         protected RowEditingResults(
                 @JsonProperty("newEntities") Map<Long, String> newEntities,
-                @JsonProperty("errors") List<String> errors) {
+                @JsonProperty("errors") List<String> errors,
+                @JsonProperty("revisionIds") List<Long> revisionIds) {
             this.newEntities = newEntities;
             this.errors = errors;
+            this.revisionIds = revisionIds;
         }
 
         @JsonProperty("newEntities")
@@ -235,6 +274,11 @@ public class PerformWikibaseEditsOperation extends EngineDependentOperation {
         @JsonProperty("errors")
         public List<String> getErrors() {
             return errors;
+        }
+
+        @JsonProperty("revisionIds")
+        public List<Long> getRevisionIds() {
+            return revisionIds;
         }
     }
 
@@ -278,17 +322,25 @@ public class PerformWikibaseEditsOperation extends EngineDependentOperation {
             EditBatchProcessor processor = new EditBatchProcessor(fetcher, editor, connection, edits, library, summary,
                     maxLag, tags, batchSize, maxEditsPerMinute);
             Map<Long, List<String>> rowEditingErrors = new HashMap<>();
+            Map<Long, List<Long>> rowRevisionIds = new HashMap<>();
             while (processor.remainingEdits() > 0) {
                 try {
                     EditBatchProcessor.EditResult editResult = processor.performEdit();
+                    long firstLine = editResult.getCorrespondingRowIds().stream().min(Comparator.naturalOrder()).get();
                     if (editResult.getErrorCode() != null || editResult.getErrorMessage() != null) {
-                        long firstLine = editResult.getCorrespondingRowIds().stream().min(Comparator.naturalOrder()).get();
                         List<String> logLine = rowEditingErrors.get(firstLine);
                         if (logLine == null) {
                             logLine = new ArrayList<>();
                             rowEditingErrors.put(firstLine, logLine);
                         }
                         logLine.add(String.format("[%s] %s", editResult.getErrorCode(), editResult.getErrorMessage()));
+                    } else if (editResult.getLastRevisionId().isPresent()) {
+                        List<Long> revisions = rowRevisionIds.get(firstLine);
+                        if (revisions == null) {
+                            revisions = new ArrayList<>();
+                            rowRevisionIds.put(firstLine, revisions);
+                        }
+                        revisions.add(editResult.getLastRevisionId().getAsLong());
                     }
                 } catch (InterruptedException e) {
                     break;
@@ -308,7 +360,8 @@ public class PerformWikibaseEditsOperation extends EngineDependentOperation {
                             }
                         });
                 List<String> errors = rowEditingErrors.getOrDefault(indexedRow.getIndex(), Collections.emptyList());
-                rowEditingResults.add(new RowEditingResults(newEntityIds, errors));
+                List<Long> revisionIds = rowRevisionIds.getOrDefault(indexedRow.getIndex(), Collections.emptyList());
+                rowEditingResults.add(new RowEditingResults(newEntityIds, errors, revisionIds));
             }
             return rowEditingResults;
         }
@@ -327,6 +380,24 @@ public class PerformWikibaseEditsOperation extends EngineDependentOperation {
     protected static class NewReconRowJoiner implements RowChangeDataJoiner<RowEditingResults> {
 
         private static final long serialVersionUID = -1042195464154951531L;
+
+        private final int resultsColumnIndex;
+        private final boolean insert;
+        private final String wikiBaseUrl;
+
+        /**
+         * @param resultsColumnIndex
+         *            the index of the column where to insert editing results
+         * @param insert
+         *            whether the column should be created or if it is already existing
+         * @param wikiBaseUrl
+         *            the baseUrl of the wiki, such as "https://www.wikidata.org/"
+         */
+        public NewReconRowJoiner(int resultsColumnIndex, boolean insert, String wikiBaseUrl) {
+            this.resultsColumnIndex = resultsColumnIndex;
+            this.insert = insert;
+            this.wikiBaseUrl = wikiBaseUrl;
+        }
 
         @Override
         public Row call(Row row, IndexedData<RowEditingResults> indexedData) {
@@ -359,7 +430,31 @@ public class PerformWikibaseEditsOperation extends EngineDependentOperation {
                         }
                     })
                     .collect(Collectors.toList());
-            return new Row(newCells, row.flagged, row.starred);
+
+            Row updatedRow = new Row(newCells, row.flagged, row.starred);
+            if (resultsColumnIndex != -1) {
+                Cell resultsCell = null;
+                if (indexedData.isPending()) {
+                    resultsCell = Cell.PENDING_NULL;
+                } else if (!changeData.getErrors().isEmpty()) {
+                    resultsCell = new Cell(new EvalError(String.join("; ", changeData.getErrors())), null);
+                } else if (!changeData.getRevisionIds().isEmpty()) {
+                    resultsCell = new Cell(revisionIdsToUrl(changeData.getRevisionIds()), null);
+                }
+                if (insert) {
+                    updatedRow = updatedRow.insertCell(resultsColumnIndex, resultsCell);
+                } else {
+                    updatedRow = updatedRow.withCell(resultsColumnIndex, resultsCell);
+                }
+            }
+            return updatedRow;
+        }
+
+        String revisionIdsToUrl(List<Long> revisionIds) {
+            List<String> urls = revisionIds.stream()
+                    .map(r -> wikiBaseUrl + "w/index.php?diff=prev&oldid=" + r)
+                    .collect(Collectors.toList());
+            return String.join(" ", urls);
         }
 
         @Override
