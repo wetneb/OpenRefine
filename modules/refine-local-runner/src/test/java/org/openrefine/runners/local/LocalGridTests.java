@@ -1,12 +1,9 @@
 
 package org.openrefine.runners.local;
 
-import com.google.common.util.concurrent.MoreExecutors;
 import org.openrefine.model.*;
 import org.openrefine.model.changes.IndexedData;
 import org.openrefine.model.changes.RowChangeDataProducer;
-import org.openrefine.runners.local.pll.PLL;
-import org.openrefine.runners.local.pll.PLLContext;
 import org.openrefine.runners.local.pll.Tuple2;
 import org.openrefine.util.CloseableIterator;
 import org.testng.Assert;
@@ -15,9 +12,7 @@ import org.testng.annotations.Test;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import static org.openrefine.runners.local.LocalGrid.applyRowChangeDataMapperWithIncompleteData;
 
@@ -33,10 +28,11 @@ public class LocalGridTests {
         RowChangeDataProducer<String> rowMapper = new RowChangeDataProducer<String>() {
 
             @Override
-            public String call(long rowId, Row row) {
+            public String call(long rowId, Row row, ColumnModel columnModel) {
                 return null;
             }
         };
+        ColumnModel columnModel = new ColumnModel(Collections.singletonList(new ColumnMetadata("column")));
         List<Tuple2<Long, Tuple2<IndexedRow, IndexedData<String>>>> batch = Arrays.asList(
                 Tuple2.of(3L, Tuple2.of(new IndexedRow(3L, new Row(Collections.singletonList(null))), new IndexedData<>(3L, "foo"))),
                 Tuple2.of(4L, Tuple2.of(new IndexedRow(4L, new Row(Collections.singletonList(null))), new IndexedData<>(4L, null))));
@@ -44,7 +40,7 @@ public class LocalGridTests {
                 Tuple2.of(3L, new IndexedData<>(3L, "foo")),
                 Tuple2.of(4L, new IndexedData<>(4L, null)));
 
-        CloseableIterator<Tuple2<Long, IndexedData<String>>> result = applyRowChangeDataMapperWithIncompleteData(rowMapper, batch);
+        CloseableIterator<Tuple2<Long, IndexedData<String>>> result = applyRowChangeDataMapperWithIncompleteData(rowMapper, batch, columnModel);
 
         List<Tuple2<Long, IndexedData<String>>> collected = result.collect(Collectors.toList());
         Assert.assertEquals(collected, expected);

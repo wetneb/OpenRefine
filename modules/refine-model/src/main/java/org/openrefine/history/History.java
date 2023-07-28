@@ -307,7 +307,7 @@ public class History {
     public Instant getLastModified() {
         return _lastModified;
     }
-
+    
     /**
      * Applies an operation on top of the existing history. This will modify this instance. If the operation application
      * failed, the exception will be returned in {@link OperationApplicationResult#getException()}.

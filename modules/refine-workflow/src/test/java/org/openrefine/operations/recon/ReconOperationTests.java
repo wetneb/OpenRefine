@@ -46,7 +46,6 @@ import org.openrefine.RefineTest;
 import org.openrefine.browsing.EngineConfig;
 import org.openrefine.expr.MetaParser;
 import org.openrefine.grel.Parser;
-import org.openrefine.history.HistoryEntry;
 import org.openrefine.history.OperationApplicationResult;
 import org.openrefine.model.Cell;
 import org.openrefine.model.ColumnMetadata;
@@ -92,6 +91,7 @@ public class ReconOperationTests extends RefineTest {
 
     private Project project = null;
     private StandardReconConfig reconConfig = null;
+    private ColumnModel columnModel = null;
     private Row row1 = null;
     private Row row2 = null;
     private Row row3 = null;
@@ -173,7 +173,7 @@ public class ReconOperationTests extends RefineTest {
         when(reconConfig.batchRecon(eq(Arrays.asList(job3)), anyLong())).thenReturn(Arrays.asList(recon3));
 
         Grid state = project.getCurrentGrid();
-        ColumnModel columnModel = state.getColumnModel();
+        columnModel = state.getColumnModel();
         row1 = state.getRow(0L);
         row2 = state.getRow(1L);
         row3 = state.getRow(3L);
@@ -203,13 +203,13 @@ public class ReconOperationTests extends RefineTest {
                 new IndexedRow(4L, row4));
 
         ReconChangeDataProducer producer = new ReconChangeDataProducer("column", 0, reconConfig, 1234L, project.getColumnModel());
-        List<Cell> results1 = producer.callRowBatch(batch1);
-        List<Cell> results2 = producer.callRowBatch(batch2);
+        List<Cell> results1 = producer.callRowBatch(batch1, columnModel);
+        List<Cell> results2 = producer.callRowBatch(batch2, columnModel);
 
         Assert.assertEquals(results1, Arrays.asList(new Cell("value1", recon1), new Cell("value2", recon2)));
         Assert.assertEquals(results2, Arrays.asList(new Cell("value1", recon1), new Cell("value3", recon3), null));
         Assert.assertEquals(producer.getBatchSize(), 2);
-        Assert.assertEquals(producer.call(0L, batch1.get(0).getRow()), new Cell("value1", recon1));
+        Assert.assertEquals(producer.call(0L, batch1.get(0).getRow(), columnModel), new Cell("value1", recon1));
 
         verify(reconConfig, times(1)).batchRecon(Arrays.asList(job1, job2), 1234L);
         verify(reconConfig, times(1)).batchRecon(Arrays.asList(job3), 1234L);

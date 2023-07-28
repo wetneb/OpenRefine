@@ -2,7 +2,6 @@
 package org.openrefine.operations.cell;
 
 import java.io.Serializable;
-import java.util.Collections;
 import java.util.Objects;
 
 import org.openrefine.history.GridPreservation;
@@ -50,7 +49,7 @@ public class CellEditOperation implements Operation {
     @Override
     public ChangeResult apply(Grid projectState, ChangeContext context) throws OperationException {
         int index = projectState.getColumnModel().getRequiredColumnIndex(columnName);
-        ColumnModel columnModel = projectState.getColumnModel();
+        ColumnModel columnModel = projectState.getColumnModel().markColumnAsModified(index, context.getHistoryEntryId());
         boolean recordsPreserved = index != columnModel.getKeyColumnIndex();
         Grid result = projectState.mapRows(mapFunction(index, row, newCellValue, columnModel.getKeyColumnIndex()), columnModel);
         return new ChangeResult(

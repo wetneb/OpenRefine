@@ -46,7 +46,6 @@ import java.util.function.Function;
 
 import org.openrefine.browsing.Engine;
 import org.openrefine.browsing.EngineConfig;
-import org.openrefine.expr.ParsingException;
 import org.openrefine.history.GridPreservation;
 import org.openrefine.model.Cell;
 import org.openrefine.model.ColumnMetadata;
@@ -65,7 +64,6 @@ import org.openrefine.model.changes.RecordChangeDataProducer;
 import org.openrefine.model.recon.DataExtensionReconConfig;
 import org.openrefine.model.recon.ReconType;
 import org.openrefine.model.recon.ReconciledDataExtensionJob;
-import org.openrefine.model.recon.ReconciledDataExtensionJob.ColumnInfo;
 import org.openrefine.model.recon.ReconciledDataExtensionJob.DataExtension;
 import org.openrefine.model.recon.ReconciledDataExtensionJob.DataExtensionConfig;
 import org.openrefine.model.recon.ReconciledDataExtensionJob.DataExtensionProperty;
@@ -153,7 +151,8 @@ public class ExtendDataOperation extends EngineDependentOperation {
         for (int i = 0; i != columnNames.size(); i++) {
             newColumnModel = newColumnModel.insertUnduplicatedColumn(
                     _columnInsertIndex + i,
-                    new ColumnMetadata(columnNames.get(i), columnNames.get(i), new DataExtensionReconConfig(
+                    new ColumnMetadata(columnNames.get(i), columnNames.get(i), context.getHistoryEntryId(),
+                            new DataExtensionReconConfig(
                             _endpoint,
                             _identifierSpace,
                             _schemaSpace,
@@ -262,12 +261,12 @@ public class ExtendDataOperation extends EngineDependentOperation {
         }
 
         @Override
-        public RecordDataExtension call(Record record) {
-            return callRecordBatch(Collections.singletonList(record)).get(0);
+        public RecordDataExtension call(Record record, ColumnModel columnModel) {
+            return callRecordBatch(Collections.singletonList(record), columnModel).get(0);
         }
 
         @Override
-        public List<RecordDataExtension> callRecordBatch(List<Record> records) {
+        public List<RecordDataExtension> callRecordBatch(List<Record> records, ColumnModel columnModel) {
 
             Set<String> ids = new HashSet<>();
 
