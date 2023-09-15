@@ -12,6 +12,8 @@ import org.wikidata.wdtk.datamodel.interfaces.SnakGroup;
 import org.wikidata.wdtk.datamodel.interfaces.Statement;
 import org.wikidata.wdtk.datamodel.interfaces.TimeValue;
 import org.wikidata.wdtk.datamodel.interfaces.Value;
+import org.wikidata.wdtk.datamodel.interfaces.ValueSnak;
+import org.wikidata.wdtk.datamodel.interfaces.Snak;
 
 public class DifferenceWithinRangeScrutinizer extends EditScrutinizer {
 
@@ -58,9 +60,12 @@ public class DifferenceWithinRangeScrutinizer extends EditScrutinizer {
     public void scrutinize(ItemUpdate update) {
         Map<PropertyIdValue, Value> propertyIdValueValueMap = new HashMap<>();
         for (Statement statement : update.getAddedStatements()){
-            PropertyIdValue pid = statement.getClaim().getMainSnak().getPropertyId();
-            Value value = statement.getClaim().getMainSnak().getValue();
-            propertyIdValueValueMap.put(pid, value);
+            Snak mainSnak = statement.getClaim().getMainSnak();
+            if (mainSnak instanceof ValueSnak) {
+                PropertyIdValue pid = mainSnak.getPropertyId();
+                Value value = ((ValueSnak)mainSnak).getValue();
+                propertyIdValueValueMap.put(pid, value);
+            }
         }
 
         for(PropertyIdValue propertyId : propertyIdValueValueMap.keySet()){
