@@ -42,11 +42,13 @@ import org.openrefine.expr.ExpressionUtils;
 import org.openrefine.model.ColumnModel;
 
 public class DateCriterion extends Criterion {
+
     final static protected EvalError s_error = new EvalError("Not a date");
 
     @Override
     public KeyMaker createKeyMaker(ColumnModel columnModel) {
         return new KeyMaker(columnModel, columnName) {
+
             @Override
             protected Serializable makeKey(Serializable value) {
                 if (ExpressionUtils.isNonBlankData(value)) {
