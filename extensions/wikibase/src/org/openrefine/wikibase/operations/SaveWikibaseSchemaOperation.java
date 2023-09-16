@@ -27,6 +27,7 @@ package org.openrefine.wikibase.operations;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.openrefine.history.GridPreservation;
 import org.openrefine.model.Grid;
 import org.openrefine.model.changes.Change;
 import org.openrefine.model.changes.ChangeContext;
@@ -74,10 +75,13 @@ public class SaveWikibaseSchemaOperation implements Operation {
         }
 
         @Override
-        public Grid apply(Grid projectState, ChangeContext context) throws DoesNotApplyException {
+        public ChangeResult apply(Grid projectState, ChangeContext context) throws DoesNotApplyException {
             Map<String, OverlayModel> newModels = new HashMap<>(projectState.getOverlayModels());
             newModels.put(overlayModelKey, _newSchema);
-            return projectState.withOverlayModels(newModels);
+            return new ChangeResult(
+                    projectState.withOverlayModels(newModels),
+                    GridPreservation.PRESERVES_RECORDS,
+                    null);
         }
 
         @Override
