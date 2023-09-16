@@ -129,8 +129,7 @@ public class OdsImporter extends InputStreamImporter {
             ImportingJob job,
             String fileSource,
             String archiveFileName,
-            InputStream inputStream, long limit, ObjectNode options
-    ) throws Exception {
+            InputStream inputStream, long limit, ObjectNode options) throws Exception {
         OdfDocument odfDoc;
         try {
             odfDoc = OdfDocument.loadDocument(inputStream);
@@ -140,6 +139,15 @@ public class OdsImporter extends InputStreamImporter {
 
         List<OdfTable> tables = odfDoc.getTableList();
         List<GridState> grids = new ArrayList<>();
+
+        int sheetCount = tables.size();
+        if (sheetCount == 0) {
+            throw new ImportException(
+                    "Attempted to parse file as Ods file but failed. " +
+                            "No tables found in Ods file. " +
+                            "Please validate file format on https://odfvalidator.org/, then try re-uploading the file.",
+                    new NullPointerException());
+        }
 
         ArrayNode sheets = JSONUtilities.getArray(options, "sheets");
         for (int i = 0; i < sheets.size(); i++) {
@@ -194,8 +202,7 @@ public class OdsImporter extends InputStreamImporter {
                     job,
                     fileSource + "#" + table.getTableName(),
                     archiveFileName,
-                    dataReader, limit, options
-            ));
+                    dataReader, limit, options));
         }
 
         return mergeGridStates(grids);
