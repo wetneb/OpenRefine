@@ -33,111 +33,233 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.openrefine.model;
 
-import java.io.IOException;
-import java.io.LineNumberReader;
-import java.io.Writer;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 
+import org.apache.commons.lang3.StringUtils;
+import org.openrefine.model.recon.ReconConfig;
+import org.openrefine.model.recon.ReconStats;
+
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 
-public class ColumnModel  {
-    @JsonProperty("columns")
-    final public List<Column>      columns = new LinkedList<Column>();
-    @JsonProperty("columnGroups")
-    final public List<ColumnGroup> columnGroups = new LinkedList<ColumnGroup>();
-    
-    private int _maxCellIndex = -1;
-    private int _keyColumnIndex;
-    
-    transient protected Map<String, Column>  _nameToColumn;
-    transient protected Map<Integer, Column> _cellIndexToColumn;
-    transient protected List<ColumnGroup>    _rootColumnGroups;
-    transient protected List<String>         _columnNames;
-    
-    public ColumnModel() {
-        internalInitialize();
-    }
-    
-    synchronized public void setMaxCellIndex(int maxCellIndex) {
-        this._maxCellIndex = Math.max(this._maxCellIndex, maxCellIndex);
-    }
+public class ColumnModel implements Serializable {
 
-    @JsonIgnore
-    synchronized public int getMaxCellIndex() {
-        return _maxCellIndex;
+    private static final long serialVersionUID = 1L;
+
+    @JsonProperty("columns")
+    private
+    final List<ColumnMetadata>      _columns;
+    
+    final private int _keyColumnIndex;
+    
+    protected Map<String, Integer>         _nameToPosition;
+    protected List<String>                 _columnNames;
+    
+    @JsonCreator
+    public ColumnModel(
+            @JsonProperty("columns")
+            List<ColumnMetadata> columns,
+            @JsonProperty("keyCellIndex")
+            int keyColumnIndex) {
+        this._columns = Collections.unmodifiableList(columns);
+        _keyColumnIndex = keyColumnIndex;
+        _nameToPosition = new HashMap<>();
+        _columnNames = new ArrayList<String>();
+        int index = 0;
+        for (ColumnMetadata column : columns) {
+            if (_nameToPosition.containsKey(column.getName())) {
+                throw new IllegalArgumentException(
+                        String.format("Duplicate columns for name %1", column.getName()));
+            }
+            _nameToPosition.put(column.getName(), index);
+            _columnNames.add(column.getName());
+            index++;
+        }
+    }
+    
+    public ColumnModel(List<ColumnMetadata> columns) {
+        this(columns, 0);
     }
 
     /**
-     * @return the next available cell index
+     * @return the index of the column used as key to group rows into records
      */
-    synchronized public int allocateNewCellIndex() {
-        return ++_maxCellIndex;
-    }
-    
-    synchronized public void setKeyColumnIndex(int keyColumnIndex) {
-        // TODO: check validity of new cell index, e.g., it's not in any group
-        this._keyColumnIndex = keyColumnIndex;
-    }
-
-    @JsonIgnore
-    synchronized public int getKeyColumnIndex() {
+    @JsonIgnore // see getKeyCellIndex below
+    public int getKeyColumnIndex() {
         return _keyColumnIndex;
     }
     
-    synchronized public void addColumnGroup(int startColumnIndex, int span, int keyColumnIndex) {
-        for (ColumnGroup g : columnGroups) {
-            if (g.startColumnIndex == startColumnIndex && g.columnSpan == span) {
-                if (g.keyColumnIndex == keyColumnIndex) {
-                    return;
-                } else {
-                    columnGroups.remove(g);
-                    break;
-                }
-            }
-        }
-        
-        ColumnGroup cg = new ColumnGroup(startColumnIndex, span, keyColumnIndex);
-        
-        columnGroups.add(cg);
-        
-    }
-
-    public void update() {
-        internalInitialize();
+    /**
+     * Returns a copy of this column model with a different
+     * key column.
+     * @param keyColumnIndex the index of the column to use as a key
+     * @return
+     */
+    public ColumnModel withKeyColumnIndex(int keyColumnIndex) {
+        return new ColumnModel(_columns, keyColumnIndex);
     }
     
-    synchronized public void addColumn(int index, Column column, boolean avoidNameCollision) throws ModelException {
+    /**
+     * Replace a column metadata at the given index
+     * @param index the index of the column
+     * @param column the new metadata
+     * @return
+     * @throws ModelException if the new column name conflicts with another column
+     */
+    public ColumnModel replaceColumn(int index, ColumnMetadata column) throws ModelException {
         String name = column.getName();
         
-        if (_nameToColumn.containsKey(name)) {
-            if (!avoidNameCollision) {
-                throw new ModelException("Duplicated column name");
-            } else {
-                name = getUnduplicatedColumnName(name);
-                column.setName(name);
-            }
+        if (_nameToPosition.containsKey(name) && _nameToPosition.get(name) != index) {
+            throw new ModelException("Duplicated column name");
         }
-        
-        columns.add(index < 0 ? columns.size() : index, column);
-        _nameToColumn.put(name, column); // so the next call can check
+        List<ColumnMetadata> newColumns = new ArrayList<>();
+        newColumns.addAll(getColumns().subList(0, index));
+        newColumns.add(column);
+        newColumns.addAll(getColumns().subList(index+1, getColumns().size()));
+        return new ColumnModel(newColumns);
     }
     
-    synchronized public String getUnduplicatedColumnName(String baseName) {
+    /**
+     * Replaces the recon statistics at the given column index
+     * @param index
+     * @param stats
+     * @return
+     */
+    public ColumnModel withReconStats(int index, ReconStats stats) {
+        try {
+            return replaceColumn(index, _columns.get(index).withReconStats(stats));
+        } catch (ModelException e) {
+            return null; // unreachable
+        }
+    }
+    
+    /**
+     * Replaces the recon config at the given column index
+     * @param index
+     * @param config
+     * @return
+     */
+    public ColumnModel withReconConfig(int index, ReconConfig config) {
+        try {
+            return replaceColumn(index, _columns.get(index).withReconConfig(config));
+        } catch (ModelException e) {
+            return null; // unreachable
+        }
+    }
+    
+    /**
+     * Inserts a column at the given index
+     * @param index the index where to insert the column
+     * @param column the column metadata
+     * @return
+     * @throws ModelException if the name conflicts with another column
+     */
+    public ColumnModel insertColumn(int index, ColumnMetadata column) throws ModelException {
+        String name = column.getName();
+        
+        if (_nameToPosition.containsKey(name)) {
+            throw new ModelException("Duplicated column name");
+        }
+        List<ColumnMetadata> newColumns = new ArrayList<>();
+        newColumns.addAll(getColumns().subList(0, index));
+        newColumns.add(column);
+        newColumns.addAll(getColumns().subList(index, getColumns().size()));
+        return new ColumnModel(newColumns);
+    }
+    
+    /**
+     * Inserts a column at the given index, possibly changing the name 
+     * to ensure that it does not conflict with any other column
+     * @param index the place where to insert the column
+     * @param column the column metadata
+     * @return
+     */
+    public ColumnModel insertUnduplicatedColumn(int index, ColumnMetadata column) {
+        String name = column.getName();
+        
+        if (_nameToPosition.containsKey(name)) {
+            name = getUnduplicatedColumnName(name);
+            column = column.withName(name);
+        }
+        List<ColumnMetadata> newColumns = new ArrayList<>();
+        newColumns.addAll(getColumns().subList(0, index));
+        newColumns.add(column);
+        newColumns.addAll(getColumns().subList(index, getColumns().size()));
+        return new ColumnModel(newColumns);
+    }
+    
+    /**
+     * Shortcut for the above, for inserting at the last position.
+     * @param columnMetadata
+     * @return
+     */
+    public ColumnModel appendUnduplicatedColumn(ColumnMetadata columnMetadata) {
+        return insertUnduplicatedColumn(getColumns().size(), columnMetadata);
+    }
+    
+    /**
+     * Change the name of a column
+     * @param index the index of the column
+     * @param newName the new name to give to the column
+     * @return
+     * @throws ModelException if the new name conflicts with any other column
+     */
+    public ColumnModel renameColumn(int index, String newName) throws ModelException {
+        ColumnMetadata newColumn = _columns.get(index);
+        return replaceColumn(index, newColumn.withName(newName));
+    }
+    
+    /**
+     * Removes a column at the given index
+     * @param index the index of the column to remove
+     * @return
+     */
+    public ColumnModel removeColumn(int index) {
+        List<ColumnMetadata> newColumns = new ArrayList<>();
+        List<ColumnMetadata> columns = getColumns();
+        newColumns.addAll(columns.subList(0, index));
+        newColumns.addAll(columns.subList(index+1, columns.size()));
+        return new ColumnModel(newColumns);
+    }
+    
+    /**
+     * Given another column model with the same number of columns,
+     * merge the recon configuration and statistics in each n-th column.
+     * 
+     * @param other
+     * @return
+     * @throws IllegalArgumentException if the number of columns is different or
+     * columns have incompatible reconciliation configurations.
+     */
+    public ColumnModel merge(ColumnModel other) {
+        List<ColumnMetadata> otherColumns = other.getColumns();
+        if (otherColumns.size() != _columns.size()) {
+            throw new IllegalArgumentException(
+                    String.format("Attempting to merge column models with %d and %d columns",
+                            _columns.size(), otherColumns.size()));
+        }
+        
+        List<ColumnMetadata> newColumns = new ArrayList<>(_columns.size());
+        for (int i = 0; i != _columns.size(); i++) {
+            newColumns.add(_columns.get(i).merge(otherColumns.get(i)));
+        }
+        return new ColumnModel(newColumns);
+    }
+    
+    public String getUnduplicatedColumnName(String baseName) {
         String name = baseName;
         int i = 1;
         while (true) {
-            if (_nameToColumn.containsKey(name)) {
+            if (_nameToPosition.containsKey(name)) {
                 i++;
                 name = baseName + i;
             } else {
@@ -147,8 +269,16 @@ public class ColumnModel  {
         return name;
     }
     
-    synchronized public Column getColumnByName(String name) {
-        return _nameToColumn.get(name);
+    public ColumnMetadata getColumnByName(String name) {
+        if (_nameToPosition.containsKey(name)) {
+            int index = _nameToPosition.get(name);
+            return _columns.get(index);
+        }
+        return null;
+    }
+    
+    public ColumnMetadata getColumnByIndex(int cellIndex) {
+        return _columns.get(cellIndex);
     }
     
     /**
@@ -157,29 +287,24 @@ public class ColumnModel  {
      * @param name column name to look up
      * @return index of column with given name or -1 if not found.
      */
-    synchronized public int getColumnIndexByName(String name) {
-        for (int i = 0; i < _columnNames.size(); i++) {
-            String s = _columnNames.get(i);
-            if (name.equals(s)) {
-                return i;
-            }
+    public int getColumnIndexByName(String name) {
+        if (_nameToPosition.containsKey(name)) {
+            return _nameToPosition.get(name);
+        } else {
+            return -1;
         }
-        return -1;
     }
     
-    synchronized public Column getColumnByCellIndex(int cellIndex) {
-        return _cellIndexToColumn.get(cellIndex);
-    }
     
     @JsonIgnore
-    synchronized public List<String> getColumnNames() {
+    public List<String> getColumnNames() {
         return _columnNames;
     }
     
     @JsonProperty("keyCellIndex")
     @JsonInclude(Include.NON_NULL)
     public Integer getJsonKeyCellIndex() {
-        if(columns.size() > 0) {
+        if(getColumns().size() > 0) {
             return getKeyColumnIndex();
         }
         return null;
@@ -188,116 +313,34 @@ public class ColumnModel  {
     @JsonProperty("keyColumnName")
     @JsonInclude(Include.NON_NULL)
     public String getKeyColumnName() {
-        if(columns.size() > 0) {
-            return columns.get(_keyColumnIndex).getName();
+        if(getColumns().size() > 0) {
+            return getColumns().get(_keyColumnIndex).getName();
         }
         return null;
     }
-    
-    synchronized public void save(Writer writer, Properties options) throws IOException {
-        writer.write("maxCellIndex="); writer.write(Integer.toString(_maxCellIndex)); writer.write('\n');
-        writer.write("keyColumnIndex="); writer.write(Integer.toString(_keyColumnIndex)); writer.write('\n');
 
-        writer.write("columnCount="); writer.write(Integer.toString(columns.size())); writer.write('\n');
-        for (Column column : columns) {
-            column.save(writer); writer.write('\n');
-        }
-        
-        writer.write("columnGroupCount="); writer.write(Integer.toString(columnGroups.size())); writer.write('\n');
-        for (ColumnGroup group : columnGroups) {
-            group.save(writer); writer.write('\n');
-        }
-        
-        writer.write("/e/\n");
+
+    public List<ColumnMetadata> getColumns() {
+        return _columns;
+    }
+    
+    @Override
+    public boolean equals(Object other) {
+    	if(!(other instanceof ColumnModel)) {
+    		return false;
+    	}
+    	ColumnModel otherModel = (ColumnModel)other;
+    	return _columns.equals(otherModel.getColumns());
+    }
+    
+    @Override
+    public int hashCode() {
+        return _columns.hashCode();
+    }
+    
+    @Override
+    public String toString() {
+        return String.format("[ColumnModel: %s]", StringUtils.join(_columns, ", "));
     }
 
-    synchronized public void load(LineNumberReader reader) throws Exception {
-        String line;
-        while ((line = reader.readLine()) != null && !"/e/".equals(line)) {
-            int equal = line.indexOf('=');
-            CharSequence field = line.subSequence(0, equal);
-            String value = line.substring(equal + 1);
-            
-            if ("maxCellIndex".equals(field)) {
-                _maxCellIndex = Integer.parseInt(value);
-            } else if ("keyColumnIndex".equals(field)) {
-                _keyColumnIndex = Integer.parseInt(value);
-            } else if ("columnCount".equals(field)) {
-                int count = Integer.parseInt(value);
-                
-                for (int i = 0; i < count; i++) {
-                    columns.add(Column.load(reader.readLine()));
-                }
-            } else if ("columnGroupCount".equals(field)) {
-                int count = Integer.parseInt(value);
-                
-                for (int i = 0; i < count; i++) {
-                    columnGroups.add(ColumnGroup.load(reader.readLine()));
-                }
-            }
-        }
-        
-        internalInitialize();
-    }
-    
-    synchronized protected void internalInitialize() {
-        generateMaps();
-        
-        // Turn the flat list of column groups into a tree
-        
-        _rootColumnGroups = new LinkedList<ColumnGroup>(columnGroups);
-        Collections.sort(_rootColumnGroups, new Comparator<ColumnGroup>() {
-            @Override
-            public int compare(ColumnGroup o1, ColumnGroup o2) {
-                int firstDiff = o1.startColumnIndex - o2.startColumnIndex;
-                return firstDiff != 0 ?
-                    firstDiff : // whichever group that starts first goes first 
-                    (o2.columnSpan - o1.columnSpan); // otherwise, the larger group goes first
-            }
-        });
-        
-        for (int i = _rootColumnGroups.size() - 1; i >= 0; i--) {
-            ColumnGroup g = _rootColumnGroups.get(i);
-            
-            for (int j = i + 1; j < _rootColumnGroups.size(); j++) {
-                ColumnGroup g2 = _rootColumnGroups.get(j);
-                if (g2.parentGroup == null && g.contains(g2)) {
-                    g2.parentGroup = g;
-                    g.subgroups.add(g2);
-                }
-            }
-        }
-        
-        for (int i = _rootColumnGroups.size() - 1; i >= 0; i--) {
-            if (_rootColumnGroups.get(i).parentGroup != null) {
-                _rootColumnGroups.remove(i);
-            }
-        }
-    }
-    
-    protected void generateMaps() {
-        _nameToColumn = new HashMap<String, Column>();
-        _cellIndexToColumn = new HashMap<Integer, Column>();
-        _columnNames = new ArrayList<String>();
-        int maxCellIndex = -1;
-        for (Column column : columns) {
-            _nameToColumn.put(column.getName(), column);
-            int cidx = column.getCellIndex();
-            if (cidx > maxCellIndex) {
-                maxCellIndex = cidx;
-            }
-            _cellIndexToColumn.put(cidx, column);
-            _columnNames.add(column.getName());
-        }
-        _maxCellIndex = maxCellIndex;
-    }
-    
-    /**
-     * Clear cached value computations for all columns
-     */
-    public void clearPrecomputes() {
-        for (Column column : columns) {
-            column.clearPrecomputes();
-        }
-    }
 }

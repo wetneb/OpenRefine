@@ -33,25 +33,17 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.openrefine.operations.row;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import org.openrefine.browsing.Engine;
 import org.openrefine.browsing.EngineConfig;
-import org.openrefine.browsing.FilteredRows;
-import org.openrefine.browsing.RowVisitor;
-import org.openrefine.history.Change;
-import org.openrefine.history.HistoryEntry;
-import org.openrefine.model.Project;
+import org.openrefine.model.GridState;
 import org.openrefine.model.Row;
-import org.openrefine.model.changes.MassChange;
-import org.openrefine.model.changes.RowFlagChange;
-import org.openrefine.operations.EngineDependentOperation;
+import org.openrefine.model.RowMapper;
+import org.openrefine.model.changes.ChangeContext;
+import org.openrefine.operations.ImmediateRowMapOperation;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class RowFlagOperation extends EngineDependentOperation {
+public class RowFlagOperation extends ImmediateRowMapOperation {
     final protected boolean _flagged;
 
     @JsonCreator
@@ -70,56 +62,26 @@ public class RowFlagOperation extends EngineDependentOperation {
     }
 
     @Override
-    protected String getBriefDescription(Project project) {
+	public String getDescription() {
         return (_flagged ? "Flag rows" : "Unflag rows");
-    }
+    } 
 
-   @Override
-protected HistoryEntry createHistoryEntry(Project project, long historyEntryID) throws Exception {
-        Engine engine = createEngine(project);
-        
-        List<Change> changes = new ArrayList<Change>(project.rows.size());
-        
-        FilteredRows filteredRows = engine.getAllFilteredRows();
-        filteredRows.accept(project, createRowVisitor(project, changes));
-        
-        return new HistoryEntry(
-            historyEntryID,
-            project, 
-            (_flagged ? "Flag" : "Unflag") + " " + changes.size() + " rows", 
-            this, 
-            new MassChange(changes, false)
-        );
-    }
 
-    protected RowVisitor createRowVisitor(Project project, List<Change> changes) throws Exception {
-        return new RowVisitor() {
-            List<Change> changes;
-            
-            public RowVisitor init(List<Change> changes) {
-                this.changes = changes;
-                return this;
-            }
-            
-            @Override
-            public void start(Project project) {
-                // nothing to do
-            }
+	@Override
+	public RowMapper getPositiveRowMapper(GridState grid, ChangeContext context) {
+		return rowMapper(_flagged);
+	}
+    
+    protected static RowMapper rowMapper(boolean flagged) {
+    	return new RowMapper() {
 
-            @Override
-            public void end(Project project) {
-                // nothing to do
-            }
-            
-            @Override
-            public boolean visit(Project project, int rowIndex, Row row) {
-                if (row.flagged != _flagged) {
-                    RowFlagChange change = new RowFlagChange(rowIndex, _flagged);
-                    
-                    changes.add(change);
-                }
-                return false;
-            }
-        }.init(changes);
+			private static final long serialVersionUID = 1941653093381723354L;
+
+			@Override
+			public Row call(long rowId, Row row) {
+				return row.withFlagged(flagged);
+			}
+    		
+    	};
     }
 }

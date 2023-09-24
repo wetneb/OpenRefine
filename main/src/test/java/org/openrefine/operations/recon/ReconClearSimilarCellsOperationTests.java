@@ -25,15 +25,32 @@
  * POSSIBILITY OF SUCH DAMAGE.
  ******************************************************************************/
 package org.openrefine.operations.recon;
+import java.io.Serializable;
+
+import static org.mockito.Mockito.mock;
 import org.openrefine.RefineTest;
+import org.openrefine.browsing.EngineConfig;
+import org.openrefine.model.Cell;
+import org.openrefine.model.ColumnMetadata;
+import org.openrefine.model.ColumnModel;
+import org.openrefine.model.GridState;
+import org.openrefine.model.ModelException;
+import org.openrefine.model.changes.Change;
+import org.openrefine.model.changes.Change.DoesNotApplyException;
+import org.openrefine.model.changes.ChangeContext;
+import org.openrefine.model.recon.Recon;
+import org.openrefine.model.recon.ReconStats;
 import org.openrefine.operations.OperationRegistry;
-import org.openrefine.operations.recon.ReconClearSimilarCellsOperation;
 import org.openrefine.util.ParsingUtilities;
 import org.openrefine.util.TestUtils;
 import org.testng.annotations.BeforeSuite;
+import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 public class ReconClearSimilarCellsOperationTests extends RefineTest {
+	
+	protected GridState initialState;
+	
     @BeforeSuite
     public void registerOperation() {
         OperationRegistry.registerOperation("core", "recon-clear-similar-cells", ReconClearSimilarCellsOperation.class);
@@ -47,5 +64,37 @@ public class ReconClearSimilarCellsOperationTests extends RefineTest {
                 + "\"columnName\":\"my column\","
                 + "\"similarValue\":\"some value\"}";
         TestUtils.isSerializedTo(ParsingUtilities.mapper.readValue(json, ReconClearSimilarCellsOperation.class), json, ParsingUtilities.defaultWriter);
+    }
+    
+    @BeforeTest
+    public void setupInitialState() {
+    	initialState = createGrid(
+    			new String[] {"foo", "bar"},
+    			new Serializable[][] {
+    				{"a", new Cell("b", testRecon("e", "h", Recon.Judgment.Matched))},
+    				{"c", new Cell("d", testRecon("b", "j", Recon.Judgment.None))}
+    			});
+    }
+    
+    @Test
+    public void testReconClearSimilarCells() throws DoesNotApplyException, ModelException {
+    	Change change = new ReconClearSimilarCellsOperation(EngineConfig.ALL_ROWS, "bar", "b").createChange();
+    	
+    	GridState applied = change.apply(initialState, mock(ChangeContext.class));
+    	
+    	GridState expected = createGrid(
+    			new String[] {"foo", "bar"},
+    			new Serializable[][] {
+    				{"a", new Cell("b", null)},
+    				{"c", new Cell("d", testRecon("b", "j", Recon.Judgment.None))}
+    			});
+    	
+    	// Make sure recon stats are updated too
+    	ReconStats reconStats = ReconStats.create(2, 0, 0);
+    	ColumnModel columnModel = expected.getColumnModel();
+    	ColumnMetadata columnMetadata = columnModel.getColumnByName("bar");
+    	expected = expected.withColumnModel(columnModel.replaceColumn(1, columnMetadata.withReconStats(reconStats)));
+    	
+    	assertGridEquals(applied, expected);
     }
 }

@@ -26,115 +26,141 @@
  ******************************************************************************/
 package org.openrefine.operations.cell;
 
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
+import static org.mockito.Mockito.mock;
 
-import org.openrefine.ProjectManager;
+import java.io.Serializable;
+import java.util.Arrays;
+
 import org.openrefine.RefineTest;
+import org.openrefine.browsing.DecoratedValue;
+import org.openrefine.browsing.Engine;
 import org.openrefine.browsing.EngineConfig;
-import org.openrefine.model.AbstractOperation;
-import org.openrefine.model.Column;
-import org.openrefine.model.Project;
-import org.openrefine.model.Row;
+import org.openrefine.browsing.facets.ListFacet.ListFacetConfig;
+import org.openrefine.expr.MetaParser;
+import org.openrefine.grel.Parser;
+import org.openrefine.model.GridState;
+import org.openrefine.model.changes.Change;
+import org.openrefine.model.changes.ChangeContext;
+import org.openrefine.model.changes.Change.DoesNotApplyException;
+import org.openrefine.operations.Operation;
 import org.openrefine.operations.OperationRegistry;
-import org.openrefine.operations.cell.BlankDownOperation;
-import org.openrefine.process.Process;
 import org.openrefine.util.ParsingUtilities;
 import org.openrefine.util.TestUtils;
-import org.testng.Assert;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.BeforeSuite;
+import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 public class BlankDownTests extends RefineTest {
-    
-    Project project = null;
-    
+
     @BeforeSuite
     public void registerOperation() {
         OperationRegistry.registerOperation("core", "blank-down", BlankDownOperation.class);
     }
-    
-    @BeforeMethod
-    public void setUp() {
-        project = createProject(
-                new String[] {"key","first","second"},
-                new Serializable[] {
-                "a","b","c",
-                null,"d","c",
-                "e","f","c",
-                null,null,"c"});
-    }
-    
-    @AfterMethod
-    public void tearDown() {
-        ProjectManager.singleton.deleteProject(project.id);
-    }
-    
+
+	GridState toBlankDown;
+	ListFacetConfig facet;
+	
+	@BeforeTest
+	public void createSplitProject() {
+		toBlankDown = createGrid(new String[] {"foo","bar","hello"},
+				new Serializable[][] {
+			{ "a",  "b", "c" },
+			{ "",   "b", "d" },
+			{ "e",  "b", "f" },
+			{ null, "g", "h" },
+			{ null, "g", "i" }
+		});
+		
+		MetaParser.registerLanguageParser("grel", "GREL", Parser.grelParser, "value");
+		facet = new ListFacetConfig();
+		facet.columnName = "hello";
+		facet.setExpression("grel:value");
+	}
+	
     @Test
     public void serializeBlankDownOperation() throws Exception {
         String json = "{\"op\":\"core/blank-down\","
                 + "\"description\":\"Blank down cells in column my column\","
                 + "\"engineConfig\":{\"mode\":\"record-based\",\"facets\":[]},"
                 + "\"columnName\":\"my column\"}";
-        AbstractOperation op = ParsingUtilities.mapper.readValue(json, BlankDownOperation.class);
+        Operation op = ParsingUtilities.mapper.readValue(json, BlankDownOperation.class);
         TestUtils.isSerializedTo(op, json, ParsingUtilities.defaultWriter);
     }
     
-    @Test
-    public void testBlankDownRecords() throws Exception {
-        AbstractOperation op = new BlankDownOperation(
-                EngineConfig.reconstruct("{\"mode\":\"record-based\",\"facets\":[]}"),
-                "second");
-        Process process = op.createProcess(project, new Properties());
-        process.performImmediate();
-        
-        Assert.assertEquals("c", project.rows.get(0).cells.get(2).value);
-        Assert.assertNull(project.rows.get(1).cells.get(2));
-        Assert.assertEquals("c", project.rows.get(2).cells.get(2).value);
-        Assert.assertNull(project.rows.get(3).cells.get(2));
-    }
-    
-    @Test
-    public void testBlankDownRows() throws Exception {
-        AbstractOperation op = new BlankDownOperation(
-                EngineConfig.reconstruct("{\"mode\":\"row-based\",\"facets\":[]}"),
-                "second");
-        Process process = op.createProcess(project, new Properties());
-        process.performImmediate();
-        
-        Assert.assertEquals("c", project.rows.get(0).cells.get(2).value);
-        Assert.assertNull(project.rows.get(1).cells.get(2));
-        Assert.assertNull(project.rows.get(2).cells.get(2));
-        Assert.assertNull(project.rows.get(3).cells.get(2));
-    }
-    
-    @Test
-    public void testKeyColumnIndex() throws Exception {
-    	// Shift all column indices
-    	for(Row r : project.rows) {
-    		r.cells.add(0, null);
-    	}
-    	List<Column> newColumns = new ArrayList<>();
-    	for(Column c : project.columnModel.columns) {
-    		newColumns.add(new Column(c.getCellIndex()+1, c.getName()));
-    	}
-    	project.columnModel.columns.clear();
-    	project.columnModel.columns.addAll(newColumns);
-    	project.columnModel.update();
-    	
-    	AbstractOperation op = new BlankDownOperation(
-                EngineConfig.reconstruct("{\"mode\":\"record-based\",\"facets\":[]}"),
-                "second");
-        Process process = op.createProcess(project, new Properties());
-        process.performImmediate();
-        
-        Assert.assertEquals("c", project.rows.get(0).cells.get(3).value);
-        Assert.assertNull(project.rows.get(1).cells.get(3));
-        Assert.assertEquals("c", project.rows.get(2).cells.get(3).value);
-        Assert.assertNull(project.rows.get(3).cells.get(3));
-    }
+	
+	@Test
+	public void testBlankDownRowsNoFacets() throws DoesNotApplyException {
+		Change change = new BlankDownOperation(EngineConfig.ALL_ROWS, "bar").createChange();
+		GridState applied = change.apply(toBlankDown, mock(ChangeContext.class));
+		
+		GridState expectedGrid = createGrid(new String[] {"foo","bar","hello"},
+				new Serializable[][] {
+			{ "a",  "b",  "c" },
+			{ "",   null, "d" },
+			{ "e",  null, "f" },
+			{ null, "g",  "h" },
+			{ null, null, "i" }
+		});
+		
+		assertGridEquals(applied, expectedGrid);
+	}
+	
+	@Test
+	public void testBlankDownRecordsNoFacets() throws DoesNotApplyException {
+		Change change = new BlankDownOperation(EngineConfig.ALL_RECORDS, "bar").createChange();
+		GridState applied = change.apply(toBlankDown, mock(ChangeContext.class));
+		
+		GridState expectedGrid = createGrid(new String[] {"foo","bar","hello"},
+				new Serializable[][] {
+			{ "a",  "b",  "c" },
+			{ "",   null, "d" },
+			{ "e",  "b",  "f" },
+			{ null, "g",  "h" },
+			{ null, null, "i" }
+		});
+		
+		assertGridEquals(applied, expectedGrid);
+	}
+	
+	@Test
+	public void testBlankDownRowsFacets() throws DoesNotApplyException {
+		facet.selection = Arrays.asList(
+				new DecoratedValue("c", "c"),
+				new DecoratedValue("f", "f"),
+				new DecoratedValue("i", "i"));
+		EngineConfig engineConfig = new EngineConfig(Arrays.asList(facet), Engine.Mode.RowBased);
+		Change change = new BlankDownOperation(engineConfig, "bar").createChange();
+		GridState applied = change.apply(toBlankDown, mock(ChangeContext.class));
+		
+		GridState expected = createGrid(new String[] {"foo","bar","hello"},
+				new Serializable[][] {
+			{ "a",  "b",  "c" },
+			{ "",   "b",  "d" },
+			{ "e",  null, "f" },
+			{ null, "g",  "h" },
+			{ null, "g",  "i" }
+		});
+		
+		assertGridEquals(applied, expected);
+	}
+	
+	@Test
+	public void testBlankDownRecordsFacets() throws DoesNotApplyException {
+		facet.selection = Arrays.asList(
+				new DecoratedValue("c", "c"));
+		EngineConfig engineConfig = new EngineConfig(Arrays.asList(facet), Engine.Mode.RecordBased);
+		Change change = new BlankDownOperation(engineConfig, "bar").createChange();
+		GridState applied = change.apply(toBlankDown, mock(ChangeContext.class));
+		
+		GridState expected = createGrid(new String[] {"foo","bar","hello"},
+				new Serializable[][] {
+			{ "a",  "b",  "c" },
+			{ "",   null, "d" },
+			{ "e",  "b",  "f" },
+			{ null, "g",  "h" },
+			{ null, "g",  "i" }
+		});
+		
+		assertGridEquals(applied, expected);
+	}
 }

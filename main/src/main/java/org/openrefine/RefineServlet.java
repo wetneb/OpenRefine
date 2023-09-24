@@ -36,6 +36,7 @@ package org.openrefine;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
 import java.net.HttpURLConnection;
 import java.net.URLConnection;
 import java.util.HashMap;
@@ -48,11 +49,10 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.openrefine.ProjectManager;
-import org.openrefine.RefineModel;
 import org.openrefine.commands.Command;
 import org.openrefine.importing.ImportingManager;
 import org.openrefine.io.FileProjectManager;
+import org.openrefine.model.DatamodelRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -79,6 +79,7 @@ public class RefineServlet extends Butterfly {
 
     static private RefineServlet s_singleton;
     static private File s_dataDir;
+    static private DatamodelRunner s_runner;
     
     static final private Map<String, Command> commands = new HashMap<String, Command>();
 
@@ -101,12 +102,29 @@ public class RefineServlet extends Butterfly {
     @Override
     public void init() throws ServletException {
         super.init();
+        
+        int defaultParallelism = 4;
+        try {
+            String parallelism = getInitParameter("refine.defaultParallelism");
+            defaultParallelism = Integer.parseInt(parallelism == null ? "" : parallelism);
+        } catch(NumberFormatException e) {
+            ;
+        }
+        
+        try {
+        	Class<?> runnerClass = this.getClass().getClassLoader().loadClass("org.openrefine.model.SparkDatamodelRunner");
+			s_runner = (DatamodelRunner)runnerClass.getConstructor(Integer.class).newInstance(Integer.valueOf(defaultParallelism));
+		} catch (InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException
+				| NoSuchMethodException | SecurityException | ClassNotFoundException e1) {
+			e1.printStackTrace();
+			throw new ServletException("Unable to initialize the datamodel runner.");
+		}
 
         VERSION = getInitParameter("refine.version");
-        REVISION = getInitParameter("refine.revision");
+        REVISION = getInitParameter("refine.revision");    
         
         if (VERSION.equals("$VERSION")) {
-            VERSION = RefineModel.ASSIGNED_VERSION;
+            VERSION = RefineModel.VERSION;
         }
         if (REVISION.equals("$REVISION")) {
             ClassLoader classLoader = getClass().getClassLoader();
@@ -137,10 +155,12 @@ public class RefineServlet extends Butterfly {
         logger.error("initializing FileProjectManager with dir");
         logger.error(data);
         s_dataDir = new File(data);
-        FileProjectManager.initialize(s_dataDir);
+        FileProjectManager.initialize(s_runner, s_dataDir);
         ImportingManager.initialize(this);
+        
+        
 
-	long AUTOSAVE_PERIOD = Long.parseLong(getInitParameter("refine.autosave"));
+	    long AUTOSAVE_PERIOD = Long.parseLong(getInitParameter("refine.autosave"));
 
         service.scheduleWithFixedDelay(new AutoSaveTimerTask(), AUTOSAVE_PERIOD, 
                 AUTOSAVE_PERIOD, TimeUnit.MINUTES);
@@ -332,4 +352,9 @@ public class RefineServlet extends Butterfly {
     static public String getUserAgent() {
         return "OpenRefine/" + FULL_VERSION;
     }
+    
+    static public DatamodelRunner getDatamodelRunner() {
+    	return s_runner;
+    }
+    
 }

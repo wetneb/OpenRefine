@@ -40,6 +40,7 @@ import javax.servlet.http.HttpServletResponse;
 import org.apache.commons.io.FileUtils;
 import org.openrefine.commands.Command;
 import org.openrefine.io.FileProjectManager;
+import org.openrefine.model.DatamodelRunner;
 import org.openrefine.util.TestUtils;
 import org.testng.annotations.BeforeMethod;
 
@@ -74,16 +75,16 @@ public class ExpressionCommandTestBase {
         initWorkspace(jsonData);
     }
 
-	public void initWorkspace(String jsonData) {
-		try {
+    public void initWorkspace(String jsonData) {
+        try {
             File workspaceDir = TestUtils.createTempDirectory("openrefine-test-workspace-dir");
             File jsonPath = new File(workspaceDir, "workspace.json");
 			FileUtils.writeStringToFile(jsonPath, jsonData);
-            FileProjectManager.initialize(workspaceDir);
+            FileProjectManager.initialize(mock(DatamodelRunner.class), workspaceDir);
         } catch (IOException e) {
             e.printStackTrace();
         }
-	}
+    }
     
     public void assertResponseJsonIs(String expectedJson)  {
         String actualJson = writer.toString();

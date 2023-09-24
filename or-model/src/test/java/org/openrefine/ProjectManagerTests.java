@@ -40,12 +40,14 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.atLeast;
 
 import java.time.LocalDateTime;
 
 import org.mockito.Mockito;
 import org.openrefine.ProjectMetadata;
 import org.openrefine.model.Project;
+import org.openrefine.model.DatamodelRunner;
 import org.openrefine.process.ProcessManager;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
@@ -64,12 +66,13 @@ public class ProjectManagerTests {
 
     @BeforeMethod
     public void SetUp(){
-        pm = new ProjectManagerStub();
+        pm = new ProjectManagerStub(mock(DatamodelRunner.class));
         SUT = spy(pm);
         project = mock(Project.class);
         metadata = mock(ProjectMetadata.class);
         procmgr = mock(ProcessManager.class);
         when(project.getProcessManager()).thenReturn(procmgr);
+        when(project.getId()).thenReturn(1234L);
         when(procmgr.hasPending()).thenReturn(false); // always false for now, but should test separately
     }
 
@@ -86,7 +89,8 @@ public class ProjectManagerTests {
 
         SUT.registerProject(project, metadata);
 
-        AssertProjectRegistered();      
+        AssertProjectRegistered();
+        verify(project, atLeast(1)).getId();
         verify(metadata, times(1)).getTags();
         
         verifyNoMoreInteractions(project);
@@ -101,18 +105,20 @@ public class ProjectManagerTests {
         registerProject();
 
         //run test
-        SUT.ensureProjectSaved(project.id);
+        SUT.ensureProjectSaved(project.getId());
 
         //assert and verify
         AssertProjectRegistered();
+        verify(project, atLeast(1)).getId();
         try {
-            verify(SUT, times(1)).saveMetadata(metadata, project.id);
+            verify(SUT, times(1)).saveMetadata(metadata, project.getId());
         } catch (Exception e) {
             Assert.fail();
         }
         this.verifySaveTimeCompared(1);
         verify(SUT, times(1)).saveProject(project);
         verify(metadata, times(1)).getTags();
+        verify(project, atLeast(1)).getId();
         
         //ensure end
         verifyNoMoreInteractions(project);
@@ -133,7 +139,7 @@ public class ProjectManagerTests {
         registerProject(project2, metadata2);
 
         //check that the two projects are not the same
-        Assert.assertFalse(project.id == project2.id);
+        Assert.assertFalse(project.getId() == project2.getId());
 
         SUT.save(true);
 
@@ -149,7 +155,7 @@ public class ProjectManagerTests {
 
         whenGetSaveTimes(project, metadata, -10 );//already saved (10 seconds before)
         registerProject(project, metadata);
-        Assert.assertSame(SUT.getProject(0), project);
+        Assert.assertSame(SUT.getProject(1234L), project);
 
         SUT.save(true);
 
@@ -157,9 +163,10 @@ public class ProjectManagerTests {
         verify(metadata, times(1)).getTags();
         verify(project, times(1)).getProcessManager();
         verify(project, times(2)).getLastSave();
-        verify(project, times(1)).dispose();
         verify(SUT, never()).saveProject(project);
         Assert.assertEquals(SUT.getProject(0), null);
+        verify(project, atLeast(1)).getId();
+        verify(project, times(1)).dispose();
         verifyNoMoreInteractions(project);
         verifyNoMoreInteractions(metadata);
 
@@ -176,6 +183,7 @@ public class ProjectManagerTests {
         verify(SUT, never()).saveProjects(Mockito.anyBoolean());
         verify(SUT, never()).saveWorkspace();
         verify(metadata, times(1)).getTags();
+        verify(project, atLeast(1)).getId();
         verifyNoMoreInteractions(project);
         verifyNoMoreInteractions(metadata);
     }
@@ -205,8 +213,8 @@ public class ProjectManagerTests {
     }
 
     protected void AssertProjectRegistered(){
-        Assert.assertEquals(SUT.getProject(project.id), project);
-        Assert.assertEquals(SUT.getProjectMetadata(project.id), metadata);
+        Assert.assertEquals(SUT.getProject(project.getId()), project);
+        Assert.assertEquals(SUT.getProjectMetadata(project.getId()), metadata);
     }
 
     protected void whenGetSaveTimes(Project proj, ProjectMetadata meta){
@@ -243,6 +251,7 @@ public class ProjectManagerTests {
         verify(proj, times(2)).getLastSave();
         verify(SUT, times(1)).saveProject(proj);
         verify(meta, times(1)).getTags();
+        verify(proj, atLeast(1)).getId();
 
         verifyNoMoreInteractions(proj);
         verifyNoMoreInteractions(meta);

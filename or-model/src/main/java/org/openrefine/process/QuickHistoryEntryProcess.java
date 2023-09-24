@@ -33,20 +33,26 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.openrefine.process;
 
+import org.openrefine.history.History;
 import org.openrefine.history.HistoryEntry;
-import org.openrefine.model.Project;
+import org.openrefine.model.changes.Change;
+import org.openrefine.operations.Operation;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-abstract public class QuickHistoryEntryProcess extends Process {
-    final protected Project _project;
+public class QuickHistoryEntryProcess extends Process {
+    final protected History _history;
     final protected String _briefDescription;
+    final protected Operation _operation;
+    final protected Change _change;
     protected HistoryEntry _historyEntry;
     boolean _done = false;
     
-    public QuickHistoryEntryProcess(Project project, String briefDescription) {
-        _project = project;
+    public QuickHistoryEntryProcess(History history, String briefDescription, Operation operation, Change change) {
+        _history = history;
+        _operation = operation;
         _briefDescription = briefDescription;
+        _change = change;
     }
     
     @Override
@@ -68,9 +74,9 @@ abstract public class QuickHistoryEntryProcess extends Process {
     @Override
     public HistoryEntry performImmediate() throws Exception {
         if (_historyEntry == null) {
-            _historyEntry = createHistoryEntry(HistoryEntry.allocateID());
+            _historyEntry = new HistoryEntry(HistoryEntry.allocateID(), _briefDescription, _operation, _change);
         }
-        _project.history.addEntry(_historyEntry);
+        _history.addEntry(_historyEntry);
         _done = true;
         
         return _historyEntry;
@@ -88,13 +94,11 @@ abstract public class QuickHistoryEntryProcess extends Process {
     
     @JsonProperty("description")
     public String getDescription() {
-        return _historyEntry != null ? _historyEntry.description : _briefDescription;
+        return _historyEntry != null ? _historyEntry.getDescription() : _briefDescription;
     }
 
     @Override
     public boolean isDone() {
         return _done;
     }
-    
-    abstract protected HistoryEntry createHistoryEntry(long historyEntryID) throws Exception;
 }

@@ -33,16 +33,25 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.openrefine.operations.column;
 
-import org.openrefine.history.Change;
-import org.openrefine.history.HistoryEntry;
-import org.openrefine.model.AbstractOperation;
-import org.openrefine.model.Project;
-import org.openrefine.model.changes.ColumnMoveChange;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.openrefine.browsing.EngineConfig;
+import org.openrefine.model.Cell;
+import org.openrefine.model.ColumnMetadata;
+import org.openrefine.model.ColumnModel;
+import org.openrefine.model.GridState;
+import org.openrefine.model.Row;
+import org.openrefine.model.RowMapper;
+import org.openrefine.model.changes.Change.DoesNotApplyException;
+import org.openrefine.model.changes.ChangeContext;
+import org.openrefine.operations.ImmediateRowMapOperation;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class ColumnMoveOperation extends AbstractOperation {
+public class ColumnMoveOperation extends ImmediateRowMapOperation {
     final protected String _columnName;
     final protected int    _index;
 
@@ -53,6 +62,7 @@ public class ColumnMoveOperation extends AbstractOperation {
         @JsonProperty("index")
         int index
     ) {
+    	super(EngineConfig.ALL_ROWS);
         _columnName = columnName;
         _index = index;
     }
@@ -68,21 +78,54 @@ public class ColumnMoveOperation extends AbstractOperation {
     }
 
     @Override
-    protected String getBriefDescription(Project project) {
+	public String getDescription() {
         return "Move column " + _columnName + " to position " + _index;
     }
 
-    @Override
-    protected HistoryEntry createHistoryEntry(Project project, long historyEntryID) throws Exception {
-        if (project.columnModel.getColumnByName(_columnName) == null) {
-            throw new Exception("No column named " + _columnName);
-        }
-        if (_index < 0 || _index >= project.columnModel.columns.size()) {
-            throw new Exception("New column index out of range " + _index);
-        }
-        
-        Change change = new ColumnMoveChange(_columnName, _index);
-        
-        return new HistoryEntry(historyEntryID, project, getBriefDescription(null), ColumnMoveOperation.this, change);
-    }
+	@Override
+	public ColumnModel getNewColumnModel(GridState gridState, ChangeContext context) throws DoesNotApplyException {
+		ColumnModel columnModel = gridState.getColumnModel();
+		int fromIndex = columnIndex(columnModel, _columnName);
+		ColumnMetadata column = columnModel.getColumns().get(fromIndex);
+		return columnModel.removeColumn(fromIndex).insertUnduplicatedColumn(_index, column);
+	}
+
+	@Override
+	public RowMapper getPositiveRowMapper(GridState state, ChangeContext context) throws DoesNotApplyException {
+		int fromIndex = columnIndex(state.getColumnModel(), _columnName);
+		return mapper(fromIndex, _index);
+	}
+	
+	protected static RowMapper mapper(int fromIndex, int toIndex) {
+		return new RowMapper() {
+
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public Row call(long rowId, Row row) {
+				List<Cell> cells = row.getCells();
+				List<Cell> newCells = new ArrayList<>(cells.size());
+				if (fromIndex <= toIndex) {
+					newCells.addAll(cells.subList(0, fromIndex));
+					newCells.addAll(cells.subList(fromIndex+1, toIndex+1));
+					newCells.add(cells.get(fromIndex));
+					newCells.addAll(cells.subList(toIndex+1, cells.size()));
+				} else {
+					newCells.addAll(cells.subList(0, toIndex));
+					newCells.add(cells.get(fromIndex));
+					newCells.addAll(cells.subList(toIndex, fromIndex));
+					newCells.addAll(cells.subList(fromIndex+1, cells.size()));
+				}
+				return new Row(newCells);
+			}
+			
+		};
+	}
+	
+	// engine config is never useful, so we remove it from the JSON serialization
+	@Override
+	@JsonIgnore
+	public EngineConfig getEngineConfig() {
+		return super.getEngineConfig();
+	}
 }

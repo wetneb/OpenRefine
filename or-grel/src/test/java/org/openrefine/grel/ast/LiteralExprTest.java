@@ -27,6 +27,7 @@
 package org.openrefine.grel.ast;
 
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertTrue;
 
 import java.util.Collections;
 
@@ -51,5 +52,6 @@ public class LiteralExprTest extends ExprTestBase {
 	    assertEquals(expr.getColumnDependencies("column"), Collections.emptySet());
 	    LiteralExpr string = new LiteralExpr("foo");
 	    assertEquals(string.getColumnDependencies("foo"), Collections.emptySet());
+	    assertTrue(string.isLocal());
 	}
 }

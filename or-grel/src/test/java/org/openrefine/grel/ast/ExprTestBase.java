@@ -21,26 +21,34 @@ import org.openrefine.expr.Evaluable;
 public class ExprTestBase {
 
     protected String baseColumn = "column";
-    protected Evaluable currentColumn;
-    protected Evaluable unanalyzable;
-    protected Evaluable twoColumns;
-    protected Evaluable constant;
+    protected GrelExpr currentColumn;
+    protected GrelExpr unanalyzable;
+    protected GrelExpr twoColumns;
+    protected GrelExpr constant;
 
     @BeforeMethod
     public void setUp() {
-        currentColumn = mock(Evaluable.class);
-        unanalyzable = mock(Evaluable.class);
-        twoColumns = mock(Evaluable.class);
-        constant = mock(Evaluable.class);
+        currentColumn = mock(GrelExpr.class);
+        unanalyzable = mock(GrelExpr.class);
+        twoColumns = mock(GrelExpr.class);
+        constant = mock(GrelExpr.class);
         
         when(currentColumn.getColumnDependencies(baseColumn))
            .thenReturn(set(baseColumn));
+        when(currentColumn.isLocal())
+           .thenReturn(true);
         when(unanalyzable.getColumnDependencies(baseColumn))
            .thenReturn(null);
+        when(unanalyzable.isLocal())
+           .thenReturn(false);
         when(twoColumns.getColumnDependencies(baseColumn))
            .thenReturn(set("a","b"));
+        when(twoColumns.isLocal())
+            .thenReturn(true);
         when(constant.getColumnDependencies(baseColumn))
            .thenReturn(set());
+        when(constant.isLocal())
+           .thenReturn(true);
     }
 
     protected Set<String> set(String... strings) {

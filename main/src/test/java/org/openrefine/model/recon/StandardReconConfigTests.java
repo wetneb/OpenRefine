@@ -37,7 +37,6 @@ import java.util.ArrayList;
 
 import org.openrefine.RefineTest;
 import org.openrefine.model.Project;
-import org.openrefine.model.Recon;
 import org.openrefine.model.Row;
 import org.openrefine.model.recon.ReconConfig;
 import org.openrefine.model.recon.ReconJob;
@@ -74,7 +73,9 @@ public class StandardReconConfigTests extends RefineTest {
     }
 
     private class StandardReconConfigStub extends StandardReconConfig {
-        public StandardReconConfigStub() {
+		private static final long serialVersionUID = -2691547799395332983L;
+
+		public StandardReconConfigStub() {
             super("", "", "", "", "", false, new ArrayList<ColumnDetail>());
         }
 
@@ -194,8 +195,8 @@ public class StandardReconConfigTests extends RefineTest {
                 "           }\n" +
                 "        ]}";
     	StandardReconConfig r = StandardReconConfig.reconstruct(config);
-    	Row row = project.rows.get(0);
-        ReconJob job = r.createJob(project, 0, row, "title", row.getCell(0));
+    	Row row = project.getCurrentGridState().getRow(0);
+        ReconJob job = r.createJob(project.getCurrentGridState().getColumnModel(), 0, row, "title", row.getCell(0));
         TestUtils.assertEqualAsJson("{"
         		+ "\"query\":\"mulholland drive\","
         		+ "\"type\":\"Q1234\","

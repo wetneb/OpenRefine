@@ -33,92 +33,78 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.openrefine.model.changes;
 
-import java.io.IOException;
-import java.io.LineNumberReader;
-import java.io.Writer;
-import java.util.Properties;
+import java.io.Serializable;
+import java.util.Collections;
 
-import org.openrefine.ProjectManager;
-import org.openrefine.history.Change;
 import org.openrefine.model.Cell;
-import org.openrefine.model.Column;
-import org.openrefine.model.Project;
-import org.openrefine.util.Pool;
+import org.openrefine.model.GridState;
+import org.openrefine.model.Row;
+import org.openrefine.model.RowMapper;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+/**
+ * Changes a single cell at a designated row and column indices.
+ * 
+ * @author Antonin Delpeuch
+ *
+ */
 public class CellChange implements Change {
-    final public int     row;
-    final public int     cellIndex;
-    final public Cell    oldCell;
-    final public Cell    newCell;
+	@JsonProperty("rowId")
+    final public long         row;
+	@JsonProperty("columnName")
+	final public String       columnName;
+	@JsonProperty("newCellValue")
+    final public Serializable newCellValue;
     
-    public CellChange(int row, int cellIndex, Cell oldCell, Cell newCell) {
+    @JsonCreator
+    public CellChange(
+    		@JsonProperty("rowId")
+    		long row,
+    		@JsonProperty("columnName")
+    		String columnName,
+    		@JsonProperty("newCellValue")
+    		Object newCellValue) {
         this.row = row;
-        this.cellIndex = cellIndex;
-        this.oldCell = oldCell;
-        this.newCell = newCell;
-    }
-
-    @Override
-    public void apply(Project project) {
-        project.rows.get(row).setCell(cellIndex, newCell);
-        
-        Column column = project.columnModel.getColumnByCellIndex(cellIndex);
-        column.clearPrecomputes();
-        ProjectManager.singleton.getInterProjectModel().flushJoinsInvolvingProjectColumn(project.id, column.getName());
-    }
-
-    @Override
-    public void revert(Project project) {
-        project.rows.get(row).setCell(cellIndex, oldCell);
-        
-        Column column = project.columnModel.getColumnByCellIndex(cellIndex);
-        column.clearPrecomputes();
-        ProjectManager.singleton.getInterProjectModel().flushJoinsInvolvingProjectColumn(project.id, column.getName());
+        this.columnName = columnName;
+        this.newCellValue = (Serializable)newCellValue;
     }
     
-    @Override
-    public void save(Writer writer, Properties options) throws IOException {
-        writer.write("row="); writer.write(Integer.toString(row)); writer.write('\n');
-        writer.write("cell="); writer.write(Integer.toString(cellIndex)); writer.write('\n');
-        
-        writer.write("old=");
-        if (oldCell != null) {
-            oldCell.save(writer, options); // one liner
-        }
-        writer.write('\n');
-        
-        writer.write("new=");
-        if (newCell != null) {
-            newCell.save(writer, options); // one liner
-        }
-        writer.write('\n');
-        
-        writer.write("/ec/\n"); // end of change marker
+
+	@Override
+	public GridState apply(GridState projectState, ChangeContext context) throws DoesNotApplyException {
+		int index = projectState.getColumnModel().getColumnIndexByName(columnName);
+		if (index == -1) {
+			throw new DoesNotApplyException(
+					String.format("Column '%s' does not exist", columnName));
+		}
+		// set judgment id on recon if changed
+		return projectState.mapRows(mapFunction(index, row, newCellValue), projectState.getColumnModel());
+	}
+	
+    static protected RowMapper mapFunction(int cellIndex, long rowId, Serializable newCellValue) {
+    	return new RowMapper() {
+
+			private static final long serialVersionUID = -5983834950609157341L;
+
+			@Override
+			public Row call(long currentRowId, Row row) {
+				if (rowId == currentRowId) {
+					Cell oldCell = row.getCell(cellIndex);
+					Cell newCell = newCellValue == null ? null : new Cell(newCellValue, oldCell == null ? null : oldCell.recon);
+					return row.withCell(cellIndex, newCell);
+				} else {
+					return row;
+				}
+			}
+    	};
     }
-    
-    static public CellChange load(LineNumberReader reader, Pool pool) throws Exception {
-        int row = -1;
-        int cellIndex = -1;
-        Cell oldCell = null;
-        Cell newCell = null;
-        
-        String line;
-        while ((line = reader.readLine()) != null && !"/ec/".equals(line)) {
-            int equal = line.indexOf('=');
-            CharSequence field = line.subSequence(0, equal);
-            String value = line.substring(equal + 1);
-            
-            if ("row".equals(field)) {
-                row = Integer.parseInt(value);
-            } else if ("cell".equals(field)) {
-                cellIndex = Integer.parseInt(value);
-            } else if ("new".equals(field) && value.length() > 0) {
-                newCell = Cell.loadStreaming(value, pool);
-            } else if ("old".equals(field) && value.length() > 0) {
-                oldCell = Cell.loadStreaming(value, pool);
-            }
-        }
-        
-        return new CellChange(row, cellIndex, oldCell, newCell);
-    }
+
+	@Override
+	public boolean isImmediate() {
+		// this change has no corresponding operation, so it can not be derived from one
+		return false;
+	}
+
 }

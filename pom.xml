@@ -5,7 +5,7 @@
   <groupId>org.openrefine</groupId>
   <artifactId>openrefine</artifactId>
   <packaging>pom</packaging>
-  <version>3.4-SNAPSHOT</version>
+  <version>spark</version>
 
   <name>OpenRefine</name>
   <description>OpenRefine is a free, open source power tool for working with messy data and improving it</description>
@@ -16,9 +16,9 @@
         <module>or-grel</module>
         <module>or-util</module>
         <module>or-testing</module>
+        <module>or-spark</module>
         <module>main</module>
         <module>server</module>
-        <module>extensions</module>
         <module>packaging</module>
   </modules>
 
@@ -29,8 +29,11 @@
     <surefire.version>2.22.2</surefire.version>
     <surefireArgs></surefireArgs>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <jackson.version>2.9.10</jackson.version>
+    <jackson.version>2.6.7</jackson.version>
     <powermock.version>2.0.2</powermock.version>
+    <guava.version>15.0</guava.version>
+    <servlet-api.version>3.1.0</servlet-api.version>
+    <butterfly.version>1.0.3</butterfly.version>
   </properties>
 
   <scm>
@@ -227,6 +230,21 @@
       						<versionRange>[2.5.2,)</versionRange>
       						<goals>
       							<goal>install-file</goal>
+      						</goals>
+      					</pluginExecutionFilter>
+      					<action>
+      						<ignore></ignore>
+      					</action>
+      				</pluginExecution>
+      				<pluginExecution>
+      					<pluginExecutionFilter>
+      						<groupId>org.codehaus.mojo</groupId>
+      						<artifactId>
+      							build-helper-maven-plugin
+      						</artifactId>
+      						<versionRange>[1.8,)</versionRange>
+      						<goals>
+      							<goal>add-source</goal>
       						</goals>
       					</pluginExecutionFilter>
       					<action>

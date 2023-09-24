@@ -35,84 +35,33 @@ package org.openrefine.operations.cell;
 
 import static org.mockito.Mockito.mock;
 
-import java.io.File;
-import java.io.IOException;
 import java.io.Serializable;
-import java.io.StringReader;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Properties;
+import java.util.stream.Collectors;
 
-import org.openrefine.ProjectManager;
-import org.openrefine.ProjectMetadata;
-import org.openrefine.RefineServlet;
 import org.openrefine.RefineTest;
-import org.openrefine.importers.SeparatorBasedImporter;
-import org.openrefine.importing.ImportingJob;
-import org.openrefine.importing.ImportingManager;
-import org.openrefine.io.FileProjectManager;
-import org.openrefine.model.AbstractOperation;
-import org.openrefine.model.ModelException;
-import org.openrefine.model.Project;
+import org.openrefine.model.ColumnModel;
+import org.openrefine.model.GridState;
+import org.openrefine.model.Row;
+import org.openrefine.model.changes.Change;
+import org.openrefine.model.changes.ChangeContext;
+import org.openrefine.model.changes.Change.DoesNotApplyException;
 import org.openrefine.operations.OperationRegistry;
-import org.openrefine.operations.cell.KeyValueColumnizeOperation;
-import org.openrefine.process.Process;
 import org.openrefine.util.ParsingUtilities;
 import org.openrefine.util.TestUtils;
-import org.slf4j.LoggerFactory;
 import org.testng.Assert;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.BeforeTest;
+import org.testng.annotations.BeforeSuite;
 import org.testng.annotations.Test;
-
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.openrefine.RefineServletStub;
 
 
 public class KeyValueColumnizeTests extends RefineTest {
-    // dependencies
-    private RefineServlet servlet;
-    private Project project;
-    private ProjectMetadata pm;
-    private ObjectNode options;
-    private ImportingJob job;
-    private SeparatorBasedImporter importer;
-
-
-    @Override
-    @BeforeTest
-    public void init() {
-        logger = LoggerFactory.getLogger(this.getClass());
-    }
-
-    @BeforeMethod
-    public void SetUp() throws IOException, ModelException {
-	servlet = new RefineServletStub();
-        File dir = TestUtils.createTempDirectory("openrefine-test-workspace-dir");
-        FileProjectManager.initialize(dir);
-        project = new Project();
-        pm = new ProjectMetadata();
-        pm.setName("KeyValueColumnize test");
-        ProjectManager.singleton.registerProject(project, pm);
-        options = mock(ObjectNode.class);
+	
+    @BeforeSuite
+    public void registerOperation() {
         OperationRegistry.registerOperation("core", "key-value-columnize", KeyValueColumnizeOperation.class);
-
-	ImportingManager.initialize(servlet);
-        job = ImportingManager.createJob();
-	importer = new SeparatorBasedImporter(); 
     }
-
-    @AfterMethod
-    public void TearDown() {
-	ImportingManager.disposeJob(job.id);
-	ProjectManager.singleton.deleteProject(project.id);
-	job = null;
-        project = null;
-	pm = null;
-        options = null;
-    }
-    
+	
     @Test
     public void serializeKeyValueColumnizeOperation() throws Exception {
         String json = "{\"op\":\"core/key-value-columnize\","
@@ -129,121 +78,171 @@ public class KeyValueColumnizeTests extends RefineTest {
                 + "\"noteColumnName\":\"note column\"}";
         TestUtils.isSerializedTo(ParsingUtilities.mapper.readValue(jsonFull, KeyValueColumnizeOperation.class), jsonFull, ParsingUtilities.defaultWriter);
     }
-
+    
     /**
      * Test in the case where an ID is available in the first column.
      * @throws Exception
      */
     @Test
     public void testKeyValueColumnizeWithID() throws Exception {
-        Project project = createProject(
+        GridState grid = createGrid(
                 new String[] {"ID","Cat","Val"},
-                new Serializable[] {
-                "1","a","1",
-                "1","b","3",
-                "2","b","4",
-                "2","c","5",
-                "3","a","2",
-                "3","b","5",
-                "3","d","3"});
+                new Serializable[][] {
+                	{"1","a","1"},
+                	{"1","b","3"},
+                	{"2","b","4"},
+                	{"2","c","5"},
+                	{"3","a","2"},
+                	{"3","b","5"},
+                	{"3","d","3"}});
 
-        AbstractOperation op = new KeyValueColumnizeOperation(
-                "Cat", "Val", null);
-
-        Process process = op.createProcess(project, new Properties());
+        Change change = new KeyValueColumnizeOperation(
+                "Cat", "Val", null).createChange();
+        GridState applied = change.apply(grid, mock(ChangeContext.class));
         
-        process.performImmediate();
-            
-        // Expected output from the GUI. 
-        // ID,a,b,c,d
-        // 1,1,3,,
-        // 2,,4,5,
-        // 3,2,5,,3
-        Assert.assertEquals(project.columnModel.columns.size(), 5);
-        Assert.assertEquals(project.columnModel.columns.get(0).getName(), "ID");
-        Assert.assertEquals(project.columnModel.columns.get(1).getName(), "a");
-        Assert.assertEquals(project.columnModel.columns.get(2).getName(), "b");
-        Assert.assertEquals(project.columnModel.columns.get(3).getName(), "c");
-        Assert.assertEquals(project.columnModel.columns.get(4).getName(), "d");
-        Assert.assertEquals(project.rows.size(), 3);
+        ColumnModel columnModel = applied.getColumnModel();
+        Assert.assertEquals(columnModel.getColumns().size(), 5);
+        Assert.assertEquals(columnModel.getColumns().get(0).getName(), "ID");
+        Assert.assertEquals(columnModel.getColumns().get(1).getName(), "a");
+        Assert.assertEquals(columnModel.getColumns().get(2).getName(), "b");
+        Assert.assertEquals(columnModel.getColumns().get(3).getName(), "c");
+        Assert.assertEquals(columnModel.getColumns().get(4).getName(), "d");
         
-        // The actual row data structure has to leave the columns model untouched for redo/undo purpose.
-        // So we have 2 empty columns(column 1,2) on the row level.
-        // 1,1,3,,
-        Assert.assertEquals(project.rows.get(0).cells.get(0).value, "1");
-        Assert.assertEquals(project.rows.get(0).cells.get(3).value, "1");
-        Assert.assertEquals(project.rows.get(0).cells.get(4).value, "3");
+        List<Row> rows = applied.collectRows().stream().map(ir -> ir.getRow()).collect(Collectors.toList());
+        Assert.assertEquals(rows.size(), 3);
+        
+        Assert.assertEquals(rows.get(0).cells.get(0).value, "1");
+        Assert.assertEquals(rows.get(0).cells.get(1).value, "1");
+        Assert.assertEquals(rows.get(0).cells.get(2).value, "3");
         
         // 2,,4,5,
-        Assert.assertEquals(project.rows.get(1).cells.get(0).value, "2");
-        Assert.assertEquals(project.rows.get(1).cells.get(4).value, "4");
-        Assert.assertEquals(project.rows.get(1).cells.get(5).value, "5");
+        Assert.assertEquals(rows.get(1).cells.get(0).value, "2");
+        Assert.assertEquals(rows.get(1).cells.get(2).value, "4");
+        Assert.assertEquals(rows.get(1).cells.get(3).value, "5");
         
         // 3,2,5,,3
-        Assert.assertEquals(project.rows.get(2).cells.get(0).value, "3");
-        Assert.assertEquals(project.rows.get(2).cells.get(3).value, "2");
-        Assert.assertEquals(project.rows.get(2).cells.get(4).value, "5");
-        Assert.assertEquals(project.rows.get(2).cells.get(6).value, "3");
+        Assert.assertEquals(rows.get(2).cells.get(0).value, "3");
+        Assert.assertEquals(rows.get(2).cells.get(1).value, "2");
+        Assert.assertEquals(rows.get(2).cells.get(2).value, "5");
+        Assert.assertEquals(rows.get(2).cells.get(3).value, null);
+        Assert.assertEquals(rows.get(2).cells.get(4).value, "3");
     }
     
     /**
      * Test to demonstrate the intended behaviour of the function, for issue #1214
      * https://github.com/OpenRefine/OpenRefine/issues/1214
      */
-
     @Test
     public void testKeyValueColumnize() throws Exception {
-	String csv = "Key,Value\n"
-		+ "merchant,Katie\n"
-		+ "fruit,apple\n"
-		+ "price,1.2\n"
-		+ "fruit,pear\n"
-		+ "price,1.5\n"
-		+ "merchant,John\n"
-		+ "fruit,banana\n"
-		+ "price,3.1\n";
-	prepareOptions(",", 20, 0, 0, 1, false, false);
-        List<Exception> exceptions = new ArrayList<Exception>();
-        importer.parseOneFile(project, pm, job, "filesource", new StringReader(csv), -1, options, exceptions);
-        project.update();
-        ProjectManager.singleton.registerProject(project, pm);
+    	GridState grid = createGrid(
+                new String[] {"Key","Value"},
+                new Serializable[][] {
+                	{"merchant", "Katie"},
+                	{"fruit",    "apple"},
+                	{"price",    "1.2"},
+                	{"fruit",    "pear"},
+                	{"price",    "1.5"},
+                	{"merchant", "John"},
+                	{"fruit",    "banana"},
+                	{"price",    "3.1"}});
+		
+		Change change = new KeyValueColumnizeOperation(
+			"Key",
+			"Value",
+			null).createChange();
+		GridState applied = change.apply(grid, mock(ChangeContext.class));
 
-	AbstractOperation op = new KeyValueColumnizeOperation(
-		"Key",
-		"Value",
-		null);
-        Process process = op.createProcess(project, new Properties());
-        process.performImmediate();
-
-	int merchantCol = project.columnModel.getColumnByName("merchant").getCellIndex();
-	int fruitCol = project.columnModel.getColumnByName("fruit").getCellIndex();
-	int priceCol = project.columnModel.getColumnByName("price").getCellIndex();
-	
-	Assert.assertEquals(project.rows.get(0).getCellValue(merchantCol), "Katie");
-	Assert.assertEquals(project.rows.get(1).getCellValue(merchantCol), null);
-	Assert.assertEquals(project.rows.get(2).getCellValue(merchantCol), "John");
-	Assert.assertEquals(project.rows.get(0).getCellValue(fruitCol), "apple");
-	Assert.assertEquals(project.rows.get(1).getCellValue(fruitCol), "pear");
-	Assert.assertEquals(project.rows.get(2).getCellValue(fruitCol), "banana");
-	Assert.assertEquals(project.rows.get(0).getCellValue(priceCol), "1.2");
-	Assert.assertEquals(project.rows.get(1).getCellValue(priceCol), "1.5");
-	Assert.assertEquals(project.rows.get(2).getCellValue(priceCol), "3.1");
+		ColumnModel columnModel = applied.getColumnModel();
+		int merchantCol = columnModel.getColumnIndexByName("merchant");
+		int fruitCol = columnModel.getColumnIndexByName("fruit");
+		int priceCol = columnModel.getColumnIndexByName("price");
+		
+		List<Row> rows = applied.collectRows().stream().map(ir -> ir.getRow()).collect(Collectors.toList());
+        Assert.assertEquals(rows.size(), 3);
+		Assert.assertEquals(rows.get(0).getCellValue(merchantCol), "Katie");
+		Assert.assertEquals(rows.get(1).getCellValue(merchantCol), null);
+		Assert.assertEquals(rows.get(2).getCellValue(merchantCol), "John");
+		Assert.assertEquals(rows.get(0).getCellValue(fruitCol), "apple");
+		Assert.assertEquals(rows.get(1).getCellValue(fruitCol), "pear");
+		Assert.assertEquals(rows.get(2).getCellValue(fruitCol), "banana");
+		Assert.assertEquals(rows.get(0).getCellValue(priceCol), "1.2");
+		Assert.assertEquals(rows.get(1).getCellValue(priceCol), "1.5");
+		Assert.assertEquals(rows.get(2).getCellValue(priceCol), "3.1");
     }
+    
+    @Test
+    public void testKeyValueColumnizeNotes() throws Exception {
+    	GridState grid = createGrid(
+                new String[] {"Key","Value", "Notes"},
+                new Serializable[][] {
+                	{"merchant", "Katie",  "ref"        },
+                	{"fruit",    "apple",  "catalogue"  },
+                	{"price",    "1.2",    "pricelist"  },
+                	{"merchant", "John",   "knowledge"  },
+                	{"fruit",    "banana", "survey"     },
+                	{"price",    "3.1",    "legislation"}
+                });
+		
+		Change change = new KeyValueColumnizeOperation(
+			"Key",
+			"Value",
+			"Notes").createChange();
+		GridState applied = change.apply(grid, mock(ChangeContext.class));
 
-    private void prepareOptions(
-            String sep, int limit, int skip, int ignoreLines,
-            int headerLines, boolean guessValueType, boolean ignoreQuotes) {
-            
-            whenGetStringOption("separator", options, sep);
-            whenGetIntegerOption("limit", options, limit);
-            whenGetIntegerOption("skipDataLines", options, skip);
-            whenGetIntegerOption("ignoreLines", options, ignoreLines);
-            whenGetIntegerOption("headerLines", options, headerLines);
-            whenGetBooleanOption("guessCellValueTypes", options, guessValueType);
-            whenGetBooleanOption("processQuotes", options, !ignoreQuotes);
-            whenGetBooleanOption("storeBlankCellsAsNulls", options, true);
-        }
-
+		ColumnModel columnModel = applied.getColumnModel();
+		Assert.assertEquals(columnModel.getColumnNames(),
+				Arrays.asList("merchant", "fruit", "price", "Notes : merchant", "Notes : fruit", "Notes : price"));
+		
+		List<Row> rows = applied.collectRows().stream().map(ir -> ir.getRow()).collect(Collectors.toList());
+        Assert.assertEquals(rows.size(), 2);
+		Assert.assertEquals(rows.get(0).getCellValue(0), "Katie");
+		Assert.assertEquals(rows.get(1).getCellValue(0), "John");
+		Assert.assertEquals(rows.get(0).getCellValue(1), "apple");
+		Assert.assertEquals(rows.get(1).getCellValue(1), "banana");
+		Assert.assertEquals(rows.get(0).getCellValue(2), "1.2");
+		Assert.assertEquals(rows.get(1).getCellValue(2), "3.1");
+		Assert.assertEquals(rows.get(0).getCellValue(3), "ref");
+		Assert.assertEquals(rows.get(1).getCellValue(3), "knowledge");
+		Assert.assertEquals(rows.get(0).getCellValue(4), "catalogue");
+		Assert.assertEquals(rows.get(1).getCellValue(4), "survey");
+		Assert.assertEquals(rows.get(0).getCellValue(5), "pricelist");
+		Assert.assertEquals(rows.get(1).getCellValue(5), "legislation");
+    }
+    
+    @Test
+    public void testCopyRowsWithNoKeys() throws DoesNotApplyException {
+    	// when a key cell is empty, if there are other columns around, we simply copy those
+    	GridState grid = createGrid(
+                new String[] {"Key","Value"},
+                new Serializable[][] {
+                	{"merchant", "Katie"  },
+                	{"fruit",    "apple"  },
+                	{"price",    "1.2",   },
+                	{null,       "John",  },
+                	{"fruit",    "banana" },
+                	{"price",    "3.1",   }
+                });
+    	
+    	Change change = new KeyValueColumnizeOperation(
+    			"Key",
+    			"Value",
+    			null).createChange();
+    	GridState applied = change.apply(grid, mock(ChangeContext.class));
+    	
+		ColumnModel columnModel = applied.getColumnModel();
+		int merchantCol = columnModel.getColumnIndexByName("merchant");
+		int fruitCol = columnModel.getColumnIndexByName("fruit");
+		int priceCol = columnModel.getColumnIndexByName("price");
+		
+		List<Row> rows = applied.collectRows().stream().map(ir -> ir.getRow()).collect(Collectors.toList());
+        Assert.assertEquals(rows.size(), 2);
+		Assert.assertEquals(rows.get(0).getCellValue(merchantCol), "Katie");
+		Assert.assertEquals(rows.get(1).getCellValue(merchantCol), null);
+		Assert.assertEquals(rows.get(0).getCellValue(fruitCol), "apple");
+		Assert.assertEquals(rows.get(1).getCellValue(fruitCol), "banana");
+		Assert.assertEquals(rows.get(0).getCellValue(priceCol), "1.2");
+		Assert.assertEquals(rows.get(1).getCellValue(priceCol), "3.1");
+    }
 
 }
 

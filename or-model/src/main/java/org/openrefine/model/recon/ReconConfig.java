@@ -34,6 +34,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package org.openrefine.model.recon;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.io.Writer;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -41,8 +42,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.openrefine.model.Cell;
-import org.openrefine.model.Project;
-import org.openrefine.model.Recon;
+import org.openrefine.model.ColumnModel;
 import org.openrefine.model.Row;
 import org.openrefine.util.ParsingUtilities;
 import org.slf4j.Logger;
@@ -57,7 +57,9 @@ import com.fasterxml.jackson.databind.annotation.JsonTypeIdResolver;
     include=JsonTypeInfo.As.PROPERTY,
     property="mode")
 @JsonTypeIdResolver(ReconConfigResolver.class)
-abstract public class ReconConfig  {
+abstract public class ReconConfig implements Serializable {
+    private static final long serialVersionUID = -6128741248135661216L;
+
     final static protected Logger LOGGER = LoggerFactory.getLogger("recon-config");
 
     static final public Map<String, List<Class<? extends ReconConfig>>> s_opNameToClass =
@@ -103,11 +105,11 @@ abstract public class ReconConfig  {
     
     abstract public int getBatchSize();
     
-    abstract public String getBriefDescription(Project project, String columnName);
+    abstract public String getBriefDescription(String columnName);
     
     abstract public ReconJob createJob(
-        Project     project, 
-        int         rowIndex, 
+        ColumnModel columnModel, 
+        long         rowIndex, 
         Row         row,
         String      columnName,
         Cell        cell

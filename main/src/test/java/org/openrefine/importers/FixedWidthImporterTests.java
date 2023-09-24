@@ -27,26 +27,23 @@
 package org.openrefine.importers;
 
 
-import java.io.StringReader;
+import java.io.File;
+import java.util.Arrays;
+import java.util.List;
 
-import org.openrefine.importers.FixedWidthImporter;
+import org.openrefine.model.GridState;
+import org.openrefine.model.IndexedRow;
 import org.openrefine.util.JSONUtilities;
 import org.openrefine.util.ParsingUtilities;
-import org.slf4j.LoggerFactory;
+import org.openrefine.util.TestUtils;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
 
 public class FixedWidthImporterTests extends ImporterTest {
-    @Override
-    @BeforeTest
-    public void init() {
-        logger = LoggerFactory.getLogger(this.getClass());
-    }
 
     //constants
     String SAMPLE_ROW = "NDB_NoShrt_DescWater";
@@ -58,7 +55,7 @@ public class FixedWidthImporterTests extends ImporterTest {
     @BeforeMethod
     public void setUp(){
         super.setUp();
-        SUT = new FixedWidthImporter();
+        SUT = new FixedWidthImporter(runner());
     }
 
     @Override
@@ -70,41 +67,100 @@ public class FixedWidthImporterTests extends ImporterTest {
     
     //---------------------read tests------------------------
     @Test
-    public void readFixedWidth(){
-        StringReader reader = new StringReader(SAMPLE_ROW + "\nTooShort");
-        
+    public void readFixedWidth() throws Exception {
+    	File testFile = TestUtils.createTempFile("my_dataset.txt", "NDB_NoShrt_DescWater\nTooShort\n");
+    	
         ArrayNode columnWidths = ParsingUtilities.mapper.createArrayNode();
         JSONUtilities.append(columnWidths, 6);
         JSONUtilities.append(columnWidths, 9);
         JSONUtilities.append(columnWidths, 5);
-        whenGetArrayOption("columnWidths", options, columnWidths);
-
+        options.set("columnWidths", columnWidths);
+ 
         ArrayNode columnNames = ParsingUtilities.mapper.createArrayNode();
         columnNames.add("Col 1");
         columnNames.add("Col 2"); 
         columnNames.add("Col 3");
-        whenGetArrayOption("columnNames", options, columnNames);
+        options.set("columnNames", columnNames);
 
-        whenGetIntegerOption("ignoreLines", options, 0);
-        whenGetIntegerOption("headerLines", options, 0);
-        whenGetIntegerOption("skipDataLines", options, 0);
-        whenGetIntegerOption("limit", options, -1);
-        whenGetBooleanOption("storeBlankCellsAsNulls",options,true);
+        options.put("ignoreLines", 0);
+        options.put("headerLines", 0);
+        options.put("skipDataLines", 0);
+        options.put("limit", -1);
+        options.put("storeBlankCellsAsNulls", true);
         
-        try {
-            parseOneFile(SUT, reader);
-        } catch (Exception e) {
-            Assert.fail(e.getMessage());
-        }
+        GridState result = parseOneFile(SUT, testFile.getAbsolutePath());
         
-        Assert.assertEquals(project.rows.size(), 3); // Column names count as a row?
-        Assert.assertEquals(project.rows.get(1).cells.size(), 3);
-        Assert.assertEquals((String)project.rows.get(1).getCellValue(0), "NDB_No");
-        Assert.assertEquals((String)project.rows.get(1).getCellValue(1), "Shrt_Desc");
-        Assert.assertEquals((String)project.rows.get(1).getCellValue(2), "Water");
-        Assert.assertEquals(project.rows.get(2).cells.size(), 3);
-        Assert.assertEquals((String)project.rows.get(2).getCellValue(0), "TooSho");
-        Assert.assertEquals((String)project.rows.get(2).getCellValue(1), "rt");
-        Assert.assertNull(project.rows.get(2).getCellValue(2));
+        List<IndexedRow> rows = result.collectRows();
+        Assert.assertEquals(rows.size(), 2);
+        Assert.assertEquals(rows.get(0).getRow().cells.size(), 3);
+        Assert.assertEquals((String)rows.get(0).getRow().getCellValue(0), "NDB_No");
+        Assert.assertEquals((String)rows.get(0).getRow().getCellValue(1), "Shrt_Desc");
+        Assert.assertEquals((String)rows.get(0).getRow().getCellValue(2), "Water");
+        Assert.assertEquals(rows.get(0).getRow().cells.size(), 3);
+        Assert.assertEquals((String)rows.get(1).getRow().getCellValue(0), "TooSho");
+        Assert.assertEquals((String)rows.get(1).getRow().getCellValue(1), "rt");
+        Assert.assertNull(rows.get(1).getRow().getCellValue(2));
+        
+        Assert.assertEquals(result.getColumnModel().getColumnNames(), Arrays.asList("Col 1", "Col 2", "Col 3"));
+    }
+    
+    @Test
+    public void readNoColumnNames() throws Exception {
+    	File testFile = TestUtils.createTempFile("my_dataset.txt", "NDB_NoShrt_DescWater\nTooShort\n");
+    	
+        ArrayNode columnWidths = ParsingUtilities.mapper.createArrayNode();
+        JSONUtilities.append(columnWidths, 6);
+        JSONUtilities.append(columnWidths, 9);
+        JSONUtilities.append(columnWidths, 5);
+        options.set("columnWidths", columnWidths);
+
+        options.put("ignoreLines", 0);
+        options.put("headerLines", 0);
+        options.put("skipDataLines", 0);
+        options.put("limit", -1);
+        options.put("storeBlankCellsAsNulls", true);
+        
+        GridState result = parseOneFile(SUT, testFile.getAbsolutePath());
+        
+        List<IndexedRow> rows = result.collectRows();
+        Assert.assertEquals(rows.size(), 2);
+        Assert.assertEquals(rows.get(0).getRow().cells.size(), 3);
+        Assert.assertEquals((String)rows.get(0).getRow().getCellValue(0), "NDB_No");
+        Assert.assertEquals((String)rows.get(0).getRow().getCellValue(1), "Shrt_Desc");
+        Assert.assertEquals((String)rows.get(0).getRow().getCellValue(2), "Water");
+        Assert.assertEquals(rows.get(0).getRow().cells.size(), 3);
+        Assert.assertEquals((String)rows.get(1).getRow().getCellValue(0), "TooSho");
+        Assert.assertEquals((String)rows.get(1).getRow().getCellValue(1), "rt");
+        Assert.assertNull(rows.get(1).getRow().getCellValue(2));
+        
+        Assert.assertEquals(result.getColumnModel().getColumnNames(), Arrays.asList("Column 1", "Column 2", "Column 3"));
+    }
+    
+    @Test
+    public void readColumnHeader() throws Exception {
+    	File testFile = TestUtils.createTempFile("my_dataset.txt", "NDB_NoShrt_DescWater\n012345green....00342\n");
+    	
+        ArrayNode columnWidths = ParsingUtilities.mapper.createArrayNode();
+        JSONUtilities.append(columnWidths, 6);
+        JSONUtilities.append(columnWidths, 9);
+        JSONUtilities.append(columnWidths, 5);
+        options.set("columnWidths", columnWidths);
+
+        options.put("ignoreLines", 0);
+        options.put("headerLines", 1);
+        options.put("skipDataLines", 0);
+        options.put("limit", -1);
+        options.put("storeBlankCellsAsNulls", true);
+        
+        GridState result = parseOneFile(SUT, testFile.getAbsolutePath());
+        
+        List<IndexedRow> rows = result.collectRows();
+        Assert.assertEquals(rows.size(), 1);
+        Assert.assertEquals(rows.get(0).getRow().cells.size(), 3);
+        Assert.assertEquals((String)rows.get(0).getRow().getCellValue(0), "012345");
+        Assert.assertEquals((String)rows.get(0).getRow().getCellValue(1), "green....");
+        Assert.assertEquals((String)rows.get(0).getRow().getCellValue(2), "00342");
+        
+        Assert.assertEquals(result.getColumnModel().getColumnNames(), Arrays.asList("NDB_No", "Shrt_Desc", "Water"));
     }
 }

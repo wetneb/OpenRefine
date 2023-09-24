@@ -34,15 +34,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package org.openrefine.commands.cell;
 
 import java.io.IOException;
-import java.util.Properties;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.openrefine.commands.Command;
-import org.openrefine.model.AbstractOperation;
 import org.openrefine.model.Project;
+import org.openrefine.operations.Operation;
 import org.openrefine.operations.cell.TransposeColumnsIntoRowsOperation;
 import org.openrefine.process.Process;
 
@@ -57,7 +56,7 @@ public class TransposeColumnsIntoRowsCommand extends Command {
         
         try {
             Project project = getProject(request);
-            AbstractOperation op;
+            Operation op;
             
             String startColumnName = request.getParameter("startColumnName");
             int columnCount = Integer.parseInt(request.getParameter("columnCount"));
@@ -82,7 +81,7 @@ public class TransposeColumnsIntoRowsCommand extends Command {
                     keyColumnName, valueColumnName);
             }
             
-            Process process = op.createProcess(project, new Properties());
+            Process process = op.createProcess(project.getHistory(), project.getProcessManager());
             
             performProcessAndRespond(request, response, project, process);
         } catch (Exception e) {

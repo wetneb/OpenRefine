@@ -33,80 +33,73 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.openrefine.model;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.LineNumberReader;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 
 import org.openrefine.ProjectManager;
 import org.openrefine.ProjectMetadata;
-import org.openrefine.RefineModel;
 import org.openrefine.history.History;
+import org.openrefine.model.changes.ChangeDataStore;
+import org.openrefine.overlay.OverlayModel;
 import org.openrefine.process.ProcessManager;
-import org.openrefine.util.ParsingUtilities;
-import org.openrefine.util.Pool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fasterxml.jackson.databind.InjectableValues;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
+/**
+ * A project is a table with overlay models and full edit history. This is the central
+ * concept of the OpenRefine datamodel - most operations are done within a given
+ * project.
+ */
 public class Project {
-    final static protected Map<String, Class<? extends OverlayModel>> 
-        s_overlayModelClasses = new HashMap<String, Class<? extends OverlayModel>>();
     
-    final public long                       id;
-    final public List<Row>                  rows = new ArrayList<Row>();
-    final public ColumnModel                columnModel = new ColumnModel();
-    final public RecordModel                recordModel = new RecordModel();
-    final public Map<String, OverlayModel>  overlayModels = new HashMap<String, OverlayModel>();
-    final public History                    history;
+    // The project identifier, assigned at creation
+    private final long                         id;
+    // The complete history of transformations executed on this project
+    private final History                      history;
     
-    transient public ProcessManager processManager = new ProcessManager();
-    transient private LocalDateTime _lastSave = LocalDateTime.now();
+    transient private ProcessManager processManager = new ProcessManager();
+    // by default, the project has never been saved so far.
+    transient private LocalDateTime _lastSave = LocalDateTime.of(1970,01,02,00,30,00);
 
     final static Logger logger = LoggerFactory.getLogger("project");
 
-    static public long generateID() {
-        return System.currentTimeMillis() + Math.round(Math.random() * 1000000000000L);
-    }
-
-    public Project() {
-        id = generateID();
-        history = new History(this);
-    }
-
-    protected Project(long id) {
-        this.id = id;
-        this.history = new History(this);
-    }
-    
-    static public void registerOverlayModel(String modelName, Class<? extends OverlayModel> klass) {
-        s_overlayModelClasses.put(modelName, klass);
+    /**
+     * Creates a new project from an initial grid.
+     * 
+     * @param initialState
+     *      the initial state of the project.
+     */
+    public Project(GridState initialState, ChangeDataStore dataStore) {
+        this(generateID(), new History(initialState, dataStore));
     }
     
     /**
-     * Free/dispose of project data from memory.
+     * Creates a new project from an initial grid
+     * and a project id.
+     * 
+     * @param projectId
+     *       the project identifier
+     * @param initialState
+     *       the initial state of the project
      */
-    public void dispose() {
-        for (OverlayModel overlayModel : overlayModels.values()) {
-            try {
-                overlayModel.dispose(this);
-            } catch (Exception e) {
-                logger.warn("Error signaling overlay model before disposing", e);
-            }
-        }
-        ProjectManager.singleton.getInterProjectModel().flushJoinsInvolvingProject(this.id);
-        // The rest of the project should get garbage collected when we return.
+    public Project(long projectId, GridState initialState, ChangeDataStore dataStore) {
+        this(projectId, new History(initialState, dataStore));
+    }
+
+    /**
+     * Restores a project from a saved state.
+     * 
+     * @param id
+     * @param initialState
+     */
+    public Project(
+            long id,
+            History history) {
+        this.id = id;
+        this.history = history;
     }
 
     public LocalDateTime getLastSave(){
@@ -123,139 +116,46 @@ public class Project {
         return ProjectManager.singleton.getProjectMetadata(id);
     }
 
-    public void saveToOutputStream(OutputStream out, Pool pool) throws IOException {
-        for (OverlayModel overlayModel : overlayModels.values()) {
-            try {
-                overlayModel.onBeforeSave(this);
-            } catch (Exception e) {
-                logger.warn("Error signaling overlay model before saving", e);
-            }
-        }
-        
-        Writer writer = new OutputStreamWriter(out, "UTF-8");
-        try {
-            Properties options = new Properties();
-            options.setProperty("mode", "save");
-            options.put("pool", pool);
-
-            saveToWriter(writer, options);
-        } finally {
-            writer.flush();
-        }
-        
-        for (OverlayModel overlayModel : overlayModels.values()) {
-            try {
-                overlayModel.onAfterSave(this);
-            } catch (Exception e) {
-                logger.warn("Error signaling overlay model after saving", e);
-            }
-        }
-    }
-
-    protected void saveToWriter(Writer writer, Properties options) throws IOException {
-        writer.write(RefineModel.ASSIGNED_VERSION); writer.write('\n');
-        
-        writer.write("columnModel=\n"); columnModel.save(writer, options);
-        writer.write("history=\n"); history.save(writer, options);
-        
-        for (String modelName : overlayModels.keySet()) {
-            writer.write("overlayModel:");
-            writer.write(modelName);
-            writer.write("=");
-            
-            ParsingUtilities.saveWriter.writeValue(writer, overlayModels.get(modelName));
-            writer.write('\n');
-        }
-        
-        writer.write("rowCount="); writer.write(Integer.toString(rows.size())); writer.write('\n');
-        for (Row row : rows) {
-            row.save(writer, options); writer.write('\n');
-        }
-    }
-    
-    static public Project loadFromInputStream(InputStream is, long id, Pool pool) throws Exception {
-        return loadFromReader(new LineNumberReader(new InputStreamReader(is, "UTF-8")), id, pool);
-    }
-    
-    static private Project loadFromReader(
-        LineNumberReader reader,
-        long id,
-        Pool pool
-    ) throws Exception {
-        long start = System.currentTimeMillis();
-        
-        // version of Refine which wrote the file
-        /* String version = */ reader.readLine();
-        
-        Project project = new Project(id);
-        int maxCellCount = 0;
-        
-        ObjectMapper mapper = ParsingUtilities.mapper.copy();
-        InjectableValues injections = new InjectableValues.Std().addValue("project", project);
-        mapper.setInjectableValues(injections);
-        
-        String line;
-        while ((line = reader.readLine()) != null) {
-            int equal = line.indexOf('=');
-            String field = line.substring(0, equal);
-            String value = line.substring(equal + 1);
-            
-            // backward compatibility
-            if ("protograph".equals(field)) {
-                field = "overlayModel:freebaseProtograph";
-            }
-            
-            if ("columnModel".equals(field)) {
-                project.columnModel.load(reader);
-            } else if ("history".equals(field)) {
-                project.history.load(project, reader);
-            } else if ("rowCount".equals(field)) {
-                int count = Integer.parseInt(value);
-
-                for (int i = 0; i < count; i++) {
-                    line = reader.readLine();
-                    if (line != null) {
-                        Row row = Row.load(line, pool);
-                        project.rows.add(row);
-                        maxCellCount = Math.max(maxCellCount, row.cells.size());
-                    }
-                }
-            } else if (field.startsWith("overlayModel:")) {
-                String modelName = field.substring("overlayModel:".length());
-                if (s_overlayModelClasses.containsKey(modelName)) {
-                    Class<? extends OverlayModel> klass = s_overlayModelClasses.get(modelName);
-                    
-                    try {
-                        OverlayModel overlayModel = ParsingUtilities.mapper.readValue(value, klass);
-                        
-                        project.overlayModels.put(modelName, overlayModel);
-                    } catch (IOException e) {
-                        logger.error("Failed to load overlay model " + modelName);
-                    }
-                }
-            }
-        }
-
-        project.columnModel.setMaxCellIndex(maxCellCount - 1);
-
-        logger.info(
-            "Loaded project {} from disk in {} sec(s)",id,Long.toString((System.currentTimeMillis() - start) / 1000)
-        );
-
-        project.update();
-
-        return project;
-    }
-
-    public void update() {
-        columnModel.update();
-        recordModel.update(this);
-    }
-
-
-    //wrapper of processManager variable to allow unit testing
-    //TODO make the processManager variable private, and force all calls through this method
     public ProcessManager getProcessManager() {
         return this.processManager;
+    }
+
+    public History getHistory() {
+        return history;
+    }
+    
+    static public long generateID() {
+        return System.currentTimeMillis() + Math.round(Math.random() * 1000000000000L);
+    }
+
+    public long getId() {
+        return id;
+    }
+    
+    public void dispose() {
+    	// TODO unload RDDs?
+    }
+
+    /**
+     * Convenience function to return the current column model from the history.
+     * @return
+     */
+    public ColumnModel getColumnModel() {
+        return history.getCurrentGridState().getColumnModel();
+    }
+    
+    /**
+     * Convenience function to return the current grid state.
+     */
+    public GridState getCurrentGridState() {
+        return history.getCurrentGridState();
+    }
+
+    /**
+     * Convenience function to return the current overlay models
+     * @return
+     */
+    public Map<String, OverlayModel> getOverlayModels() {
+        return history.getCurrentGridState().getOverlayModels();
     }
 }

@@ -41,17 +41,23 @@ import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.apache.commons.io.FileUtils;
-import org.openrefine.ProjectManager;
-import org.openrefine.ProjectMetadata;
 import org.openrefine.io.FileProjectManager;
 import org.openrefine.model.Cell;
-import org.openrefine.model.Column;
-import org.openrefine.model.ModelException;
+import org.openrefine.model.ColumnMetadata;
+import org.openrefine.model.ColumnModel;
+import org.openrefine.model.DatamodelRunner;
+import org.openrefine.model.GridState;
 import org.openrefine.model.Project;
 import org.openrefine.model.Row;
+import org.openrefine.model.TestingDatamodelRunner;
+import org.openrefine.model.changes.LazyChangeDataStore;
+import org.openrefine.model.recon.Recon;
+import org.openrefine.model.recon.ReconCandidate;
 import org.openrefine.util.TestUtils;
 import org.powermock.modules.testng.PowerMockTestCase;
 import org.slf4j.Logger;
@@ -65,7 +71,6 @@ import com.fasterxml.jackson.databind.node.BooleanNode;
 import com.fasterxml.jackson.databind.node.IntNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
-import org.openrefine.ProjectManagerStub;
 
 /**
  * A base class containing various utilities to help testing Refine.
@@ -76,10 +81,29 @@ public class RefineTest extends PowerMockTestCase {
     
     boolean testFailed;
     protected File workspaceDir;
-    private List<Project> projects = new ArrayList<Project>();
+    
+    private DatamodelRunner runner;
+    
+    /**
+     * Method that subclasses can override to change the datamodel runner
+     * used in the test.
+     */
+    protected DatamodelRunner createDatamodelRunner() {
+        return new TestingDatamodelRunner();
+    }
 
+    /**
+     * Method to access the runner easily from tests.
+     */
+    protected DatamodelRunner runner() {
+        if (runner == null) {
+            runner = createDatamodelRunner();
+        }
+        return runner;
+    }
+    
     @BeforeSuite
-    public void init() {       
+    public void init() { 
         System.setProperty("log4j.configuration", "tests.log4j.properties");
         try {
             workspaceDir = TestUtils.createTempDirectory("openrefine-test-workspace-dir");
@@ -88,7 +112,7 @@ public class RefineTest extends PowerMockTestCase {
                     ",\"preferences\":{\"entries\":{\"scripting.starred-expressions\":" +
                     "{\"class\":\"org.openrefine.preference.TopList\",\"top\":2147483647," +
                     "\"list\":[]},\"scripting.expressions\":{\"class\":\"org.openrefine.preference.TopList\",\"top\":100,\"list\":[]}}}}");
-            FileProjectManager.initialize(workspaceDir);
+            FileProjectManager.initialize(runner, workspaceDir);
             
 
         } catch (IOException e) {
@@ -102,24 +126,7 @@ public class RefineTest extends PowerMockTestCase {
 
     @BeforeMethod
     protected void initProjectManager() {
-        ProjectManager.singleton = new ProjectManagerStub();
-    }
-    
-    protected Project createProjectWithColumns(String projectName, String... columnNames) throws IOException, ModelException {
-        Project project = new Project();
-        ProjectMetadata pm = new ProjectMetadata();
-        pm.setName(projectName);
-        ProjectManager.singleton.registerProject(project, pm);
-
-        if (columnNames != null) {
-            for(String columnName : columnNames) {
-                int index = project.columnModel.allocateNewCellIndex();
-                Column column = new Column(index,columnName);
-                project.columnModel.addColumn(index, column, true);
-            }
-        }
-        projects.add(project);
-        return project;
+        ProjectManager.singleton = new ProjectManagerStub(runner());
     }
     
     /**
@@ -155,36 +162,67 @@ public class RefineTest extends PowerMockTestCase {
      *       the cell values, as a flattened array of arrays
      * @return
      */
+    protected Project createProject(String projectName, String[] columns, Serializable[][] rows) {
+    	ProjectMetadata meta = new ProjectMetadata();
+    	meta.setName(projectName);
+    	GridState state = createGrid(columns, rows);
+    	Project project = new Project(state, new LazyChangeDataStore());
+    	ProjectManager.singleton.registerProject(project, meta);
+    	return project;
+    }
+    
+    protected GridState createGrid(String[] columns, Serializable[][] rows) {
+        List<ColumnMetadata> columnMeta = new ArrayList<>(columns.length);
+        for(String column: columns) {
+            columnMeta.add(new ColumnMetadata(column));
+        }
+        ColumnModel model = new ColumnModel(columnMeta);
+        Cell[][] cells = new Cell[rows.length][];
+        for(int i = 0; i != rows.length; i++) {
+            cells[i] = new Cell[columns.length];
+            for(int j = 0; j != rows[i].length; j++) {
+                if (rows[i][j] == null ) {
+                    cells[i][j] = null;
+                } else if (rows[i][j] instanceof Cell) {
+                    cells[i][j] = (Cell)rows[i][j];
+                } else {
+                    cells[i][j] = new Cell(rows[i][j], null);
+                }
+            }
+        }
+        
+        return runner().create(model, toRows(cells), Collections.emptyMap());
+    }
+ 
+    @Deprecated
     protected Project createProject(String projectName, String[] columns, Serializable[] rows) {
-    	try {
-	    	Project project = new Project();
-	    	ProjectMetadata meta = new ProjectMetadata();
-	    	meta.setName(projectName);
-	    	for(String column: columns) {
-	    		int idx = project.columnModel.allocateNewCellIndex();
-	    		project.columnModel.addColumn(idx, new Column(idx, column), false);
-	    	}
-	    	Row row = null;
-	    	int idx = 0;
-	    	for(Serializable value : rows) {
-	    		if (idx % columns.length == 0) {
-	    			row = new Row(columns.length);
-	    			project.rows.add(row);
-	    		}
-	    		Cell cell = null;
-	    		if (value != null) {
-	    			cell = new Cell(value,null);
-	    		}
-	    		row.setCell(idx % columns.length, cell);
-	    		idx += 1;
-	    	}
-	    	ProjectManager.singleton.registerProject(project, meta);
-	    	project.update();
-	    	return project;
-    	} catch(ModelException e) {
-    		e.printStackTrace();
-    		return null;
+    	Serializable[][] cells = new Serializable[rows.length / columns.length][];
+    	for(int i = 0; i != rows.length; i++) {
+    		if(i % columns.length == 0) {
+    			cells[i / columns.length] = new Serializable[columns.length];
+    		}
+    		cells[i / columns.length][i % columns.length] = rows[i];
     	}
+    	return createProject(projectName, columns, cells);
+    }
+    
+    protected List<Row> toRows(Cell[][] cells) {
+    	List<Row> rows = new ArrayList<>(cells.length);
+    	for (int i = 0; i != cells.length; i++) {
+    		List<Cell> currentCells = new ArrayList<>(cells[i].length);
+    		for(int j = 0; j != cells[i].length; j++) {
+    			currentCells.add(cells[i][j]);
+    		}
+    		rows.add(new Row(currentCells));
+    	}
+		return rows;
+    }
+    
+    // We do not use the equals method of GridState here because GridState does not check for equality
+    // with its grid contents (because this would require fetching all rows in memory)
+    protected void assertGridEquals(GridState actual, GridState expected) {
+        Assert.assertEquals(actual.getColumnModel(), expected.getColumnModel());
+        Assert.assertEquals(actual.collectRows(), expected.collectRows());
     }
 
     /**
@@ -202,14 +240,14 @@ public class RefineTest extends PowerMockTestCase {
             String sep, int limit, int skip, int ignoreLines,
             int headerLines, boolean guessValueType, boolean ignoreQuotes) {
             
-            whenGetStringOption("separator", options, sep);
-            whenGetIntegerOption("limit", options, limit);
-            whenGetIntegerOption("skipDataLines", options, skip);
-            whenGetIntegerOption("ignoreLines", options, ignoreLines);
-            whenGetIntegerOption("headerLines", options, headerLines);
-            whenGetBooleanOption("guessCellValueTypes", options, guessValueType);
-            whenGetBooleanOption("processQuotes", options, !ignoreQuotes);
-            whenGetBooleanOption("storeBlankCellsAsNulls", options, true);
+            options.put("separator", sep);
+            options.put("limit", limit);
+            options.put("skipDataLines", skip);
+            options.put("ignoreLines", ignoreLines);
+            options.put("headerLines", headerLines);
+            options.put("guessCellValueTypes", guessValueType);
+            options.put("processQuotes", !ignoreQuotes);
+            options.put("storeBlankCellsAsNulls", true);
     }
     
     /**
@@ -227,6 +265,26 @@ public class RefineTest extends PowerMockTestCase {
 		ProjectManager.singleton._projectsMetadata.clear();
     }
             
+    protected Recon testRecon(String name, String id, Recon.Judgment judgment) {
+    	List<ReconCandidate> candidates = Arrays.asList(
+    		new ReconCandidate(id, name + " 1", null, 98.0),
+    		new ReconCandidate(id+"2", name + " 2", null, 76.0)
+    	);
+    	ReconCandidate match = Recon.Judgment.Matched.equals(judgment) ? candidates.get(0) : null;
+    	return new Recon(
+    			1234L,
+    			3478L,
+    			judgment,
+    			match,
+    			new Object[3],
+    			candidates,
+    			"http://my.service.com/api",
+    			"http://my.service.com/space",
+    			"http://my.service.com/schema",
+    			"batch",
+    			-1);
+    }
+
     /**
      * Check that a project was created with the appropriate number of columns and rows.
      * 
@@ -236,81 +294,46 @@ public class RefineTest extends PowerMockTestCase {
      */
     public static void assertProjectCreated(Project project, int numCols, int numRows) {
         Assert.assertNotNull(project);
-        Assert.assertNotNull(project.columnModel);
-        Assert.assertNotNull(project.columnModel.columns);
-        Assert.assertEquals(project.columnModel.columns.size(), numCols);
-        Assert.assertNotNull(project.rows);
-        Assert.assertEquals(project.rows.size(), numRows);
+        Assert.assertNotNull(project.getHistory());
+        Assert.assertNotNull(project.getHistory().getInitialGridState());
+        ColumnModel model = project.getHistory().getInitialGridState().getColumnModel();
+        Assert.assertNotNull(model);
+        Assert.assertEquals(model.getColumns().size(), numCols);
+        Assert.assertEquals(project.getHistory().getInitialGridState().rowCount(), numRows);
     }
 
     /**
-     * Check that a project was created with the appropriate number of columns, rows, and records.
-     * 
-     * @param project project to check
-     * @param numCols expected column count
-     * @param numRows expected row count
-     * @param numRows expected record count
+     * Parse and evaluate a GREL expression and compare the result to the expect value
+     *
+     * @param bindings
+     * @param test
+     * @throws ParsingException
      */
-    public static void assertProjectCreated(Project project, int numCols, int numRows, int numRecords) {
-        assertProjectCreated(project,numCols,numRows);
-        Assert.assertNotNull(project.recordModel);
-        Assert.assertEquals(project.recordModel.getRecordCount(),numRecords);
+    protected void parseEval(Properties bindings, String[] test)
+    throws ParsingException {
+        Evaluable eval = MetaParser.parse("grel:" + test[0]);
+        Object result = eval.evaluate(bindings);
+        Assert.assertEquals(result.toString(), test[1], "Wrong result for expression: " + test[0]);
     }
 
-    public void log(Project project) {
-        // some quick and dirty debugging
-        StringBuilder sb = new StringBuilder();
-        for(Column c : project.columnModel.columns){
-            sb.append(c.getName());
-            sb.append("; ");
-        }
-        logger.info(sb.toString());
-        for(Row r : project.rows){
-            sb = new StringBuilder();
-            for(int i = 0; i < r.cells.size(); i++){
-                Cell c = r.getCell(i);
-                if(c != null){
-                   sb.append(c.value);
-                   sb.append("; ");
-                }else{
-                    sb.append("null; ");
-                }
-            }
-            logger.info(sb.toString());
-        }
+    /**
+     * Parse and evaluate a GREL expression and compare the result an expected
+     * type using instanceof
+     *
+     * @param bindings
+     * @param test
+     * @throws ParsingException
+     */
+    protected void parseEvalType(Properties bindings, String test, @SuppressWarnings("rawtypes") Class clazz)
+    throws ParsingException {
+        Evaluable eval = MetaParser.parse("grel:" + test);
+        Object result = eval.evaluate(bindings);
+        Assert.assertTrue(clazz.isInstance(result), "Wrong result type for expression: " + test);
     }
-    
-    //----helpers----
-    
-    
-    static public void whenGetBooleanOption(String name, ObjectNode options, Boolean def){
-        when(options.has(name)).thenReturn(true);
-        when(options.get(name)).thenReturn(def ? BooleanNode.TRUE : BooleanNode.FALSE);
+
+    @AfterMethod
+    public void TearDown() throws Exception {
+        bindings = null;
     }
-    
-    static public void whenGetIntegerOption(String name, ObjectNode options, int def){
-        when(options.has(name)).thenReturn(true);
-        when(options.get(name)).thenReturn(new IntNode(def));
-    }
-    
-    static public void whenGetStringOption(String name, ObjectNode options, String def){
-        when(options.has(name)).thenReturn(true);
-        when(options.get(name)).thenReturn(new TextNode(def));
-    }
-    
-    static public void whenGetObjectOption(String name, ObjectNode options, ObjectNode def){
-        when(options.has(name)).thenReturn(true);
-        when(options.get(name)).thenReturn(def);
-    }
-    
-    static public void whenGetArrayOption(String name, ObjectNode options, ArrayNode def){
-        when(options.has(name)).thenReturn(true);
-        when(options.get(name)).thenReturn(def);
-    }
-    
-    // Works for both int, String, and JSON arrays
-    static public void verifyGetArrayOption(String name, ObjectNode options){
-        verify(options, times(1)).has(name);
-        verify(options, times(1)).get(name);
-    }
+
 }

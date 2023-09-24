@@ -35,23 +35,25 @@ package org.openrefine.operations.column;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
-import org.apache.commons.lang3.StringUtils;
 import org.openrefine.browsing.Engine;
 import org.openrefine.browsing.EngineConfig;
-import org.openrefine.browsing.FilteredRows;
-import org.openrefine.browsing.RowVisitor;
-import org.openrefine.expr.ExpressionUtils;
-import org.openrefine.history.Change;
-import org.openrefine.history.HistoryEntry;
+import org.openrefine.browsing.facets.RowAggregator;
 import org.openrefine.importers.ImporterUtilities;
-import org.openrefine.model.Column;
-import org.openrefine.model.Project;
+import org.openrefine.model.Cell;
+import org.openrefine.model.ColumnMetadata;
+import org.openrefine.model.ColumnModel;
+import org.openrefine.model.GridState;
 import org.openrefine.model.Row;
-import org.openrefine.model.changes.ColumnSplitChange;
+import org.openrefine.model.RowMapper;
+import org.openrefine.model.changes.Change;
+import org.openrefine.model.changes.ChangeContext;
+import org.openrefine.model.changes.RowMapChange;
 import org.openrefine.operations.EngineDependentOperation;
+import org.openrefine.operations.utils.CellValueSplitter;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -59,10 +61,18 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class ColumnSplitOperation extends EngineDependentOperation {
+
+	public static enum Mode {
+		@JsonProperty("lengths")
+		Lengths,
+		@JsonProperty("separator")
+		Separator
+	}
+
     final protected String     _columnName;
     final protected boolean    _guessCellType;
     final protected boolean    _removeOriginalColumn;
-    final protected String     _mode;
+    final protected Mode       _mode;
     
     final protected String     _separator;
     final protected Boolean    _regex;
@@ -81,7 +91,7 @@ public class ColumnSplitOperation extends EngineDependentOperation {
             @JsonProperty("removeOriginalColumn")
             boolean        removeOriginalColumn,
             @JsonProperty("mode")
-            String mode,
+            Mode           mode,
             @JsonProperty("separator")
             String         separator,
             @JsonProperty("regex")
@@ -90,7 +100,7 @@ public class ColumnSplitOperation extends EngineDependentOperation {
             Integer        maxColumns,
             @JsonProperty("fieldLengths")
             int[]          fieldLengths) {
-        if ("separator".equals(mode)) {
+        if (Mode.Separator.equals(mode)) {
             return new ColumnSplitOperation(
                     engineConfig,
                     columnName,
@@ -124,7 +134,7 @@ public class ColumnSplitOperation extends EngineDependentOperation {
         _guessCellType = guessCellType;
         _removeOriginalColumn = removeOriginalColumn;
         
-        _mode = "separator";
+        _mode = Mode.Separator;
         _separator = separator;
         _regex = regex;
         _maxColumns = maxColumns;
@@ -145,7 +155,7 @@ public class ColumnSplitOperation extends EngineDependentOperation {
         _guessCellType = guessCellType;
         _removeOriginalColumn = removeOriginalColumn;
         
-        _mode = "lengths";
+        _mode = Mode.Lengths;
         _separator = null;
         _regex = null;
         _maxColumns = null;
@@ -169,7 +179,7 @@ public class ColumnSplitOperation extends EngineDependentOperation {
     }
     
     @JsonProperty("mode")
-    public String getMode() {
+    public Mode getMode() {
         return _mode;
     }
     
@@ -198,161 +208,161 @@ public class ColumnSplitOperation extends EngineDependentOperation {
     }
 
     @Override
-    protected String getBriefDescription(Project project) {
+    public String getDescription() {
         return "Split column " + _columnName + 
-            ("separator".equals(_mode) ? " by separator" : " by field lengths");
+            (Mode.Separator.equals(_mode) ? " by separator" : " by field lengths");
     }
-
-    @Override
-    protected HistoryEntry createHistoryEntry(Project project, long historyEntryID) throws Exception {
-        Engine engine = createEngine(project);
-        
-        Column column = project.columnModel.getColumnByName(_columnName);
-        if (column == null) {
-            throw new Exception("No column named " + _columnName);
-        }
-        
-        List<String> columnNames = new ArrayList<String>();
-        List<Integer> rowIndices = new ArrayList<Integer>(project.rows.size());
-        List<List<Serializable>> tuples = new ArrayList<List<Serializable>>(project.rows.size());
-        
-        FilteredRows filteredRows = engine.getAllFilteredRows();
-        RowVisitor rowVisitor;
-        if ("lengths".equals(_mode)) {
-            rowVisitor = new ColumnSplitRowVisitor(column.getCellIndex(), columnNames, rowIndices, tuples) {
-                @Override
-                protected java.util.List<Serializable> split(String s) {
-                    List<Serializable> results = new ArrayList<Serializable>(_fieldLengths.length + 1);
-                    
-                    int lastIndex = 0;
-                    for (int length : _fieldLengths) {
-                        int from = lastIndex;
-                        int to = Math.min(from + length, s.length());
-                        
-                        results.add(stringToValue(s.substring(from, to)));
-                        
-                        lastIndex = to;
-                    }
-                    
-                    return results;
-                };
-            };
-        } else if (_regex) {
-            Pattern pattern = Pattern.compile(_separator);
-            
-            rowVisitor = new ColumnSplitRowVisitor(column.getCellIndex(), columnNames, rowIndices, tuples) {
-                Pattern _pattern;
-                
-                @Override
-                protected java.util.List<Serializable> split(String s) {
-                    return stringArrayToValueList(_pattern.split(s, _maxColumns));
-                };
-                
-                public RowVisitor init(Pattern pattern) {
-                    _pattern = pattern;
-                    return this;
-                }
-            }.init(pattern);
-        } else {
-            rowVisitor = new ColumnSplitRowVisitor(column.getCellIndex(), columnNames, rowIndices, tuples) {
-                @Override
-                protected java.util.List<Serializable> split(String s) {
-                    return stringArrayToValueList(
-                            StringUtils.splitByWholeSeparatorPreserveAllTokens(s, _separator, _maxColumns));
-                };
-            };
-        }
-        
-        filteredRows.accept(project, rowVisitor);
-        
-        String description = 
-            "Split " + rowIndices.size() + 
-            " cell(s) in column " + _columnName + 
-            " into several columns" + 
-                ("separator".equals(_mode) ? " by separator" : " by field lengths");
-
-        Change change = new ColumnSplitChange(
-            _columnName,
-            columnNames,
-            rowIndices,
-            tuples,
-            _removeOriginalColumn
-        );
-        
-        return new HistoryEntry(
-            historyEntryID, project, description, this, change);
+    
+    public Change createChange() throws NotImmediateOperationException {
+    	return new ColumnSplitChange(_engineConfig);
     }
+    
+    public class ColumnSplitChange extends RowMapChange {
 
-    protected class ColumnSplitRowVisitor implements RowVisitor {
-
-        int cellIndex;
-        List<String> columnNames;
-        List<Integer> rowIndices;
-        List<List<Serializable>> tuples;
-        
-        int columnNameIndex = 1;
-        
-        ColumnSplitRowVisitor(
-            int cellIndex,
-            List<String> columnNames,
-            List<Integer> rowIndices,
-            List<List<Serializable>> tuples
-        ) {
-            this.cellIndex = cellIndex;
-            this.columnNames = columnNames;
-            this.rowIndices = rowIndices;
-            this.tuples = tuples;
-        }
-        
-        @Override
-        public void start(Project project) {
-            // nothing to do
+        final protected CellValueSplitter _splitter;
+       
+        public ColumnSplitChange(EngineConfig engineConfig) {
+        	super(engineConfig);
+            _splitter = CellValueSplitter.construct(_mode, _separator, _regex, _fieldLengths, _maxColumns);  
         }
 
-        @Override
-        public void end(Project project) {
-            // nothing to do
-        }
-        
-        @Override
-        public boolean visit(Project project, int rowIndex, Row row) {
-            Object value = row.getCellValue(cellIndex);
-            if (ExpressionUtils.isNonBlankData(value)) {
-                String s = value instanceof String ? ((String) value) : value.toString();
-                
-                List<Serializable> tuple = split(s);
-                
-                rowIndices.add(rowIndex);
-                tuples.add(tuple);
-                
-                for (int i = columnNames.size(); i < tuple.size(); i++) {
-                    while (true) {
-                        String newColumnName = _columnName + " " + columnNameIndex++;
-                        if (project.columnModel.getColumnByName(newColumnName) == null) {
-                            columnNames.add(newColumnName);
-                            break;
-                        }
+    	@Override
+    	public boolean isImmediate() {
+    		return true;
+    	}
+
+    	@Override
+    	public GridMap getGridMap(GridState state, ChangeContext context) throws DoesNotApplyException {
+    		ColumnModel origColumnModel = state.getColumnModel();
+    		int origColumnIdx = columnIndex(origColumnModel, _columnName);
+    		
+    		// Create an aggregator which counts the number of columns generated
+    		// by the splitting settings.
+    		Engine engine = getEngine(state);
+    		int nbColumns = engine.aggregateFilteredRows(buildAggregator(_splitter, origColumnIdx), 0);
+    		if (_maxColumns != null && _maxColumns > 0) {
+    			nbColumns = Math.min(nbColumns, _maxColumns);
+    		}
+    		
+    		// Build new column model
+    		List<String> columnNames = new ArrayList<>(nbColumns);
+    		int columnNameIndex = 1;
+    		for (int i = 0; i < nbColumns; i++) {
+                while (true) {
+                    String newColumnName = _columnName + " " + columnNameIndex++;
+                    if (origColumnModel.getColumnByName(newColumnName) == null) {
+                        columnNames.add(newColumnName);
+                        break;
                     }
                 }
             }
-            return false;
-        }
-        
-        protected List<Serializable> split(String s) {
-            throw new UnsupportedOperationException();
-        }
-        
-        protected Serializable stringToValue(String s) {
-            return _guessCellType ? ImporterUtilities.parseCellValue(s) : s;
-        }
-        
-        protected List<Serializable> stringArrayToValueList(String[] cells) {
-            List<Serializable> results = new ArrayList<Serializable>(cells.length);
-            for (String cell : cells) {
-                results.add(stringToValue(cell));
-            }
-            
-            return results;
-        }
+    		
+    		int startColumnIdx = _removeOriginalColumn ? origColumnIdx : origColumnIdx + 1;
+    		List<ColumnMetadata> origColumns = origColumnModel.getColumns();
+    		List<ColumnMetadata> newColumns = new ArrayList<>(origColumns.subList(0, startColumnIdx));
+    		newColumns.addAll(columnNames.stream().map(n -> new ColumnMetadata(n)).collect(Collectors.toList()));
+    		newColumns.addAll(origColumns.subList(origColumnIdx + 1, origColumns.size()));
+    		ColumnModel newColumnModel = new ColumnModel(newColumns);
+    		
+    		return new GridMap(
+    				newColumnModel,
+    				mapper(_splitter, origColumnIdx, nbColumns, _removeOriginalColumn, _guessCellType),
+    				negativeMapper(origColumnIdx, nbColumns, _removeOriginalColumn),
+    				state.getOverlayModels());
+    	}
+    	
+    	// for visibility in tests
+    	@Override
+    	protected Engine getEngine(GridState grid) {
+    		return super.getEngine(grid);
+    	}
+   
     }
+    
+   	protected static RowMapper negativeMapper(int columnIdx, int nbColumns, boolean removeOrigColumn) {
+		return new RowMapper() {
+
+			private static final long serialVersionUID = 467330557649346821L;
+
+			@Override
+			public Row call(long rowId, Row row) {
+				Row newRow = row.insertCells(columnIdx + 1, Collections.nCopies(nbColumns, null));
+				if (removeOrigColumn) {
+					newRow = newRow.removeCell(columnIdx);
+				}
+				return newRow;
+			}
+			
+		};
+	}
+	
+	protected static RowMapper mapper(CellValueSplitter splitter, int columnIdx, int nbColumns, boolean removeOrigColumn, boolean guessCellType) {
+		return new RowMapper() {
+
+			private static final long serialVersionUID = -5552242219011530334L;
+
+			@Override
+			public Row call(long rowId, Row row) {
+				// Split the cell
+				Serializable value = row.getCellValue(columnIdx);
+				List<String> split;
+				if (! (value instanceof String)) {
+					split = Collections.emptyList();
+				} else {
+					split = splitter.split((String) value);
+				}
+				
+				// Insert the split values in the row
+				List<Cell> splitCells = new ArrayList<>(nbColumns);
+				for(int i = 0; i != nbColumns; i++) {
+					Serializable cellValue = null;
+					if (i < split.size()) {
+						cellValue = guessCellType ? ImporterUtilities.parseCellValue(split.get(i)) : split.get(i);
+					}
+					splitCells.add(new Cell(cellValue, null));
+				}
+				
+				Row newRow = row.insertCells(columnIdx + 1, splitCells);
+				if (removeOrigColumn) {
+					newRow = newRow.removeCell(columnIdx);
+				}
+				return newRow;
+			}
+			
+		};
+	}
+	
+	/**
+	 * Aggregator to compute the maximum number of values
+	 * generated by a splitting configuration
+	 * @author Antonin Delpeuch
+	 *
+	 */
+	protected static RowAggregator<Integer> buildAggregator(CellValueSplitter splitter, int columnIndex) {
+		return new RowAggregator<Integer>() {
+
+			private static final long serialVersionUID = -5885231185365433813L;
+
+			@Override
+			public Integer sum(Integer first, Integer second) {
+				return Math.max(first, second);
+			}
+
+			@Override
+			public Integer withRow(Integer state, long rowId, Row row) {
+				Object val = row.getCellValue(columnIndex);
+				if (!(val instanceof String)) {
+					return state;
+				} else {
+					List<String> splits = splitter.split((String)val);
+					if (state < splits.size()) {
+						return splits.size();
+					} else {
+						return state;
+					}
+				}
+			}
+		};
+	}
+
 }

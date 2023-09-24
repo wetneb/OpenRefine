@@ -33,24 +33,40 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.openrefine.operations.column;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
-import org.openrefine.history.HistoryEntry;
-import org.openrefine.model.AbstractOperation;
-import org.openrefine.model.Project;
-import org.openrefine.model.changes.ColumnReorderChange;
+import org.openrefine.browsing.EngineConfig;
+import org.openrefine.model.Cell;
+import org.openrefine.model.ColumnMetadata;
+import org.openrefine.model.ColumnModel;
+import org.openrefine.model.GridState;
+import org.openrefine.model.Row;
+import org.openrefine.model.RowMapper;
+import org.openrefine.model.changes.ChangeContext;
+import org.openrefine.model.changes.Change.DoesNotApplyException;
+import org.openrefine.operations.ImmediateRowMapOperation;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class ColumnReorderOperation extends AbstractOperation {
+public class ColumnReorderOperation extends ImmediateRowMapOperation {
     final protected List<String> _columnNames;
     
     @JsonCreator
     public ColumnReorderOperation(
             @JsonProperty("columnNames")
             List<String> columnNames) {
+    	super(EngineConfig.ALL_ROWS);
         _columnNames = columnNames;
+        Set<String> deduplicated = new HashSet<>(_columnNames);
+        if (deduplicated.size() != _columnNames.size()) {
+        	throw new IllegalArgumentException("Duplicates in the list of final column names");
+        }
     }
     
     @JsonProperty("columnNames")
@@ -59,18 +75,55 @@ public class ColumnReorderOperation extends AbstractOperation {
     }
 
     @Override
-    protected String getBriefDescription(Project project) {
+	public String getDescription() {
         return "Reorder columns";
     }
+	
+	@Override
+	public ColumnModel getNewColumnModel(GridState grid, ChangeContext context) throws DoesNotApplyException {
+		ColumnModel model = grid.getColumnModel();
+		List<ColumnMetadata> columns = new ArrayList<>(_columnNames.size());
+		for(String columnName : _columnNames) {
+			ColumnMetadata meta = model.getColumnByName(columnName);
+			if (meta == null) {
+				throw new DoesNotApplyException(String.format("Column '%s' does not exist", columnName));
+			}
+			columns.add(meta);
+		}
+		return new ColumnModel(columns);
+	}
 
-   @Override
-protected HistoryEntry createHistoryEntry(Project project, long historyEntryID) throws Exception {
-        return new HistoryEntry(
-            historyEntryID,
-            project, 
-            "Reorder columns", 
-            this, 
-            new ColumnReorderChange(_columnNames)
-        );
-    }
+	@Override
+	public RowMapper getPositiveRowMapper(GridState state, ChangeContext context) throws DoesNotApplyException {
+		// Build a map from new indices to original ones
+		List<Integer> origIndex = new ArrayList<>(_columnNames.size());
+		for(int i = 0; i != _columnNames.size(); i++) {
+			origIndex.add(columnIndex(state.getColumnModel(), _columnNames.get(i)));
+		}
+		
+		return mapper(origIndex);
+	}
+	
+	protected static RowMapper mapper(List<Integer> origIndex) {
+		return new RowMapper() {
+
+			private static final long serialVersionUID = 7653347685611673401L;
+
+			@Override
+			public Row call(long rowId, Row row) {
+				List<Cell> newCells = origIndex.stream()
+						.map(i -> row.getCell(i))
+						.collect(Collectors.toList());
+				return new Row(newCells);
+			}
+			
+		};
+	}
+	
+	// engine config is never useful, so we remove it from the JSON serialization
+	@Override
+	@JsonIgnore
+	public EngineConfig getEngineConfig() {
+		return super.getEngineConfig();
+	}
 }

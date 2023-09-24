@@ -46,6 +46,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.apache.http.HttpStatus;
 import org.openrefine.ProjectManager;
+import org.openrefine.ProjectMetadata;
 import org.openrefine.browsing.Engine;
 import org.openrefine.commands.Command;
 import org.openrefine.exporters.CsvExporter;
@@ -53,7 +54,6 @@ import org.openrefine.exporters.Exporter;
 import org.openrefine.exporters.ExporterRegistry;
 import org.openrefine.exporters.StreamExporter;
 import org.openrefine.exporters.WriterExporter;
-import org.openrefine.exporters.sql.SqlExporterException;
 import org.openrefine.model.Project;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,6 +85,7 @@ public class ExportRowsCommand extends Command {
        
         try {
             Project project = getProject(request);
+            ProjectMetadata projectMetadata = ProjectManager.singleton.getProjectMetadata(project.getId());
             Engine engine = getEngine(request, project);
             Properties params = getRequestParameters(request);
             
@@ -108,14 +109,14 @@ public class ExportRowsCommand extends Command {
                     response.getWriter() :
                     new OutputStreamWriter(response.getOutputStream(), encoding);
                 
-                ((WriterExporter) exporter).export(project, params, engine, writer);
+                ((WriterExporter) exporter).export(project.getCurrentGridState(), projectMetadata, params, engine, writer);
                 writer.close();
             }
             else if (exporter instanceof StreamExporter) {
                 response.setCharacterEncoding("UTF-8");
                 
                 OutputStream stream = response.getOutputStream();
-                ((StreamExporter) exporter).export(project, params, engine, stream);
+                ((StreamExporter) exporter).export(project.getCurrentGridState(), null, params, engine, stream);
                 stream.close();
 //          } else if (exporter instanceof UrlExporter) {
 //              ((UrlExporter) exporter).export(project, options, engine);
@@ -127,10 +128,7 @@ public class ExportRowsCommand extends Command {
         } catch (Exception e) {
             // Use generic error handling rather than our JSON handling
             logger.info("error:{}", e.getMessage());
-            if (e instanceof SqlExporterException) {
-                response.sendError(HttpStatus.SC_BAD_REQUEST, e.getMessage());
-            }
-            throw new ServletException(e);
+            response.sendError(HttpStatus.SC_BAD_REQUEST, e.getMessage());
         } finally {
             ProjectManager.singleton.setBusy(false);
         }

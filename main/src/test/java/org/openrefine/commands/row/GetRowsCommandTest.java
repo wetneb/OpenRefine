@@ -39,8 +39,12 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.openrefine.RefineTest;
+import org.openrefine.browsing.EngineConfig;
+import org.openrefine.browsing.facets.FacetConfigResolver;
+import org.openrefine.browsing.facets.ListFacet;
 import org.openrefine.commands.Command;
-import org.openrefine.commands.row.GetRowsCommand;
+import org.openrefine.expr.MetaParser;
+import org.openrefine.grel.Parser;
 import org.openrefine.model.Project;
 import org.openrefine.util.TestUtils;
 import org.testng.annotations.BeforeMethod;
@@ -52,58 +56,127 @@ public class GetRowsCommandTest extends RefineTest {
     HttpServletResponse response = null;
     Command command = null;
     Project project = null;
+    Project longerProject = null;
     StringWriter writer = null;
+    EngineConfig engineConfigWithFacet = null;
     
     @BeforeMethod
     public void setUp() {
         request = mock(HttpServletRequest.class);
         response = mock(HttpServletResponse.class);
-        project = createProject(new String[] {"a","b"},
+        project = createProject(new String[] {"foo", "bar"},
         		new Serializable[] {
-        		"c", "d",
-        		null, "f"
+        			"a", "b",
+        			null, "c",
+        			"d", "e",
+        			"", "f",
+        			"g", "h"
         		});
         command = new GetRowsCommand();
         writer = new StringWriter();
-        when(request.getParameter("project")).thenReturn(String.valueOf(project.id));
+        
+        when(request.getParameter("project")).thenReturn(String.valueOf(project.getId()));
         try {
             when(response.getWriter()).thenReturn(new PrintWriter(writer));
         } catch (IOException e) {
             e.printStackTrace();
         }
+        FacetConfigResolver.registerFacetConfig("core", "list", ListFacet.ListFacetConfig.class);
+        MetaParser.registerLanguageParser("grel", "GREL", Parser.grelParser, "value");
     }
     
     @Test
     public void testJsonOutputRows() throws ServletException, IOException {
         String rowJson = "{\n" + 
-                "       \"filtered\" : 2,\n" + 
+                "       \"filtered\" : 5,\n" + 
                 "       \"limit\" : 2,\n" + 
                 "       \"mode\" : \"row-based\",\n" + 
-                "       \"pool\" : {\n" + 
-                "         \"recons\" : { }\n" + 
-                "       },\n" + 
                 "       \"rows\" : [ {\n" + 
                 "         \"cells\" : [ {\n" + 
-                "           \"v\" : \"c\"\n" + 
+                "           \"v\" : \"a\"\n" + 
                 "         }, {\n" + 
-                "           \"v\" : \"d\"\n" + 
+                "           \"v\" : \"b\"\n" + 
                 "         } ],\n" + 
                 "         \"flagged\" : false,\n" + 
                 "         \"i\" : 0,\n" + 
                 "         \"starred\" : false\n" + 
                 "       }, {\n" + 
                 "         \"cells\" : [ null, {\n" + 
-                "           \"v\" : \"f\"\n" + 
+                "           \"v\" : \"c\"\n" + 
                 "         } ],\n" + 
                 "         \"flagged\" : false,\n" + 
                 "         \"i\" : 1,\n" + 
                 "         \"starred\" : false\n" + 
                 "       } ],\n" + 
                 "       \"start\" : 0,\n" + 
-                "       \"total\" : 2\n" + 
+                "       \"total\" : 5,\n" +
+                "       \"processed\": 5\n" + 
                 "     }";
         
         when(request.getParameter("engine")).thenReturn("{\"mode\":\"row-based\",\"facets\":[]}");
+        when(request.getParameter("limit")).thenReturn("2");
+        command.doPost(request, response);
+        TestUtils.assertEqualAsJson(rowJson, writer.toString());
+    }
+    
+    @Test
+    public void testAggregationLimitRowsNoFacet() throws ServletException, IOException {
+    	String rowJson = "{\n" + 
+                "       \"filtered\" : 5,\n" + 
+                "       \"limit\" : 1,\n" + 
+                "       \"mode\" : \"row-based\",\n" + 
+                "       \"rows\" : [ {\n" + 
+                "         \"cells\" : [ {\n" + 
+                "           \"v\" : \"a\"\n" + 
+                "         }, {\n" + 
+                "           \"v\" : \"b\"\n" + 
+                "         } ],\n" + 
+                "         \"flagged\" : false,\n" + 
+                "         \"i\" : 0,\n" + 
+                "         \"starred\" : false\n" + 
+                "       } ],\n" + 
+                "       \"start\" : 0,\n" + 
+                "       \"total\" : 5,\n" +
+                "       \"processed\": 5\n" + 
+                "     }";
+        
+        when(request.getParameter("engine")).thenReturn("{\"mode\":\"row-based\",\"facets\":[],\"aggregationLimit\":2}");
+        when(request.getParameter("limit")).thenReturn("1");
+        command.doPost(request, response);
+        TestUtils.assertEqualsAsJson(writer.toString(), rowJson);
+    }
+    
+    @Test
+    public void testAggregationLimitRowsFacet() throws ServletException, IOException {
+    	String engineConfig = "{\"facets\":["
+    			+ "{\"type\":\"list\",\"name\":\"foo\",\"columnName\":\"foo\",\"expression\":\"isBlank(value)\","
+    					+ "\"omitBlank\":false,\"omitError\":false,\"selection\":[{\"v\":{\"v\":\"false\",\"l\":\"false\"}}],"
+    					+ "\"selectBlank\":false,\"selectError\":false,\"invert\":false}"
+    					+ "],\"mode\":\"row-based\","
+    					+ "\"aggregationLimit\":2}";
+    	
+    	String rowJson = "{\n" + 
+                "       \"filtered\" : 1,\n" + 
+                "       \"limit\" : 1,\n" + 
+                "       \"mode\" : \"row-based\",\n" + 
+                "       \"rows\" : [ {\n" + 
+                "         \"cells\" : [ {\n" + 
+                "           \"v\" : \"a\"\n" + 
+                "         }, {\n" + 
+                "           \"v\" : \"b\"\n" + 
+                "         } ],\n" + 
+                "         \"flagged\" : false,\n" + 
+                "         \"i\" : 0,\n" + 
+                "         \"starred\" : false\n" + 
+                "       } ],\n" + 
+                "       \"start\" : 0,\n" + 
+                "       \"total\" : 5,\n" +
+                "       \"processed\": 2\n" + 
+                "     }";
+    	
+    	when(request.getParameter("engine")).thenReturn(engineConfig);
+        when(request.getParameter("limit")).thenReturn("1");
+        
         command.doPost(request, response);
         TestUtils.assertEqualAsJson(rowJson, writer.toString());
     }
@@ -111,17 +184,14 @@ public class GetRowsCommandTest extends RefineTest {
     @Test
     public void testJsonOutputRecords() throws ServletException, IOException {
         String recordJson = "{\n" + 
-                "       \"filtered\" : 1,\n" + 
-                "       \"limit\" : 2,\n" + 
+                "       \"filtered\" : 3,\n" + 
+                "       \"limit\" : 1,\n" + 
                 "       \"mode\" : \"record-based\",\n" + 
-                "       \"pool\" : {\n" + 
-                "         \"recons\" : { }\n" + 
-                "       },\n" + 
                 "       \"rows\" : [ {\n" + 
                 "         \"cells\" : [ {\n" + 
-                "           \"v\" : \"c\"\n" + 
+                "           \"v\" : \"a\"\n" + 
                 "         }, {\n" + 
-                "           \"v\" : \"d\"\n" + 
+                "           \"v\" : \"b\"\n" + 
                 "         } ],\n" + 
                 "         \"flagged\" : false,\n" + 
                 "         \"i\" : 0,\n" + 
@@ -129,17 +199,96 @@ public class GetRowsCommandTest extends RefineTest {
                 "         \"starred\" : false\n" + 
                 "       }, {\n" + 
                 "         \"cells\" : [ null, {\n" + 
-                "           \"v\" : \"f\"\n" + 
+                "           \"v\" : \"c\"\n" + 
                 "         } ],\n" + 
                 "         \"flagged\" : false,\n" + 
                 "         \"i\" : 1,\n" + 
                 "         \"starred\" : false\n" + 
                 "       } ],\n" + 
                 "       \"start\" : 0,\n" + 
-                "       \"total\" : 1\n" + 
+                "       \"total\" : 3,\n" +
+                "       \"processed\": 3\n" + 
                 "     }";
         
         when(request.getParameter("engine")).thenReturn("{\"mode\":\"record-based\",\"facets\":[]}");
+        when(request.getParameter("limit")).thenReturn("1");
+        command.doPost(request, response);
+        TestUtils.assertEqualAsJson(recordJson, writer.toString());
+    }
+    
+    @Test
+    public void testAggregationLimitRecordsNoFacet() throws ServletException, IOException {
+        String recordJson = "{\n" + 
+                "       \"filtered\" : 3,\n" + 
+                "       \"limit\" : 1,\n" + 
+                "       \"mode\" : \"record-based\",\n" + 
+                "       \"rows\" : [ {\n" + 
+                "         \"cells\" : [ {\n" + 
+                "           \"v\" : \"a\"\n" + 
+                "         }, {\n" + 
+                "           \"v\" : \"b\"\n" + 
+                "         } ],\n" + 
+                "         \"flagged\" : false,\n" + 
+                "         \"i\" : 0,\n" + 
+                "         \"j\" : 0,\n" + 
+                "         \"starred\" : false\n" + 
+                "       }, {\n" + 
+                "         \"cells\" : [ null, {\n" + 
+                "           \"v\" : \"c\"\n" + 
+                "         } ],\n" + 
+                "         \"flagged\" : false,\n" + 
+                "         \"i\" : 1,\n" + 
+                "         \"starred\" : false\n" + 
+                "       } ],\n" + 
+                "       \"start\" : 0,\n" + 
+                "       \"total\" : 3,\n" +
+                "       \"processed\": 3\n" + 
+                "     }";
+        
+        when(request.getParameter("engine")).thenReturn("{\"mode\":\"record-based\",\"facets\":[],\"aggregationLimit\":2}");
+        when(request.getParameter("limit")).thenReturn("1");
+        command.doPost(request, response);
+        TestUtils.assertEqualsAsJson(writer.toString(), recordJson);
+    }
+    
+    @Test
+    public void testAggregationLimitRecordsFacet() throws ServletException, IOException {
+    	String engineConfig = "{\"facets\":["
+    			+ "{\"type\":\"list\",\"name\":\"foo\",\"columnName\":\"foo\",\"expression\":\"isBlank(value)\","
+    					+ "\"omitBlank\":false,\"omitError\":false,\"selection\":[{\"v\":{\"v\":\"false\",\"l\":\"false\"}}],"
+    					+ "\"selectBlank\":false,\"selectError\":false,\"invert\":false}"
+    					+ "],\"mode\":\"record-based\","
+    					+ "\"aggregationLimit\":2}";
+    	
+        String recordJson = "{\n" + 
+                "       \"filtered\" : 2,\n" + 
+                "       \"limit\" : 1,\n" + 
+                "       \"mode\" : \"record-based\",\n" + 
+                "       \"rows\" : [ {\n" + 
+                "         \"cells\" : [ {\n" + 
+                "           \"v\" : \"a\"\n" + 
+                "         }, {\n" + 
+                "           \"v\" : \"b\"\n" + 
+                "         } ],\n" + 
+                "         \"flagged\" : false,\n" + 
+                "         \"i\" : 0,\n" + 
+                "         \"j\" : 0,\n" + 
+                "         \"starred\" : false\n" + 
+                "       }, {\n" + 
+                "         \"cells\" : [ null, {\n" + 
+                "           \"v\" : \"c\"\n" + 
+                "         } ],\n" + 
+                "         \"flagged\" : false,\n" + 
+                "         \"i\" : 1,\n" + 
+                "         \"starred\" : false\n" + 
+                "       } ],\n" + 
+                "       \"start\" : 0,\n" + 
+                "       \"total\" : 3,\n" +
+                "       \"processed\": 2\n" + 
+                "     }";
+        
+        when(request.getParameter("engine")).thenReturn(engineConfig);
+        when(request.getParameter("limit")).thenReturn("1");
         command.doPost(request, response);
         TestUtils.assertEqualAsJson(recordJson, writer.toString());
     }

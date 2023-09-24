@@ -48,6 +48,7 @@ import java.util.Map.Entry;
 import org.apache.tools.tar.TarOutputStream;
 import org.openrefine.history.HistoryEntryManager;
 import org.openrefine.model.Project;
+import org.openrefine.model.changes.ChangeDataStore;
 import org.openrefine.preference.PreferenceStore;
 import org.openrefine.preference.TopList;
 import org.openrefine.util.GetProjectIDException;
@@ -114,12 +115,16 @@ public abstract class ProjectManager {
     
     public void dispose() {
         save(true); // complete save
-
+        
+        // TODO migrate to RDD-based architecture
+        
+        /*
         for (Project project : _projects.values()) {
             if (project != null) {
                 project.dispose();
             }
         }
+        */
         
         _projects.clear();
         _projectsMetadata.clear();
@@ -132,8 +137,8 @@ public abstract class ProjectManager {
      */
     public void registerProject(Project project, ProjectMetadata projectMetadata) {
         synchronized (this) {
-            _projects.put(project.id, project);
-            _projectsMetadata.put(project.id, projectMetadata);
+            _projects.put(project.getId(), project);
+            _projectsMetadata.put(project.getId(), projectMetadata);
             if (_projectsTags == null)
                 _projectsTags = new HashMap<String, Integer>();
             String[] tags = projectMetadata.getTags();
@@ -148,6 +153,12 @@ public abstract class ProjectManager {
             }
         }
     }
+    
+    /**
+     * Return the change data store for a given project
+     * @param projectId
+     */
+    public abstract ChangeDataStore getChangeDataStore(long projectID);
 
     /**
      * Load project metadata from data storage
@@ -160,8 +171,9 @@ public abstract class ProjectManager {
      * Loads a project from the data store into memory
      * @param id
      * @return
+     * @throws IOException 
      */
-    protected abstract Project loadProject(long id);
+    protected abstract Project loadProject(long id) throws IOException;
 
     /**
      * Import project from a Refine archive
@@ -207,6 +219,25 @@ public abstract class ProjectManager {
             //FIXME what should happen if the metadata is found, but not the project? or vice versa?
         }
 
+    }
+    
+    /**
+     * Ensures a project is saved in the workspace and its grid states
+     * are read from there.
+     * 
+     * @param id the project id to load
+     * @throws IOException
+     */
+    public void reloadProjectFromWorkspace(long id) throws IOException {
+        ensureProjectSaved(id);
+        synchronized(this) {
+            Project project = _projects.get(id);
+            if (project != null) {
+                project.dispose();
+            }
+            _projects.remove(id);
+            loadProject(id);
+        }
     }
 
     /**
@@ -514,7 +545,12 @@ public abstract class ProjectManager {
             if (_projects.containsKey(id)) {
                 return _projects.get(id);
             } else {
-                Project project = loadProject(id);
+                Project project = null;
+				try {
+					project = loadProject(id);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
                 if (project != null) {
                     _projects.put(id, project);                    
                 }
@@ -554,7 +590,7 @@ public abstract class ProjectManager {
      * @param project
      */
     public void deleteProject(Project project) {
-        deleteProject(project.id);
+        deleteProject(project.getId());
     }
 
     /**
@@ -613,4 +649,5 @@ public abstract class ProjectManager {
        ps.put("scripting.expressions", new TopList(EXPRESSION_HISTORY_MAX));
        ps.put("scripting.starred-expressions", new TopList(Integer.MAX_VALUE));
    }
+
 }

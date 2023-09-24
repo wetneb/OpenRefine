@@ -214,7 +214,6 @@ DataTableView.prototype._renderDataTables = function(table, headerTable) {
   var self = this;
 
   var columns = theProject.columnModel.columns;
-  var columnGroups = theProject.columnModel.columnGroups;
 
   /*------------------------------------------------------------
    *  Column Group Headers
@@ -242,57 +241,6 @@ DataTableView.prototype._renderDataTables = function(table, headerTable) {
       }
     }
   };
-
-  var renderColumnGroups = function(groups, keys) {
-    var nextLayer = [];
-
-    if (groups.length > 0) {
-      var tr = headerTable.insertRow(headerTable.rows.length);
-      $(tr.insertCell(0)).attr('colspan', '3'); // star, flag, row index
-
-      for (var c = 0; c < columns.length; c++) {
-        var foundGroup = false;
-        var columnGroup;
-
-        for (var g = 0; g < groups.length; g++) {
-          columnGroup = groups[g];
-          if (columnGroup.startColumnIndex == c) {
-            foundGroup = true;
-            break;
-          }
-        }
-
-        var td = tr.insertCell(tr.cells.length);
-        if (foundGroup) {
-          td.setAttribute("colspan", columnGroup.columnSpan);
-          td.style.background = "#FF6A00";
-
-          if (columnGroup.keyColumnIndex >= 0) {
-            keys.push(columnGroup.keyColumnIndex);
-          }
-
-          c += (columnGroup.columnSpan - 1);
-
-          if ("subgroups" in columnGroup) {
-            nextLayer = nextLayer.concat(columnGroup.subgroups);
-          }
-        }
-      }
-    }
-
-    renderColumnKeys(keys);
-
-    if (nextLayer.length > 0) {
-      renderColumnGroups(nextLayer, []);
-    }
-  };
-
-  if (columnGroups.length > 0) {
-    renderColumnGroups(
-        columnGroups, 
-        [ theProject.columnModel.keyCellIndex ]
-    );
-  }    
 
   /*------------------------------------------------------------
    *  Column Headers with Menus
@@ -408,8 +356,8 @@ DataTableView.prototype._renderDataTables = function(table, headerTable) {
       if (column.name in self._collapsedColumnNames) {
         td.innerHTML = "&nbsp;";
       } else {
-        var cell = (column.cellIndex < cells.length) ? cells[column.cellIndex] : null;
-        new DataTableCellUI(self, cell, row.i, column.cellIndex, td);
+        var cell = (i < cells.length) ? cells[i] : null;
+        new DataTableCellUI(self, cell, row.i, i, td);
       }
     }
   };
@@ -971,6 +919,8 @@ DataTableView.sampleVisibleRows = function(column) {
   var rowIndices = [];
   var values = [];
 
+  var cellIndex = Refine.columnNameToColumnIndex(column.name);
+
   var rows = theProject.rowModel.rows;
   for (var r = 0; r < rows.length; r++) {
     var row = rows[r];
@@ -978,8 +928,8 @@ DataTableView.sampleVisibleRows = function(column) {
     rowIndices.push(row.i);
 
     var v = null;
-    if (column && column.cellIndex < row.cells.length) {
-      var cell = row.cells[column.cellIndex];
+    if (cellIndex < row.cells.length) {
+      var cell = row.cells[cellIndex];
       if (cell !== null) {
         v = cell.v;
       }
@@ -996,10 +946,12 @@ DataTableView.sampleVisibleRows = function(column) {
 DataTableView.promptExpressionOnVisibleRows = function(column, title, expression, onDone) {
   var o = DataTableView.sampleVisibleRows(column);
 
+  var cellIndex = Refine.columnNameToColumnIndex(column.name);
+
   var self = this;
   new ExpressionPreviewDialog(
     title,
-    column.cellIndex, 
+    cellIndex, 
     o.rowIndices, 
     o.values,
     expression,

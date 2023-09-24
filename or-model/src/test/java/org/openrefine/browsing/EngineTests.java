@@ -27,19 +27,144 @@
 package org.openrefine.browsing;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
-import org.openrefine.browsing.Engine;
-import org.openrefine.model.Project;
-import org.openrefine.util.ParsingUtilities;
-import org.openrefine.util.TestUtils;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
+
+import org.mockito.Mockito;
+import org.openrefine.browsing.Engine.Mode;
+import org.openrefine.browsing.facets.AllFacetsState;
+import org.openrefine.browsing.facets.Facet;
+import org.openrefine.browsing.facets.FacetAggregator;
+import org.openrefine.browsing.facets.FacetAggregatorStub;
+import org.openrefine.browsing.facets.FacetConfig;
+import org.openrefine.browsing.facets.FacetResult;
+import org.openrefine.browsing.facets.FacetStateStub;
+import org.openrefine.model.Cell;
+import org.openrefine.model.ColumnMetadata;
+import org.openrefine.model.ColumnModel;
+import org.openrefine.model.GridState;
+import org.openrefine.model.IndexedRow;
+import org.openrefine.model.Row;
+import org.openrefine.model.RowFilter;
+import org.openrefine.sorting.SortingConfig;
+import org.testng.Assert;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import com.google.common.collect.ImmutableList;
 
 public class EngineTests {
-    @Test
-    public void serializeEngine() {
-        Project project = mock(Project.class);
-        Engine engine = new Engine(project);
-        TestUtils.isSerializedTo(engine, "{\"engine-mode\":\"row-based\",\"facets\":[]}", ParsingUtilities.defaultWriter);
-    }
+	
+	private Engine engine;
+	private Engine enginePartial;
+	private GridState initialState;
+	private EngineConfig engineConfig;
+	private EngineConfig engineConfigPartial;
+	protected static RowFilter filterA = new RowFilter() {
+		private static final long serialVersionUID = -609451600084843923L;
+
+		@Override
+		public boolean filterRow(long rowIndex, Row row) {
+			return "a".equals(row.getCellValue(0));
+		}
+	};
+	protected static RowFilter noFilter = RowFilter.ANY_ROW;
+	private AllFacetsState allRowsState = new AllFacetsState(ImmutableList.of(new FacetStateStub(65, 35), new FacetStateStub(100, 0)), 100, 65);
+	private AllFacetsState partialState = new AllFacetsState(ImmutableList.of(new FacetStateStub(8, 2), new FacetStateStub(10, 0)), 10, 8);
+
+	@SuppressWarnings("unchecked")
+    @BeforeMethod
+	public void createInitialGrid() {
+		List<Row> rows = Arrays.asList(
+			new Row(Arrays.asList(new Cell("a", null), new Cell("b", null))),
+			new Row(Arrays.asList(new Cell("c", null), new Cell("d", null)))
+		);
+		ColumnModel columnModel = new ColumnModel(Arrays.asList(
+				new ColumnMetadata("column1"),
+				new ColumnMetadata("column2")));
+		initialState = mock(GridState.class);
+		when(initialState.getColumnModel()).thenReturn(columnModel);
+		Facet facetA = mock(Facet.class);
+		Facet facetAll = mock(Facet.class);
+		FacetConfig facetConfigA = mock(FacetConfig.class);
+		FacetConfig facetConfigAll = mock(FacetConfig.class);
+		
+		when(facetConfigA.apply(Mockito.any(ColumnModel.class))).thenReturn(facetA);
+		when(facetConfigAll.apply(Mockito.any(ColumnModel.class))).thenReturn(facetAll);
+		when(facetA.getInitialFacetState()).thenReturn(new FacetStateStub(0, 0));
+		when(facetAll.getInitialFacetState()).thenReturn(new FacetStateStub(0, 0));
+		when(facetA.getFacetResult(new FacetStateStub(65, 35))).thenReturn(new FacetStateStub(65, 35));
+		when(facetAll.getFacetResult(new FacetStateStub(100, 0))).thenReturn(new FacetStateStub(100, 0));
+		when((FacetAggregator<FacetStateStub>)facetA.getAggregator()).thenReturn(new FacetAggregatorStub(filterA));
+		when((FacetAggregator<FacetStateStub>)facetAll.getAggregator()).thenReturn(new FacetAggregatorStub(noFilter));
+		when(initialState.aggregateRows(Mockito.any(), Mockito.any())).thenReturn(allRowsState);
+		when(initialState.aggregateRowsApprox(Mockito.any(), Mockito.any(), Mockito.anyLong())).thenReturn(partialState);
+		
+		
+		List<FacetConfig> facetConfigs = Arrays.asList(
+			facetConfigA, facetConfigAll
+		);
+		engineConfig = new EngineConfig(facetConfigs, Mode.RowBased);
+		engineConfigPartial = new EngineConfig(facetConfigs, Mode.RowBased, 2L);
+		engine = new Engine(initialState, engineConfig);
+		enginePartial = new Engine(initialState, engineConfigPartial);
+	}
+	
+	@Test
+	public void testAccessors() {
+		Assert.assertEquals(engine.getMode(), Mode.RowBased);
+		Assert.assertEquals(engine.getConfig(), engineConfig);
+		Assert.assertEquals(engine.getGridState(), initialState);
+	}
+	
+	@Test
+	public void testFacetStates() {
+	    AllFacetsState facetStates = engine.getFacetsState();
+	    
+	    Assert.assertEquals(facetStates, allRowsState);
+	}
+	
+	@Test
+	public void testFacetStatesApprox() {
+	    AllFacetsState facetStates = enginePartial.getFacetsState();
+        
+        Assert.assertEquals(facetStates, partialState);
+	}
+	
+	@Test
+	public void testFacetResults() {
+	    List<FacetResult> facetResults = engine.getFacetResults();
+	    
+	    Assert.assertEquals(facetResults, Arrays.asList(new FacetStateStub(65, 35), new FacetStateStub(100, 0)));
+	}
+	
+	@Test
+	public void testAggregationCount() {
+	    Assert.assertEquals(engine.getAggregatedCount(), 100); 
+	    Assert.assertEquals(enginePartial.getAggregatedCount(), 10);
+	}
+	
+	@Test
+	public void testFilteredCount() {
+	    Assert.assertEquals(engine.getFilteredCount(), 65);
+	    Assert.assertEquals(enginePartial.getFilteredCount(), 8);
+	}
+	
+	@Test
+	public void testGetMatchingRows() {
+		@SuppressWarnings("unchecked")
+		Iterable<IndexedRow> mockIterable = mock(Iterable.class);
+		when(initialState.iterateRows(Mockito.any(), Mockito.eq(SortingConfig.NO_SORTING))).thenReturn(mockIterable);
+		
+		Assert.assertEquals(engine.getMatchingRows(SortingConfig.NO_SORTING), mockIterable);
+	}
+	
+	@Test(expectedExceptions = IllegalStateException.class)
+	public void testGetMatchingRecordsInRowsMode() {
+		engine.getMatchingRecords(SortingConfig.NO_SORTING);
+	}
+	
 }

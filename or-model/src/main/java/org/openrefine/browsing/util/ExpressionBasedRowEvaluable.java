@@ -38,10 +38,11 @@ import java.util.Properties;
 import org.openrefine.expr.Evaluable;
 import org.openrefine.expr.ExpressionUtils;
 import org.openrefine.model.Cell;
-import org.openrefine.model.Project;
 import org.openrefine.model.Row;
 
 public class ExpressionBasedRowEvaluable implements RowEvaluable {
+
+    private static final long serialVersionUID = -5124242947059242993L;
     final protected String         _columnName;
     final protected int            _cellIndex;
     final protected Evaluable      _eval;
@@ -56,11 +57,11 @@ public class ExpressionBasedRowEvaluable implements RowEvaluable {
 
     @Override
     public Object eval(
-            Project project, int rowIndex, Row row, Properties bindings) {
+            long rowIndex, Row row, Properties bindings) {
         
         Cell cell = row.getCell(_cellIndex);
 
-        ExpressionUtils.bind(bindings, row, rowIndex, _columnName, cell);
+        ExpressionUtils.bind(bindings, null, row, rowIndex, _columnName, cell);
         
         return _eval.evaluate(bindings);
     }

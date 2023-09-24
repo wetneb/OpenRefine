@@ -34,15 +34,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package org.openrefine.commands.column;
 
 import java.io.IOException;
-import java.util.Properties;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.openrefine.commands.Command;
-import org.openrefine.model.AbstractOperation;
 import org.openrefine.model.Project;
+import org.openrefine.operations.Operation;
 import org.openrefine.operations.column.ColumnRenameOperation;
 import org.openrefine.process.Process;
 
@@ -61,8 +60,8 @@ public class RenameColumnCommand extends Command {
             String oldColumnName = request.getParameter("oldColumnName");
             String newColumnName = request.getParameter("newColumnName");
             
-            AbstractOperation op = new ColumnRenameOperation(oldColumnName, newColumnName);
-            Process process = op.createProcess(project, new Properties());
+            Operation op = new ColumnRenameOperation(oldColumnName, newColumnName);
+            Process process = op.createProcess(project.getHistory(), project.getProcessManager());
             
             performProcessAndRespond(request, response, project, process);
         } catch (Exception e) {

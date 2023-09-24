@@ -33,23 +33,37 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.openrefine.operations.cell;
 
+import java.io.Serializable;
+import java.util.LinkedList;
 import java.util.List;
 
-import org.openrefine.browsing.EngineConfig;
-import org.openrefine.browsing.RowVisitor;
+import org.openrefine.browsing.Engine;
 import org.openrefine.browsing.Engine.Mode;
+import org.openrefine.browsing.EngineConfig;
 import org.openrefine.expr.ExpressionUtils;
 import org.openrefine.model.Cell;
-import org.openrefine.model.Column;
-import org.openrefine.model.Project;
+import org.openrefine.model.ColumnModel;
+import org.openrefine.model.GridState;
+import org.openrefine.model.Record;
+import org.openrefine.model.RecordMapper;
 import org.openrefine.model.Row;
-import org.openrefine.model.changes.CellChange;
-import org.openrefine.operations.EngineDependentMassCellOperation;
+import org.openrefine.model.RowMapper;
+import org.openrefine.model.RowScanMapper;
+import org.openrefine.model.changes.Change;
+import org.openrefine.model.changes.ChangeContext;
+import org.openrefine.model.changes.EngineDependentChange;
+import org.openrefine.operations.EngineDependentOperation;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class BlankDownOperation extends EngineDependentMassCellOperation {
+/**
+ * Transforms a table without a record structure to blanking out values
+ * which are identical to those on the previous row, creating a record structure.
+ */
+public class BlankDownOperation extends EngineDependentOperation {
+	
+	protected String _columnName;
     
     @JsonCreator
     public BlankDownOperation(
@@ -58,70 +72,123 @@ public class BlankDownOperation extends EngineDependentMassCellOperation {
             @JsonProperty("columnName")
             String columnName
         ) {
-        super(engineConfig, columnName, true);
+        super(engineConfig);
+        _columnName = columnName;
+    }
+    
+    @JsonProperty("columnName")
+    public String getColumnName() {
+    	return _columnName;
     }
 
     @Override
-    protected String getBriefDescription(Project project) {
+	public String getDescription() {
         return "Blank down cells in column " + _columnName;
     }
 
     @Override
-    protected String createDescription(Column column,
-            List<CellChange> cellChanges) {
-        
-        return "Blank down " + cellChanges.size() + 
-            " cells in column " + column.getName();
+    public Change createChange() {
+    	return new BlankDownChange(getEngineConfig());
     }
 
-    @Override
-    protected RowVisitor createRowVisitor(Project project, List<CellChange> cellChanges, long historyEntryID) throws Exception {
-        Column column = project.columnModel.getColumnByName(_columnName);
-        Mode engineMode = createEngine(project).getMode();
-        
-        return new RowVisitor() {
-            int                 cellIndex;
-            int 			    keyCellIndex;
-            List<CellChange>    cellChanges;
-            Cell                previousCell;
-            Mode                engineMode;
-            
-            public RowVisitor init(int cellIndex, List<CellChange> cellChanges, Mode engineMode) {
-                this.cellIndex = cellIndex;
-                this.cellChanges = cellChanges;
-                this.engineMode = engineMode;
-                return this;
-            }
+    public class BlankDownChange extends EngineDependentChange {
 
-            @Override
-            public void start(Project project) {
-            	keyCellIndex = project.columnModel.columns.get(
-                		project.columnModel.getKeyColumnIndex()).getCellIndex();
-            }
+    	public BlankDownChange(EngineConfig engineConfig) {
+			super(engineConfig);
+		}
 
-            @Override
-            public void end(Project project) {
-                // nothing to do
-            }
-            
-            @Override
-            public boolean visit(Project project, int rowIndex, Row row) {
-                if (engineMode.equals(Mode.RecordBased) && ExpressionUtils.isNonBlankData(row.getCellValue(keyCellIndex))) {
-                    previousCell = null;
-                }
-                Object value = row.getCellValue(cellIndex);
-                if (ExpressionUtils.isNonBlankData(value)) {
-                    Cell cell = row.getCell(cellIndex);
-                    if (previousCell != null && cell.value.equals(previousCell.value)) {
-                        CellChange cellChange = new CellChange(rowIndex, cellIndex, cell, null);
-                        cellChanges.add(cellChange);
-                    }
-                    previousCell = cell;
-                } else {
-                    previousCell = null;
-                }
-                return false;
-            }
-        }.init(column.getCellIndex(), cellChanges, engineMode);
+		@Override
+    	public GridState apply(GridState state, ChangeContext context) throws DoesNotApplyException {
+    		ColumnModel model = state.getColumnModel();
+    		int index = model.getColumnIndexByName(_columnName);
+    		if (index == -1) {
+    			throw new DoesNotApplyException(
+    					String.format("Column '%s' does not exist", _columnName));
+    		}
+    		Engine engine = getEngine(state);
+    		if (Mode.RecordBased.equals(_engineConfig.getMode())) {
+    			// Simple map of records
+    			return state.mapRecords(
+    					RecordMapper.conditionalMapper(engine.combinedRecordFilters(), recordMapper(index), RecordMapper.IDENTITY),
+    					model);
+    			
+    		} else {
+    			// We need to remember the cell from the previous row, so we use a scan map
+    			return state.mapRows(RowScanMapper.conditionalMapper(engine.combinedRowFilters(), rowScanMapper(index), RowMapper.IDENTITY), model);
+    		}
+    	}
+    
+    	@Override
+    	public boolean isImmediate() {
+    		return true;
+    	}
     }
+    
+   	protected static RecordMapper recordMapper(int columnIndex) {
+		return new RecordMapper() {
+
+			private static final long serialVersionUID = -5754924505312738966L;
+
+			@Override
+			public List<Row> call(Record record) {
+				Cell lastCell = null;
+				List<Row> result = new LinkedList<>();
+				for (Row row : record.getRows()) {
+					Serializable cellValue = row.getCellValue(columnIndex);
+					if (lastCell != null
+							&& ExpressionUtils.isNonBlankData(cellValue)
+							&& cellValue.equals(lastCell.getValue())) {
+						result.add(row.withCell(columnIndex, null));
+					} else {
+						result.add(row);
+					}
+					lastCell = row.getCell(columnIndex);
+				}
+				return result;
+			}
+			
+		};
+	}
+	
+	protected static RowScanMapper<Cell> rowScanMapper(int columnIndex) {
+		return new RowScanMapper<Cell>() {
+
+			private static final long serialVersionUID = 2808768242505893380L;
+
+			@Override
+			public Cell feed(long rowId, Row row) {
+				return row.getCell(columnIndex);
+			}
+
+			@Override
+			public Cell combine(Cell left, Cell right) {
+				if (right != null && right.value == null) {
+					// Cell.NULL is used as sentinel, for rows that are skipped by facets.
+					// null cells are simply represented by right == null
+					return left;
+				} else {
+					return right;
+				}
+			}
+
+			@Override
+			public Cell unit() {
+				return Cell.NULL;
+			}
+
+			@Override
+			public Row map(Cell lastCell, long rowId, Row row) {
+				Serializable cellValue = row.getCellValue(columnIndex);
+				if (ExpressionUtils.isNonBlankData(cellValue)
+						&& lastCell != null
+						&& cellValue.equals(lastCell.getValue())) {
+					return row.withCell(columnIndex, null);
+				} else {
+					return row;
+				}
+			}
+			
+		};
+	}
+
 }

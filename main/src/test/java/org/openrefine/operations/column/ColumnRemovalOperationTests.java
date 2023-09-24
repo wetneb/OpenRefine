@@ -26,16 +26,50 @@
  ******************************************************************************/
 package org.openrefine.operations.column;
 
+import static org.mockito.Mockito.mock;
+
+import java.io.Serializable;
+import java.util.Arrays;
+import java.util.List;
+
 import org.openrefine.RefineTest;
+import org.openrefine.expr.EvalError;
+import org.openrefine.expr.MetaParser;
+import org.openrefine.expr.ParsingException;
+import org.openrefine.grel.Parser;
+import org.openrefine.model.Cell;
+import org.openrefine.model.ColumnMetadata;
+import org.openrefine.model.GridState;
+import org.openrefine.model.IndexedRow;
+import org.openrefine.model.changes.Change;
+import org.openrefine.model.changes.ChangeContext;
+import org.openrefine.model.changes.Change.DoesNotApplyException;
 import org.openrefine.operations.OperationRegistry;
-import org.openrefine.operations.column.ColumnRemovalOperation;
 import org.openrefine.util.ParsingUtilities;
 import org.openrefine.util.TestUtils;
+import org.testng.Assert;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.BeforeSuite;
 import org.testng.annotations.Test;
 
 
 public class ColumnRemovalOperationTests extends RefineTest {
+	
+	protected GridState initialState;
+	
+	@BeforeMethod
+	public void setUpInitialState() {
+		MetaParser.registerLanguageParser("grel", "GREL", Parser.grelParser, "value");
+		initialState = createGrid(new String[] {"foo","bar","hello"},
+				new Serializable[][] {
+			{ "v1", "a", "d" },
+			{ "v3", "a", "f" },
+			{ "", "a", "g" },
+			{ "", "b", "h" },
+			{ new EvalError("error"), "a", "i"},
+			{ "v1", "b", "j" }
+		});
+	}
     
     @BeforeSuite
     public void setUp() {
@@ -49,4 +83,21 @@ public class ColumnRemovalOperationTests extends RefineTest {
                 + "\"columnName\":\"my column\"}";
         TestUtils.isSerializedTo(ParsingUtilities.mapper.readValue(json, ColumnRemovalOperation.class), json, ParsingUtilities.defaultWriter);
     }
+    
+	@Test
+	public void testRemoval() throws DoesNotApplyException, ParsingException {
+		Change SUT = new ColumnRemovalOperation("foo").createChange();
+		GridState applied = SUT.apply(initialState, mock(ChangeContext.class));
+		List<IndexedRow> rows = applied.collectRows();
+		Assert.assertEquals(applied.getColumnModel().getColumns(),
+				Arrays.asList(new ColumnMetadata("bar"), new ColumnMetadata("hello")));
+		Assert.assertEquals(rows.get(0).getRow().getCells(),
+				Arrays.asList(new Cell("a", null), new Cell("d", null)));
+	}
+	
+	@Test(expectedExceptions = DoesNotApplyException.class)
+	public void testColumnNotFound() throws DoesNotApplyException, ParsingException {
+		Change SUT = new ColumnRemovalOperation("not_found").createChange();
+		SUT.apply(initialState, mock(ChangeContext.class));
+	}
 }

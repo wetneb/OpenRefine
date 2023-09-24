@@ -37,6 +37,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
@@ -48,7 +49,7 @@ import javax.servlet.http.HttpServletResponse;
 import org.openrefine.RefineServlet;
 import org.openrefine.commands.Command;
 import org.openrefine.commands.HttpUtilities;
-import org.openrefine.importing.ImportingManager.Format;
+import org.openrefine.importing.ImportingJob.ImportingJobConfig;
 import org.openrefine.util.JSONUtilities;
 import org.openrefine.util.ParsingUtilities;
 
@@ -110,14 +111,14 @@ public class DefaultImportingController implements ImportingController {
         }
         
         job.updating = true;
-        ObjectNode config = job.getOrCreateDefaultConfig();
-        if (!("new".equals(JSONUtilities.getString(config, "state", null)))) {
+        ImportingJobConfig config = job.getJsonConfig();
+        if (!("new".equals(config.state))) {
             HttpUtilities.respond(response, "error", "Job already started; cannot load more data");
             return;
         }
         
         ImportingUtilities.loadDataAndPrepareJob(
-            request, response, parameters, job, config);
+            request, response, parameters, job);
         job.touch();
         job.updating = false;
     }
@@ -133,16 +134,21 @@ public class DefaultImportingController implements ImportingController {
         }
         
         job.updating = true;
-        ObjectNode config = job.getOrCreateDefaultConfig();
-        if (!("ready".equals(JSONUtilities.getString(config, "state", null)))) {
+        ImportingJobConfig config = job.getJsonConfig();
+        if (!("ready".equals(config.state))) {
             HttpUtilities.respond(response, "error", "Job not ready");
             return;
         }
         
-        ArrayNode fileSelectionArray = ParsingUtilities.evaluateJsonStringToArrayNode(
-                request.getParameter("fileSelection"));
+        List<Integer> fileSelectionArray = Arrays.asList((Integer[])JSONUtilities.toArray(ParsingUtilities.evaluateJsonStringToArrayNode(
+                request.getParameter("fileSelection"))));
         
-        ImportingUtilities.updateJobWithNewFileSelection(job, fileSelectionArray);
+        job.setFileSelection(fileSelectionArray);
+		
+		String bestFormat = job.getCommonFormatForSelectedFiles();
+		bestFormat = job.guessBetterFormat(bestFormat);
+		
+		job.rerankFormats(bestFormat);
         
         replyWithJobData(request, response, job);
         job.touch();
@@ -160,8 +166,8 @@ public class DefaultImportingController implements ImportingController {
         }
         
         job.updating = true;
-        ObjectNode config = job.getOrCreateDefaultConfig();
-        if (!("ready".equals(JSONUtilities.getString(config, "state", null)))) {
+        ImportingJobConfig config = job.getJsonConfig();
+        if (!("ready".equals(config.state))) {
             HttpUtilities.respond(response, "error", "Job not ready");
             return;
         }
@@ -179,8 +185,6 @@ public class DefaultImportingController implements ImportingController {
         try {
             writer.writeStartObject();
             if (exceptions.size() == 0) {
-                job.project.update(); // update all internal models, indexes, caches, etc.
-                
                 writer.writeStringField("status", "ok");
             } else {
                 writer.writeStringField("status", "error");
@@ -212,7 +216,7 @@ public class DefaultImportingController implements ImportingController {
         }
         
         String format = request.getParameter("format");
-        Format formatRecord = ImportingManager.formatToRecord.get(format);
+        ImportingFormat formatRecord = FormatRegistry.getFormatToRecord().get(format);
         if (formatRecord != null && formatRecord.parser != null) {
             ObjectNode options = formatRecord.parser.createParserUIInitializationData(
                     job, job.getSelectedFileRecords(), format);
@@ -238,8 +242,8 @@ public class DefaultImportingController implements ImportingController {
         
         job.updating = true;
         job.touch();
-        ObjectNode config = job.getOrCreateDefaultConfig();
-        if (!("ready".equals(JSONUtilities.getString(config, "state", null)))) {
+        ImportingJobConfig config = job.getJsonConfig();
+        if (!("ready".equals(config.state))) {
             HttpUtilities.respond(response, "error", "Job not ready");
             return;
         }
@@ -295,20 +299,6 @@ public class DefaultImportingController implements ImportingController {
             writer.writeStringField("stack", sw.toString());
             writer.writeEndObject();
         }
-    }
-    
-    static public ArrayNode convertErrorsToJsonArray(List<Exception> exceptions) {
-        ArrayNode a = ParsingUtilities.mapper.createArrayNode();
-        for (Exception e : exceptions) {
-            StringWriter sw = new StringWriter();
-            e.printStackTrace(new PrintWriter(sw));
-            
-            ObjectNode o = ParsingUtilities.mapper.createObjectNode();
-            JSONUtilities.safePut(o, "message", e.getLocalizedMessage());
-            JSONUtilities.safePut(o, "stack", sw.toString());
-            JSONUtilities.append(a, o);
-        }
-        return a;
     }
 
 }

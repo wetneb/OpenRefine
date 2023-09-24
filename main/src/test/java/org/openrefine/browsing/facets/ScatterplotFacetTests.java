@@ -31,17 +31,21 @@ import static org.testng.Assert.assertTrue;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.Collections;
 
 import org.openrefine.RefineTest;
 import org.openrefine.browsing.Engine;
-import org.openrefine.browsing.RowFilter;
-import org.openrefine.browsing.facets.FacetConfigResolver;
-import org.openrefine.browsing.facets.ScatterplotFacet;
+import org.openrefine.browsing.Engine.Mode;
+import org.openrefine.browsing.EngineConfig;
+import org.openrefine.browsing.facets.ScatterplotFacet.Dimension;
 import org.openrefine.browsing.facets.ScatterplotFacet.ScatterplotFacetConfig;
-import org.openrefine.model.Cell;
-import org.openrefine.model.Project;
+import org.openrefine.expr.MetaParser;
+import org.openrefine.grel.Parser;
+import org.openrefine.model.GridState;
+import org.openrefine.model.RowFilter;
 import org.openrefine.util.ParsingUtilities;
 import org.openrefine.util.TestUtils;
+import org.testng.Assert;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
@@ -50,19 +54,36 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 
 public class ScatterplotFacetTests extends RefineTest {
     public static String configJson = "{\n" + 
+            "          \"max_x\" : 89.2," +
+            "          \"max_y\" : 32," +
+            "          \"min_x\" : -45.9," +
+            "          \"min_y\" : -38," +
             "          \"to_x\": 1,\n" + 
             "          \"to_y\": 1,\n" + 
             "          \"dot\": 1,\n" + 
-            "          \"from_x\": 0.21333333333333335,\n" + 
+            "          \"from_x\": 0.2,\n" + 
             "          \"l\": 150,\n" + 
             "          \"type\": \"core/scatterplot\",\n" + 
-            "          \"from_y\": 0.26666666666666666,\n" + 
+            "          \"from_y\": 0.25,\n" + 
             "          \"dim_y\": \"lin\",\n" + 
             "          \"ex\": \"value\",\n" + 
             "          \"dim_x\": \"lin\",\n" +
             "          \"ey\": \"value\",\n" + 
             "          \"cx\": \"my column\",\n" + 
-            "          \"cy\": \"e\",\n" + 
+            "          \"cy\": \"e\",\n" +
+            "          \"r\": \"none\"," + 
+            "          \"name\": \"my column (x) vs. e (y)\"\n" + 
+            "        }";
+    
+    public static String configNeutralJson = "{\n" + 
+            "          \"dot\": 1,\n" + 
+            "          \"l\": 150,\n" + 
+            "          \"type\": \"core/scatterplot\",\n" + 
+            "          \"ex\": \"value\",\n" + 
+            "          \"ey\": \"value\",\n" + 
+            "          \"cx\": \"my column\",\n" + 
+            "          \"cy\": \"e\",\n" +
+            "          \"r\": \"none\"," + 
             "          \"name\": \"my column (x) vs. e (y)\"\n" + 
             "        }";
     
@@ -74,19 +95,46 @@ public class ScatterplotFacetTests extends RefineTest {
             + "\"ey\":\"value\","
             + "\"l\":150,"
             + "\"dot\":1,"
-            + "\"r\":0,"
-            + "\"dim_x\":0,"
-            + "\"dim_y\":0,"
-            + "\"color\":\"000000\","
-            + "\"from_x\":0.21333333333333335,"
+            + "\"r\":\"none\","
+            + "\"dim_x\":\"lin\","
+            + "\"dim_y\":\"lin\","
+            + "\"from_x\":0.2,"
             + "\"to_x\":1,"
-            + "\"from_y\":0.26666666666666666,"
-            + "\"to_y\":1"
+            + "\"from_y\":0.25,"
+            + "\"to_y\":1,"
+            + "\"max_x\" : 89.2,"
+            + "\"max_y\" : 32,"
+            + "\"min_x\" : -45.9,"
+            + "\"min_y\" : -38"
             + "}";
+    
+    public static String facetWithErrorJson = "{"
+            + "\"name\":\"my column (x) vs. e (y)\","
+            + "\"cx\":\"my column\","
+            + "\"ex\":\"value\","
+            + "\"cy\":\"e\","
+            + "\"ey\":\"value\","
+            + "\"error_x\" : \"No column named my column\","
+            + "\"error_y\" : \"No column named e\","
+            + "\"l\":150,"
+            + "\"dot\":1,"
+            + "\"r\":\"none\","
+            + "\"dim_x\":\"lin\","
+            + "\"dim_y\":\"lin\""
+            + "}";
+    
+    GridState grid;
     
     @BeforeTest
     public void registerFacetConfig() {
+    	MetaParser.registerLanguageParser("grel", "GREL", Parser.grelParser, "value");
     	FacetConfigResolver.registerFacetConfig("core", "scatterplot", ScatterplotFacetConfig.class);
+    	grid = createGrid(new String[] {"my column","e"},
+        		new Serializable[][] {
+                { 89.2, 32 },
+                { -45.9, -38 }, 
+                { "blah","blah" },
+                { 0.4, 1 }});
     }
     
     @Test
@@ -96,30 +144,50 @@ public class ScatterplotFacetTests extends RefineTest {
     }
     
     @Test
-    public void serializeScatterplotFacet() throws JsonParseException, JsonMappingException, IOException {
-        Project project = createProject(new String[] {"my column","e"},
-        		new Serializable[] {
-                89.2,89.2,
-                -45.9,-45.9,
-                "blah","blah",
-                0.4,0.4});
-        Engine engine = new Engine(project);
-        project.rows.get(0).cells.set(0, new Cell(89.2, null));
-        project.rows.get(0).cells.set(1, new Cell(89.2, null));
-        project.rows.get(1).cells.set(0, new Cell(-45.9, null));
-        project.rows.get(1).cells.set(1, new Cell(-45.9, null));
-        project.rows.get(3).cells.set(0, new Cell(0.4, null));
-        project.rows.get(3).cells.set(1, new Cell(0.4, null));
-        
+    public void deserializeNeutralScatterplotFacetConfig() throws JsonParseException, JsonMappingException, IOException {
+    	ScatterplotFacetConfig config = ParsingUtilities.mapper.readValue(configNeutralJson, ScatterplotFacetConfig.class);
+    	
+    	// unspecified fields have correct default values
+    	Assert.assertEquals(config.fromX, 0.0);
+    	Assert.assertEquals(config.toX, 1.0);
+    	Assert.assertEquals(config.fromY, 0.0);
+    	Assert.assertEquals(config.toY, 1.0);
+    	Assert.assertEquals(config.dim_x, Dimension.LIN);
+    	Assert.assertEquals(config.dim_y, Dimension.LIN);
+    }
+    
+    @Test
+    public void serializeScatterplotFacetResult() throws JsonParseException, JsonMappingException, IOException {
         ScatterplotFacetConfig config = ParsingUtilities.mapper.readValue(configJson, ScatterplotFacetConfig.class);
+        EngineConfig engineConfig = new EngineConfig(Collections.singletonList(config), Mode.RowBased);
+        Engine engine = new Engine(grid, engineConfig);
         
-        ScatterplotFacet facet = config.apply(project);
-        facet.computeChoices(project, engine.getAllFilteredRows());
-        TestUtils.isSerializedTo(facet, facetJson, ParsingUtilities.defaultWriter);
+        TestUtils.isSerializedTo(engine.getFacetResults().get(0), facetJson, ParsingUtilities.defaultWriter);
+    }
+    
+    @Test
+    public void serializeFacetWithError() throws JsonParseException, JsonMappingException, IOException {
+    	GridState grid = createGrid(new String[] { "foo" },
+    			new Serializable[][] {
+    		{ "bar" }
+    	});
+    	
+    	ScatterplotFacetConfig config = ParsingUtilities.mapper.readValue(configJson, ScatterplotFacetConfig.class);
+        EngineConfig engineConfig = new EngineConfig(Collections.singletonList(config), Mode.RowBased);
+        Engine engine = new Engine(grid, engineConfig);
         
-        RowFilter filter = facet.getRowFilter(project);
-        assertTrue(filter.filterRow(project, 0, project.rows.get(0)));
-        assertFalse(filter.filterRow(project, 1, project.rows.get(1)));
-        assertTrue(filter.filterRow(project, 3, project.rows.get(3)));
+        TestUtils.isSerializedTo(engine.getFacetResults().get(0), facetWithErrorJson, ParsingUtilities.defaultWriter);
+    }
+    
+    @Test
+    public void testFilterRows() throws JsonParseException, JsonMappingException, IOException {
+    	ScatterplotFacetConfig config = ParsingUtilities.mapper.readValue(configJson, ScatterplotFacetConfig.class);
+    	ScatterplotFacet facet = config.apply(grid.getColumnModel());
+        RowFilter filter = facet.getAggregator().getRowFilter();
+        
+        assertTrue(filter.filterRow(0, grid.getRow(0)));
+        assertFalse(filter.filterRow(1, grid.getRow(1)));
+        assertFalse(filter.filterRow(2, grid.getRow(2)));
+        assertTrue(filter.filterRow(3, grid.getRow(3)));
     }
 }

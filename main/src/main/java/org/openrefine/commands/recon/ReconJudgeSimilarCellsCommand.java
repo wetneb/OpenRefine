@@ -37,17 +37,17 @@ import javax.servlet.http.HttpServletRequest;
 
 import org.openrefine.browsing.EngineConfig;
 import org.openrefine.commands.EngineDependentCommand;
-import org.openrefine.model.AbstractOperation;
 import org.openrefine.model.Project;
-import org.openrefine.model.Recon;
-import org.openrefine.model.ReconCandidate;
-import org.openrefine.model.Recon.Judgment;
+import org.openrefine.model.recon.Recon;
+import org.openrefine.model.recon.ReconCandidate;
+import org.openrefine.model.recon.Recon.Judgment;
+import org.openrefine.operations.Operation;
 import org.openrefine.operations.recon.ReconJudgeSimilarCellsOperation;
 
 public class ReconJudgeSimilarCellsCommand extends EngineDependentCommand {
 
     @Override
-    protected AbstractOperation createOperation(
+    protected Operation createOperation(
             Project project, HttpServletRequest request, EngineConfig engineConfig) throws Exception {
         
         String columnName = request.getParameter("columnName");

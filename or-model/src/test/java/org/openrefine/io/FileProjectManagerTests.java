@@ -33,6 +33,7 @@ import java.io.IOException;
 
 import org.openrefine.ProjectMetadata;
 import org.openrefine.io.FileProjectManager;
+import org.openrefine.model.DatamodelRunner;
 import org.openrefine.util.ParsingUtilities;
 import org.openrefine.util.TestUtils;
 import org.testng.annotations.BeforeMethod;
@@ -49,7 +50,7 @@ public class FileProjectManagerTests  {
     protected class FileProjectManagerStub extends FileProjectManager {
 
         protected FileProjectManagerStub(File dir) {
-            super(dir);
+            super(mock(DatamodelRunner.class), dir);
             _projectsMetadata.put(1234L, mock(ProjectMetadata.class));
         }
     }

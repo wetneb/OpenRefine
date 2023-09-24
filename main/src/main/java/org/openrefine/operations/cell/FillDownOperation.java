@@ -33,24 +33,36 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.openrefine.operations.cell;
 
+import java.util.LinkedList;
 import java.util.List;
 
 import org.openrefine.browsing.Engine;
-import org.openrefine.browsing.EngineConfig;
-import org.openrefine.browsing.RowVisitor;
 import org.openrefine.browsing.Engine.Mode;
+import org.openrefine.browsing.EngineConfig;
 import org.openrefine.expr.ExpressionUtils;
 import org.openrefine.model.Cell;
-import org.openrefine.model.Column;
-import org.openrefine.model.Project;
+import org.openrefine.model.ColumnModel;
+import org.openrefine.model.GridState;
+import org.openrefine.model.Record;
+import org.openrefine.model.RecordMapper;
 import org.openrefine.model.Row;
-import org.openrefine.model.changes.CellChange;
-import org.openrefine.operations.EngineDependentMassCellOperation;
+import org.openrefine.model.RowMapper;
+import org.openrefine.model.RowScanMapper;
+import org.openrefine.model.changes.Change;
+import org.openrefine.model.changes.ChangeContext;
+import org.openrefine.model.changes.EngineDependentChange;
+import org.openrefine.operations.EngineDependentOperation;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class FillDownOperation extends EngineDependentMassCellOperation {
+/**
+ * Transforms a table with a record structure to by spreading non-null values
+ * in the rows below, in a specific column.
+ */
+public class FillDownOperation extends EngineDependentOperation {
+	
+	protected String _columnName;
     
     @JsonCreator
     public FillDownOperation(
@@ -59,67 +71,113 @@ public class FillDownOperation extends EngineDependentMassCellOperation {
             @JsonProperty("columnName")
             String columnName
         ) {
-        super(engineConfig, columnName, true);
+        super(engineConfig);
+        _columnName = columnName;
+    }
+    
+    @JsonProperty("columnName")
+    public String getColumnName() {
+    	return _columnName;
     }
 
     @Override
-    protected String getBriefDescription(Project project) {
+	public String getDescription() {
         return "Fill down cells in column " + _columnName;
     }
-
-    @Override
-    protected String createDescription(Column column,
-            List<CellChange> cellChanges) {
-        
-        return "Fill down " + cellChanges.size() + 
-            " cells in column " + column.getName();
+    
+    public Change createChange() {
+    	return new FillDownChange(getEngineConfig());
     }
+    
+    public class FillDownChange extends EngineDependentChange {
 
-    @Override
-    protected RowVisitor createRowVisitor(Project project, List<CellChange> cellChanges, long historyEntryID) throws Exception {
-        Column column = project.columnModel.getColumnByName(_columnName);
-        Engine engine = createEngine(project);
-        Mode engineMode = engine.getMode();
-        
-        return new RowVisitor() {
-            int                 cellIndex;
-            int 			    keyCellIndex;
-            List<CellChange>    cellChanges;
-            Cell                previousCell;
-            Mode                engineMode;
-            
-            public RowVisitor init(int cellIndex, List<CellChange> cellChanges, Mode engineMode) {
-                this.cellIndex = cellIndex;
-                this.cellChanges = cellChanges;
-                this.engineMode = engineMode;
-                return this;
-            }
-            
-            @Override
-            public void start(Project project) {
-                keyCellIndex = project.columnModel.columns.get(
-                		project.columnModel.getKeyColumnIndex()).getCellIndex();
-            }
+        public FillDownChange(EngineConfig engineConfig) {
+    		super(engineConfig);
+    	}
 
-            @Override
-            public void end(Project project) {
-                // nothing to do
-            }
-            
-            @Override
-            public boolean visit(Project project, int rowIndex, Row row) {
-                Object value = row.getCellValue(cellIndex);
-                if (engineMode.equals(Mode.RecordBased) && ExpressionUtils.isNonBlankData(row.getCellValue(keyCellIndex))) {
-                    previousCell = null;
-                }
-                if (ExpressionUtils.isNonBlankData(value)) {
-                    previousCell = row.getCell(cellIndex);
-                } else if (previousCell != null) {
-                    CellChange cellChange = new CellChange(rowIndex, cellIndex, row.getCell(cellIndex), previousCell);
-                    cellChanges.add(cellChange);
-                }
-                return false;
-            }
-        }.init(column.getCellIndex(), cellChanges, engineMode);
+    	@Override
+    	public GridState apply(GridState state, ChangeContext context) throws DoesNotApplyException {
+    		ColumnModel model = state.getColumnModel();
+    		int index = model.getColumnIndexByName(_columnName);
+    		if (index == -1) {
+    			throw new DoesNotApplyException(
+    					String.format("Column '%s' does not exist", _columnName));
+    		}
+    		Engine engine = getEngine(state);
+    		if (Mode.RecordBased.equals(_engineConfig.getMode())) {
+    			// simple map of records, since a filled down value cannot spread beyond a record boundary
+    			return state.mapRecords(
+    					RecordMapper.conditionalMapper(engine.combinedRecordFilters(), recordMapper(index), RecordMapper.IDENTITY),
+    					model);
+    		} else {
+    			// scan map, because we need to remember the last non-null cell
+    			return state.mapRows(RowScanMapper.conditionalMapper(engine.combinedRowFilters(), rowScanMapper(index), RowMapper.IDENTITY), model);
+    		}
+    	}
+
+    	@Override
+    	public boolean isImmediate() {
+    		return true;
+    	}
+
     }
+    
+	protected static RecordMapper recordMapper(int columnIndex) {
+		return new RecordMapper() {
+
+			private static final long serialVersionUID = -5754924505312738966L;
+
+			@Override
+			public List<Row> call(Record record) {
+				Cell lastNonBlankCell = null;
+				List<Row> result = new LinkedList<>();
+				for (Row row : record.getRows()) {
+					if (row.isCellBlank(columnIndex)) {
+						result.add(row.withCell(columnIndex, lastNonBlankCell));
+					} else {
+						lastNonBlankCell = row.getCell(columnIndex);
+						result.add(row);
+					}
+				}
+				return result;
+			}
+			
+		};
+	}
+    
+	protected static RowScanMapper<Cell> rowScanMapper(int columnIndex) {
+		return new RowScanMapper<Cell>() {
+
+			private static final long serialVersionUID = 2808768242505893380L;
+
+			@Override
+			public Cell feed(long rowId, Row row) {
+				return row.getCell(columnIndex);
+			}
+
+			@Override
+			public Cell combine(Cell left, Cell right) {
+				if (right != null && ExpressionUtils.isNonBlankData(right.getValue())) {
+					return right;
+				} else {
+					return left;
+				}
+			}
+
+			@Override
+			public Cell unit() {
+				return Cell.NULL;
+			}
+
+			@Override
+			public Row map(Cell lastNonBlankCell, long rowId, Row row) {
+				if (!ExpressionUtils.isNonBlankData(row.getCellValue(columnIndex))) {
+					return row.withCell(columnIndex, lastNonBlankCell);
+				} else {
+					return row;
+				}
+			}
+			
+		};
+	}
 }

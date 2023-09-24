@@ -52,8 +52,13 @@ import org.apache.tools.tar.TarInputStream;
 import org.apache.tools.tar.TarOutputStream;
 import org.openrefine.ProjectManager;
 import org.openrefine.ProjectMetadata;
+import org.openrefine.history.History;
 import org.openrefine.history.HistoryEntryManager;
+import org.openrefine.model.DatamodelRunner;
 import org.openrefine.model.Project;
+import org.openrefine.model.changes.Change.DoesNotApplyException;
+import org.openrefine.model.changes.ChangeDataStore;
+import org.openrefine.model.changes.FileChangeDataStore;
 import org.openrefine.preference.PreferenceStore;
 import org.openrefine.preference.TopList;
 import org.openrefine.util.ParsingUtilities;
@@ -68,22 +73,26 @@ public class FileProjectManager extends ProjectManager  {
     final static protected String PROJECT_DIR_SUFFIX = ".project";
 
     protected File                       _workspaceDir;
+    protected DatamodelRunner            _runner;
+    protected HistoryEntryManager        _historyEntryManager;
 
     final static Logger logger = LoggerFactory.getLogger("FileProjectManager");
 
-    static public synchronized void initialize(File dir) {
+    static public synchronized void initialize(DatamodelRunner runner, File dir) {
         if (singleton != null) {
             logger.warn("Overwriting singleton already set: " + singleton);
         }
         logger.info("Using workspace directory: {}", dir.getAbsolutePath());
-        singleton = new FileProjectManager(dir);
+        singleton = new FileProjectManager(runner, dir);
         // This needs our singleton set, thus the unconventional control flow
         ((FileProjectManager) singleton).recover();
     }
 
-    protected FileProjectManager(File dir) {
+    protected FileProjectManager(DatamodelRunner runner, File dir) {
         super();
+        _runner = runner;
         _workspaceDir = dir;
+        _historyEntryManager = new HistoryEntryManager(_runner);
         if (!_workspaceDir.exists() && !_workspaceDir.mkdirs()) {
             logger.error("Failed to create directory : " + _workspaceDir);
             return;
@@ -120,9 +129,6 @@ public class FileProjectManager extends ProjectManager  {
     public boolean loadProjectMetadata(long projectID) {
         synchronized (this) {
             ProjectMetadata metadata = ProjectMetadataUtilities.load(getProjectDir(projectID));
-            if (metadata == null) {
-                metadata = ProjectMetadataUtilities.recover(getProjectDir(projectID), projectID);
-            }
             
             if (metadata != null) {
                 _projectsMetadata.put(projectID, metadata);
@@ -189,10 +195,10 @@ public class FileProjectManager extends ProjectManager  {
     @Override
     public void exportProject(long projectId, TarOutputStream tos) throws IOException {
         File dir = this.getProjectDir(projectId);
-        this.tarDir("", dir, tos);
+        tarDir("", dir, tos);
     }
 
-    protected void tarDir(String relative, File dir, TarOutputStream tos) throws IOException{
+    protected static void tarDir(String relative, File dir, TarOutputStream tos) throws IOException{
         File[] files = dir.listFiles();
         if (files == null) return;
         for (File file : files) {
@@ -219,7 +225,7 @@ public class FileProjectManager extends ProjectManager  {
         }
     }
 
-    protected void copyFile(File file, OutputStream os) throws IOException {
+    protected static void copyFile(File file, OutputStream os) throws IOException {
         final int buffersize = 4096;
 
         FileInputStream fis = new FileInputStream(file);
@@ -243,12 +249,26 @@ public class FileProjectManager extends ProjectManager  {
 
     @Override
     protected void saveProject(Project project) throws IOException{
-        ProjectUtilities.save(project);
+        synchronized (project) {
+		    long id = project.getId();
+		    File dir = getProjectDir(id);
+		
+		    _historyEntryManager.save(project.getHistory(), dir);
+		
+		    logger.info("Saved project '{}'",id);
+		}
     }
 
     @Override
-    public Project loadProject(long id) {
-        return ProjectUtilities.load(getProjectDir(id), id);
+    public Project loadProject(long id) throws IOException {
+        File dir = getProjectDir(id);
+		History history;
+        try {
+            history = _historyEntryManager.load(dir);
+        } catch (DoesNotApplyException e) {
+            throw new IOException(e);
+        }
+		return new Project(id, history);
     }
 
 
@@ -419,14 +439,14 @@ public class FileProjectManager extends ProjectManager  {
 
     @Override
     public HistoryEntryManager getHistoryEntryManager(){
-        return new FileHistoryEntryManager();
+        return _historyEntryManager;
     }
     
     public static void gzipTarToOutputStream(Project project, OutputStream os) throws IOException {
         GZIPOutputStream gos = new GZIPOutputStream(os);
         TarOutputStream tos = new TarOutputStream(gos);
         try {
-            ProjectManager.singleton.exportProject(project.id, tos);
+            ProjectManager.singleton.exportProject(project.getId(), tos);
         } finally {
             tos.close();
             gos.close();
@@ -474,5 +494,10 @@ public class FileProjectManager extends ProjectManager  {
     	if (newExpressions != null) {
     		_preferenceStore.put("scripting.expressions", newExpressions);
     	}
+    }
+
+    @Override
+    public ChangeDataStore getChangeDataStore(long projectID) {
+        return _historyEntryManager.getChangeDataStore(getProjectDir(projectID));
     }
 }

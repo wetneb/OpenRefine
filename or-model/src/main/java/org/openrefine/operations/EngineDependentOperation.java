@@ -35,12 +35,11 @@ package org.openrefine.operations;
 
 import org.openrefine.browsing.Engine;
 import org.openrefine.browsing.EngineConfig;
-import org.openrefine.model.AbstractOperation;
-import org.openrefine.model.Project;
+import org.openrefine.model.GridState;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-abstract public class EngineDependentOperation extends AbstractOperation {
+abstract public class EngineDependentOperation implements Operation {
     
     transient protected EngineConfig    _engineConfig;
     
@@ -48,10 +47,8 @@ abstract public class EngineDependentOperation extends AbstractOperation {
         _engineConfig = engineConfig;
     }
     
-    protected Engine createEngine(Project project) throws Exception {
-        Engine engine = new Engine(project);
-        engine.initializeFromConfig(getEngineConfig());
-        return engine;
+    protected Engine createEngine(GridState state) {
+        return new Engine(state, _engineConfig);
     }
     
     @JsonProperty("engineConfig")

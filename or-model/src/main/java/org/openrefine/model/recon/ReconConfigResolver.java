@@ -54,7 +54,11 @@ public class ReconConfigResolver extends TypeIdResolverBase {
     }
     
     @Override
-    public JavaType typeFromId(DatabindContext context, String id) throws IOException {
-        return factory.constructSimpleType(ReconConfig.getClassFromMode(id), new JavaType[0]);
+    public JavaType typeFromId(DatabindContext context, String id) {
+        Class klass = ReconConfig.getClassFromMode(id);
+        if (klass == null) {
+            throw new IllegalArgumentException("Unknown recon config type "+id);
+        }
+        return factory.constructSimpleType(klass, new JavaType[0]);
     }
 }

@@ -33,22 +33,24 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.openrefine.grel;
 
+import java.io.Serializable;
 import java.util.Properties;
+
+import org.openrefine.grel.ast.GrelExpr;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.openrefine.expr.Evaluable;
 
 /**
  * Interface of GREL controls such as if, forEach, forNonBlank, with. A control can
  * decide which part of the code to execute and can affect the environment bindings.
  * Functions, on the other hand, can't do either.
  */
-public interface Control  {
-    public Object call(Properties bindings, Evaluable[] args);
+public interface Control extends Serializable {
+    public Object call(Properties bindings, GrelExpr[] args);
     
-    public String checkArguments(Evaluable[] args);
+    public String checkArguments(GrelExpr[] args);
     
     @JsonProperty("description")
     public String getDescription();

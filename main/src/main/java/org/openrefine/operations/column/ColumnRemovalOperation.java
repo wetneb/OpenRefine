@@ -33,17 +33,20 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.openrefine.operations.column;
 
-import org.openrefine.history.Change;
-import org.openrefine.history.HistoryEntry;
-import org.openrefine.model.AbstractOperation;
-import org.openrefine.model.Column;
-import org.openrefine.model.Project;
-import org.openrefine.model.changes.ColumnRemovalChange;
+import org.openrefine.browsing.EngineConfig;
+import org.openrefine.model.ColumnModel;
+import org.openrefine.model.GridState;
+import org.openrefine.model.Row;
+import org.openrefine.model.RowMapper;
+import org.openrefine.model.changes.ChangeContext;
+import org.openrefine.model.changes.Change.DoesNotApplyException;
+import org.openrefine.operations.ImmediateRowMapOperation;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class ColumnRemovalOperation extends AbstractOperation {
+public class ColumnRemovalOperation extends ImmediateRowMapOperation {
     final protected String _columnName;
 
     @JsonCreator
@@ -51,6 +54,7 @@ public class ColumnRemovalOperation extends AbstractOperation {
         @JsonProperty("columnName")
         String columnName
     ) {
+    	super(EngineConfig.ALL_ROWS);
         _columnName = columnName;
     }
     
@@ -61,21 +65,40 @@ public class ColumnRemovalOperation extends AbstractOperation {
 
 
     @Override
-    protected String getBriefDescription(Project project) {
+	public String getDescription() {
         return "Remove column " + _columnName;
     }
 
-    @Override
-    protected HistoryEntry createHistoryEntry(Project project, long historyEntryID) throws Exception {
-        Column column = project.columnModel.getColumnByName(_columnName);
-        if (column == null) {
-            throw new Exception("No column named " + _columnName);
-        }
-        
-        String description = "Remove column " + column.getName();
-        
-        Change change = new ColumnRemovalChange(project.columnModel.columns.indexOf(column));
-        
-        return new HistoryEntry(historyEntryID, project, description, ColumnRemovalOperation.this, change);
-    }
+	@Override
+	public ColumnModel getNewColumnModel(GridState state, ChangeContext context) throws DoesNotApplyException {
+		ColumnModel model = state.getColumnModel();
+		int columnIndex = columnIndex(model, _columnName);
+		return model.removeColumn(columnIndex);
+	}
+
+	@Override
+	public RowMapper getPositiveRowMapper(GridState state, ChangeContext context) throws DoesNotApplyException {
+		int columnIndex = columnIndex(state.getColumnModel(), _columnName);
+		return mapper(columnIndex);
+	}
+	
+	protected static RowMapper mapper(int columnIndex) {
+		return new RowMapper() {
+
+			private static final long serialVersionUID = -120614551816915787L;
+
+			@Override
+			public Row call(long rowId, Row row) {
+				return row.removeCell(columnIndex);
+			}
+			
+		};
+	}
+	
+	// engine config is never useful, so we remove it from the JSON serialization
+	@Override
+	@JsonIgnore
+	public EngineConfig getEngineConfig() {
+		return super.getEngineConfig();
+	}
 }

@@ -35,34 +35,32 @@ package org.openrefine.expr.functions;
 
 import java.util.Properties;
 
-import org.openrefine.browsing.Engine;
-import org.openrefine.browsing.util.ExpressionNominalValueGrouper;
 import org.openrefine.expr.EvalError;
-import org.openrefine.expr.Evaluable;
-import org.openrefine.expr.MetaParser;
-import org.openrefine.expr.ParsingException;
 import org.openrefine.grel.ControlFunctionRegistry;
 import org.openrefine.grel.Function;
-import org.openrefine.model.Column;
-import org.openrefine.model.Project;
 
 public class FacetCount implements Function {
 
+    private static final long serialVersionUID = -3149889350806788890L;
+
     @Override
     public Object call(Properties bindings, Object[] args) {
+    	// TODO to migrate
+    	/*
         if (args.length == 3 && args[1] instanceof String && args[2] instanceof String) {
             Object choiceValue = args[0]; // choice value to look up
             String facetExpression = (String) args[1];
             String columnName = (String) args[2];
 
             Project project = (Project) bindings.get("project");
-            Column column = project.columnModel.getColumnByName(columnName);
+            ColumnMetadata column = project.columnModel.getColumnByName(columnName);
             if (column == null) {
                 return new EvalError("No such column named " + columnName);
             }
 
             String key = "nominal-bin:" + facetExpression;
-            ExpressionNominalValueGrouper grouper = (ExpressionNominalValueGrouper) column.getPrecompute(key);
+            ExpressionNominalValueGrouper grouper = null;
+            // TODO to migrate
             if (grouper == null) {
                 try {
                     Evaluable eval = MetaParser.parse(facetExpression);
@@ -70,8 +68,6 @@ public class FacetCount implements Function {
 
                     grouper = new ExpressionNominalValueGrouper(eval, columnName, column.getCellIndex());
                     engine.getAllRows().accept(project, grouper);
-
-                    column.setPrecompute(key, grouper);
                 } catch (ParsingException e) {
                     return new EvalError("Error parsing facet expression " + facetExpression);
                 }
@@ -79,6 +75,7 @@ public class FacetCount implements Function {
 
             return grouper.getChoiceValueCountMultiple(choiceValue);
         }
+        */
         return new EvalError(ControlFunctionRegistry.getFunctionName(this) + 
             " expects a choice value, an expression as a string, and a column name");
     }

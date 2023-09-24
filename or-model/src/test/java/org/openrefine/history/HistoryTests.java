@@ -33,109 +33,130 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.openrefine.history;
 
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import org.mockito.Mockito;
-import org.openrefine.ProjectManager;
-import org.openrefine.ProjectMetadata;
-import org.openrefine.history.Change;
-import org.openrefine.history.History;
-import org.openrefine.history.HistoryEntry;
-import org.openrefine.history.HistoryEntryManager;
-import org.openrefine.model.Project;
-import org.openrefine.util.ParsingUtilities;
-import org.openrefine.util.TestUtils;
+import java.util.Arrays;
+import java.util.List;
+
+import org.openrefine.model.GridState;
+import org.openrefine.model.changes.Change;
+import org.openrefine.model.changes.Change.DoesNotApplyException;
+import org.openrefine.model.changes.ChangeDataStore;
 import org.testng.Assert;
-import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 
 public class HistoryTests {
-
-    //System Under Test
-    History SUT;
-
-    //dependencies
-    Project proj;
-    ProjectMetadata projectMetadata;
-    ProjectManager projectManager;
-    HistoryEntryManager historyEntryManager;
-
+    
+    ChangeDataStore dataStore;
+    
+    GridState initialState;
+    GridState intermediateState;
+    GridState finalState;
+    GridState newState;
+    
+    long firstChangeId = 1234L;
+    long secondChangeId = 5678L;
+    long newChangeId = 9012L;
+    
+    Change firstChange;
+    Change secondChange;
+    Change newChange;
+    
+    HistoryEntry firstEntry;
+    HistoryEntry secondEntry;
+    HistoryEntry newEntry;
+    
+    List<HistoryEntry> entries, newEntries;
+    
     @BeforeMethod
-    public void SetUp(){
-        projectManager = mock(ProjectManager.class);
-        historyEntryManager = mock(HistoryEntryManager.class);
-        ProjectManager.singleton = projectManager;
+    public void setUp() throws DoesNotApplyException {
+        dataStore = mock(ChangeDataStore.class);
+        initialState = mock(GridState.class);
+        intermediateState = mock(GridState.class);
+        newState = mock(GridState.class);
+        finalState = mock(GridState.class);
+        firstChange = mock(Change.class);
+        secondChange = mock(Change.class);
+        newChange = mock(Change.class);
+        firstEntry = mock(HistoryEntry.class);
+        secondEntry = mock(HistoryEntry.class);
+        newEntry = mock(HistoryEntry.class);
         
-        proj = new Project();
-        projectMetadata = mock(ProjectMetadata.class);
-
-        when(projectManager.getProject(Mockito.anyLong())).thenReturn(proj);
-        when(projectManager.getProjectMetadata(Mockito.anyLong())).thenReturn(projectMetadata);
-        when(projectManager.getHistoryEntryManager()).thenReturn(historyEntryManager);
-
-        SUT = new History(proj);
-    }
-
-    @AfterMethod
-    public void TearDown(){
-        SUT = null;
-        proj = null;
-    }
-
-    @Test
-    public void canAddEntry(){
-        //local dependencies
-        HistoryEntry entry = mock(HistoryEntry.class);
-
-        SUT.addEntry(entry);
-
-        verify(projectManager, times(1)).getProject(Mockito.anyLong());
-        verify(entry, times(1)).apply(proj);
-        verify(projectMetadata, times(1)).updateModified();
-        Assert.assertEquals(SUT.getLastPastEntries(1).get(0), entry);
+        when(firstChange.apply(eq(initialState), any())).thenReturn(intermediateState);
+        when(secondChange.apply(eq(intermediateState), any())).thenReturn(finalState);
+        when(newChange.apply(eq(intermediateState), any())).thenReturn(newState);
+        
+        when(firstEntry.getId()).thenReturn(firstChangeId);
+        when(secondEntry.getId()).thenReturn(secondChangeId);
+        when(newEntry.getId()).thenReturn(newChangeId);
+        
+        when(firstEntry.getChange()).thenReturn(firstChange);
+        when(secondEntry.getChange()).thenReturn(secondChange);
+        when(newEntry.getChange()).thenReturn(newChange);
+        
+        entries = Arrays.asList(firstEntry, secondEntry);
+        newEntries = Arrays.asList(firstEntry, newEntry);
     }
     
     @Test
-    public void serializeHistory() throws Exception {
-        String json1 = "{\"id\":1533650900300,"
-                + "\"description\":\"Reconcile cells in column organization_name to type Q43229\","
-                + "\"time\":\"2018-08-07T13:57:17Z\","
-                + "\"operation\":{"
-                + "    \"op\":\"core/recon\","
-                + "    \"description\":\"Reconcile cells in column organization_name to type Q43229\","
-                + "    \"columnName\":\"organization_name\","
-                + "    \"config\":{"
-                + "        \"mode\":\"standard-service\","
-                + "        \"service\":\"https://tools.wmflabs.org/openrefine-wikidata/en/api\","
-                + "        \"identifierSpace\":\"http://www.wikidata.org/entity/\","
-                + "        \"schemaSpace\":\"http://www.wikidata.org/prop/direct/\","
-                + "        \"type\":{\"id\":\"Q43229\",\"name\":\"organization\"},"
-                + "        \"autoMatch\":true,"
-                + "        \"columnDetails\":[],"
-                + "        \"limit\":0},"
-                + "\"engineConfig\":{\"mode\":\"row-based\",\"facets\":[]}}}";
-        String json1simple = "{\"id\":1533650900300,"
-                + "\"description\":\"Reconcile cells in column organization_name to type Q43229\","
-                + "\"time\":\"2018-08-07T13:57:17Z\"}";
-        String json2 = "{\"id\":1533651586483,"
-                + "\"description\":\"Edit single cell on row 94, column organization_id\","
-                + "\"time\":\"2018-08-07T14:18:21Z\"}";
+    public void testConstruct() throws DoesNotApplyException {
         
-        String targetJson = "{\"past\":["+json1simple+","+json2+"],\"future\":[]}";
+        History history = new History(initialState, dataStore, entries, 1);
         
-        org.openrefine.history.Change dummyChange = mock(Change.class);
+        Assert.assertEquals(history.getPosition(), 1);
+        Assert.assertEquals(history.getCurrentGridState(), intermediateState);
+        Assert.assertEquals(history.getEntries(), entries);
         
-        HistoryEntry firstEntry = HistoryEntry.load(proj, json1);
-        firstEntry.setChange(dummyChange);
-        HistoryEntry secondEntry = HistoryEntry.load(proj, json2);
-        secondEntry.setChange(dummyChange);
-        SUT.addEntry(firstEntry);
-        SUT.addEntry(secondEntry);
-        TestUtils.isSerializedTo(SUT, targetJson, ParsingUtilities.defaultWriter);
+        history.undoRedo(secondChangeId);
+        
+        Assert.assertEquals(history.getPosition(), 2);
+        Assert.assertEquals(history.getCurrentGridState(), finalState);
+        Assert.assertEquals(history.getEntries(), entries);
+        
+        history.undoRedo(0);
+        
+        Assert.assertEquals(history.getPosition(), 0);
+        Assert.assertEquals(history.getCurrentGridState(), initialState);
+        Assert.assertEquals(history.getEntries(), entries);
+        
+        // All changes were called only once
+        verify(firstChange, times(1)).apply(eq(initialState), any());
+        verify(secondChange, times(1)).apply(eq(intermediateState), any());
     }
+    
+    @Test
+    public void testSaveAndLoad() {
+    	
+    }
+    
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testUnknownChangeId() throws DoesNotApplyException {
+        History history = new History(initialState, dataStore, entries, 1);
+        
+        history.undoRedo(34782L);
+    }
+    
+    @Test
+    public void testEraseUndoneChanges() throws DoesNotApplyException {
+        History history = new History(initialState, dataStore, entries, 1);
+        
+        Assert.assertEquals(history.getPosition(), 1);
+        Assert.assertEquals(history.getCurrentGridState(), intermediateState);
+        Assert.assertEquals(history.getEntries(), entries);
+        
+        // Adding an entry when there are undone changes erases those changes
+        history.addEntry(newEntry);
+        
+        Assert.assertEquals(history.getPosition(), 2);
+        Assert.assertEquals(history.getCurrentGridState(), newState);
+        Assert.assertEquals(history.getEntries(), newEntries);
+    }
+
 }

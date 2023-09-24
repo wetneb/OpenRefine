@@ -34,15 +34,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package org.openrefine.commands.cell;
 
 import java.io.IOException;
-import java.util.Properties;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.openrefine.commands.Command;
-import org.openrefine.model.AbstractOperation;
 import org.openrefine.model.Project;
+import org.openrefine.operations.Operation;
 import org.openrefine.operations.cell.MultiValuedCellSplitOperation;
 import org.openrefine.process.Process;
 import org.openrefine.util.ParsingUtilities;
@@ -68,11 +67,11 @@ public class SplitMultiValueCellsCommand extends Command {
             Boolean regex = Boolean.parseBoolean(request.getParameter("regex"));
 
             if ("separator".equals(mode)) {
-                AbstractOperation op = new MultiValuedCellSplitOperation(columnName, 
+                Operation op = new MultiValuedCellSplitOperation(columnName, 
                                                                          keyColumnName,
                                                                          separator, 
                                                                          regex);
-                Process process = op.createProcess(project, new Properties());
+                Process process = op.createProcess(project.getHistory(), project.getProcessManager());
                 
                 performProcessAndRespond(request, response, project, process);
             } else {
@@ -80,10 +79,10 @@ public class SplitMultiValueCellsCommand extends Command {
                 
                 int[] fieldLengths = ParsingUtilities.mapper.readValue(s, new TypeReference<int[]>() {});
                 
-                AbstractOperation op = new MultiValuedCellSplitOperation(columnName,
+                Operation op = new MultiValuedCellSplitOperation(columnName,
                                                                          keyColumnName,
                                                                          fieldLengths);
-                Process process = op.createProcess(project, new Properties());
+                Process process = op.createProcess(project.getHistory(), project.getProcessManager());
                 
                 performProcessAndRespond(request, response, project, process);
             }

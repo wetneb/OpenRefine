@@ -37,18 +37,31 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.openrefine.expr.ExpressionUtils;
-import org.openrefine.history.HistoryEntry;
-import org.openrefine.model.AbstractOperation;
+import org.openrefine.expr.ParsingException;
 import org.openrefine.model.Cell;
-import org.openrefine.model.Column;
-import org.openrefine.model.Project;
+import org.openrefine.model.ColumnModel;
+import org.openrefine.model.GridState;
+import org.openrefine.model.Record;
+import org.openrefine.model.RecordMapper;
 import org.openrefine.model.Row;
-import org.openrefine.model.changes.MassRowChange;
+import org.openrefine.model.changes.Change;
+import org.openrefine.model.changes.ChangeContext;
+import org.openrefine.operations.Operation;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class MultiValuedCellJoinOperation extends AbstractOperation {
+/**
+ * Within a record, joins the non-blank cells of a column into
+ * the first cell, with the specified separator.
+ * The keyColumnName can be used to specify which column should
+ * be treated as record key (although this parameter has never been
+ * exposed in the UI as of 2020-05).
+ * 
+ * @author Antonin Delpeuch
+ *
+ */
+public class MultiValuedCellJoinOperation implements Operation {
     final protected String    _columnName;
     final protected String    _keyColumnName;
     final protected String    _separator;
@@ -83,79 +96,82 @@ public class MultiValuedCellJoinOperation extends AbstractOperation {
     }
     
     @Override
-    protected String getBriefDescription(Project project) {
+	public String getDescription() {
         return "Join multi-valued cells in column " + _columnName;
     }
 
-    @Override
-    protected HistoryEntry createHistoryEntry(Project project, long historyEntryID) throws Exception {
-        Column column = project.columnModel.getColumnByName(_columnName);
-        if (column == null) {
-            throw new Exception("No column named " + _columnName);
-        }
-        int cellIndex = column.getCellIndex();
-        
-        Column keyColumn = project.columnModel.getColumnByName(_keyColumnName);
-        if (keyColumn == null) {
-            throw new Exception("No key column named " + _keyColumnName);
-        }
-        int keyCellIndex = keyColumn.getCellIndex();
-        
-        List<Row> newRows = new ArrayList<Row>();
-        
-        int oldRowCount = project.rows.size();
-        for (int r = 0; r < oldRowCount; r++) {
-            Row oldRow = project.rows.get(r);
-            
-            if (oldRow.isCellBlank(keyCellIndex)) {
-                newRows.add(oldRow.dup());
-                continue;
-            }
-            
-            int r2 = r + 1;
-            while (r2 < oldRowCount && project.rows.get(r2).isCellBlank(keyCellIndex)) {
-                r2++;
-            }
-            
-            if (r2 == r + 1) {
-                newRows.add(oldRow.dup());
-                continue;
-            }
-            
-            StringBuffer sb = new StringBuffer();
-            for (int r3 = r; r3 < r2; r3++) {
-                Object value = project.rows.get(r3).getCellValue(cellIndex);
-                if (ExpressionUtils.isNonBlankData(value)) {
-                    if (sb.length() > 0) {
-                        sb.append(_separator);
-                    }
-                    sb.append(value.toString());
-                }
-            }
-            
-            for (int r3 = r; r3 < r2; r3++) {
-                Row newRow = project.rows.get(r3).dup();
-                if (r3 == r) {
-                    newRow.setCell(cellIndex, new Cell(sb.toString(), null));
-                } else {
-                    newRow.setCell(cellIndex, null);
-                }
-                
-                if (!newRow.isEmpty()) {
-                    newRows.add(newRow);
-                }
-            }
-            
-            r = r2 - 1; // r will be incremented by the for loop anyway
-        }
-        
-        return new HistoryEntry(
-            historyEntryID,
-            project, 
-            getBriefDescription(null), 
-            this, 
-            new MassRowChange(newRows)
-        );
-    }
+	@Override
+	public Change createChange() throws ParsingException {
+		return new MultiValuedCellJoinChange();
+	}
+	
+	public class MultiValuedCellJoinChange implements Change {
 
+		@Override
+		public GridState apply(GridState projectState, ChangeContext context) throws DoesNotApplyException {
+			ColumnModel columnModel = projectState.getColumnModel();
+			int columnIdx = columnModel.getColumnIndexByName(_columnName);
+			if (columnIdx == -1) {
+				throw new DoesNotApplyException(
+						String.format("Column '%s' does not exist", _columnName));
+			}
+			int keyColumnIdx = _keyColumnName == null ? 0 :columnModel.getColumnIndexByName(_keyColumnName);
+			if (keyColumnIdx == -1) {
+				throw new DoesNotApplyException(
+						String.format("Key column '%s' does not exist", _keyColumnName));
+			}
+			if (keyColumnIdx != columnModel.getKeyColumnIndex()) {
+				projectState = projectState.withColumnModel(columnModel.withKeyColumnIndex(keyColumnIdx));
+			}
+			return projectState.mapRecords(
+					recordMapper(columnIdx, _separator),
+					columnModel);
+		}
+
+		@Override
+		public boolean isImmediate() {
+			return true;
+		}
+
+	}
+	
+	protected static RecordMapper recordMapper(int columnIdx, String separator) {
+		return new RecordMapper() {
+
+			private static final long serialVersionUID = -5684754503934565526L;
+
+			@Override
+			public List<Row> call(Record record) {
+				List<Row> rows = record.getRows();
+				
+				// Join the non-blank cell values
+				StringBuffer sb = new StringBuffer();
+				for (int i = 0; i != rows.size(); i++) {
+					Object value = rows.get(i).getCellValue(columnIdx);
+					if (ExpressionUtils.isNonBlankData(value)) {
+	                    if (sb.length() > 0) {
+	                        sb.append(separator);
+	                    }
+	                    sb.append(value.toString());
+	                }
+				}
+				
+				// Compute the new rows
+				List<Row> newRows = new ArrayList<>(rows.size());
+				String joined = sb.toString();
+				newRows.add(rows.get(0).withCell(columnIdx, new Cell(joined.isEmpty() ? null : joined, null)));
+				for(int i = 1; i < rows.size(); i++) {
+					Row row = rows.get(i).withCell(columnIdx, null);
+					// Only add rows if they are not entirely blank after removing the joined value
+					if (row.getCells().stream().anyMatch(c -> c != null && ExpressionUtils.isNonBlankData(c.getValue()))) {
+						newRows.add(row);
+					}
+				}
+				
+				return newRows;
+			}
+			
+		};
+	}
+	
 }

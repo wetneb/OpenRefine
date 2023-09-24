@@ -43,8 +43,8 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.openrefine.commands.Command;
 import org.openrefine.history.HistoryEntry;
-import org.openrefine.model.AbstractOperation;
 import org.openrefine.model.Project;
+import org.openrefine.operations.Operation;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
@@ -60,13 +60,13 @@ public class GetOperationsCommand extends Command {
         
         @JsonProperty("description")
         public String getDescription() {
-            return entry.description;
+            return entry.getDescription();
         }
         
         @JsonProperty("operation")
         @JsonInclude(Include.NON_NULL)
-        public AbstractOperation getOperation() {
-            return entry.operation;
+        public Operation getOperation() {
+            return entry.getOperation();
         }
     }
     
@@ -87,7 +87,7 @@ public class GetOperationsCommand extends Command {
         
         Project project = getProject(request);
         
-        HistoryEntries entries = new HistoryEntries(project.history.getLastPastEntries(-1));
+        HistoryEntries entries = new HistoryEntries(project.getHistory().getLastPastEntries(-1));
         respondJSON(response, entries);
     }
 

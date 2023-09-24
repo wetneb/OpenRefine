@@ -34,6 +34,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package org.openrefine.grel.ast;
 
 import java.util.Collections;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
@@ -42,7 +43,9 @@ import org.openrefine.expr.Evaluable;
 /**
  * An abstract syntax tree node encapsulating the retrieval of a variable's content.
  */
-public class VariableExpr implements Evaluable {
+public class VariableExpr implements GrelExpr {
+
+    private static final long serialVersionUID = -7662397690998054801L;
     final protected String _name;
     
     public VariableExpr(String name) {
@@ -77,4 +80,19 @@ public class VariableExpr implements Evaluable {
 		}
 		return Collections.emptySet();
 	}
+	
+    @Override
+    public VariableExpr renameColumnDependencies(Map<String, String> substitutions) {
+        if("value".equals(_name) || "cell".equals(_name) || "recon".equals(_name)) {
+            return this;
+        } else if ("cells".equals(_name) || "row".equals(_name) || "record".equals(_name)) {
+            return null;
+        }
+        return this;
+    }
+
+    @Override
+    public boolean isLocal() {
+        return true;
+    }
 }

@@ -34,6 +34,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package org.openrefine.grel.ast;
 
 import java.util.Collections;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
@@ -49,11 +50,13 @@ import org.openrefine.expr.util.JsonValueConverter;
  * e.g., "cell.value" is accessing the field named "value" on the
  * variable called "cell".
  */
-public class FieldAccessorExpr implements Evaluable {
-    final protected Evaluable     _inner;
+public class FieldAccessorExpr implements GrelExpr {
+    
+    private static final long serialVersionUID = -1531559726559623162L;
+    final protected GrelExpr      _inner;
     final protected String        _fieldName;
     
-    public FieldAccessorExpr(Evaluable inner, String fieldName) {
+    public FieldAccessorExpr(GrelExpr inner, String fieldName) {
         _inner = inner;
         _fieldName = fieldName;
     }
@@ -99,4 +102,25 @@ public class FieldAccessorExpr implements Evaluable {
 			return null;
 		}
 	}
+	
+    @Override
+    public FieldAccessorExpr renameColumnDependencies(Map<String, String> substitutions) {
+        GrelExpr innerTranslated = _inner.renameColumnDependencies(substitutions);
+        if (innerTranslated != null) {
+            return new FieldAccessorExpr(innerTranslated, _fieldName);
+        } else {
+            String innerStr = _inner.toString();
+            if ("cells".equals(innerStr) || "row.cells".equals(innerStr)) {
+                String newColumnName = substitutions.getOrDefault(_fieldName, _fieldName);
+                return new FieldAccessorExpr(_inner, newColumnName);
+            }
+            // TODO add support for starred, flagged, rowIndex
+            return null;
+        }
+    }
+
+    @Override
+    public boolean isLocal() {
+        return _inner.isLocal();
+    }
 }

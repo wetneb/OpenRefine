@@ -41,15 +41,15 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.openrefine.commands.Command;
-import org.openrefine.history.Change;
 import org.openrefine.history.HistoryEntry;
 import org.openrefine.model.Cell;
-import org.openrefine.model.Column;
+import org.openrefine.model.ColumnMetadata;
+import org.openrefine.model.GridState;
 import org.openrefine.model.Project;
 import org.openrefine.model.changes.CellChange;
+import org.openrefine.model.changes.Change;
 import org.openrefine.process.QuickHistoryEntryProcess;
 import org.openrefine.util.ParsingUtilities;
-import org.openrefine.util.Pool;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
@@ -66,19 +66,14 @@ public class EditOneCellCommand extends Command {
         @JsonProperty("cell")
         @JsonInclude(Include.NON_NULL)
         protected Cell cell;
-        @JsonProperty("pool")
-        @JsonInclude(Include.NON_NULL)
-        protected Pool pool;
         
         protected EditResult(
                 String code,
                 HistoryEntry historyEntry,
-                Cell cell,
-                Pool pool) {
+                Cell cell) {
             this.code = code;
             this.historyEntry = historyEntry;
             this.cell = cell;
-            this.pool = pool;
         }
     }
     
@@ -96,7 +91,7 @@ public class EditOneCellCommand extends Command {
 
             Project project = getProject(request);
 
-            int rowIndex = Integer.parseInt(request.getParameter("row"));
+            long rowIndex = Long.parseLong(request.getParameter("row"));
             int cellIndex = Integer.parseInt(request.getParameter("cell"));
 
             String type = request.getParameter("type");
@@ -116,63 +111,15 @@ public class EditOneCellCommand extends Command {
             } else {
                 value = valueString;
             }
-
-            EditOneCellProcess process = new EditOneCellProcess(
-                project,
-                "Edit single cell",
-                rowIndex,
-                cellIndex,
-                value
-            );
-
-            HistoryEntry historyEntry = project.processManager.queueProcess(process);
-            if (historyEntry != null) {
-                /*
-                 * If the operation has been done, return the new cell's data
-                 * so the client side can update the cell's rendering right away.
-                 */
-                Pool pool = new Pool();
-                if(process.newCell != null && process.newCell.recon != null) {
-                    pool.pool(process.newCell.recon);
-                }
-                respondJSON(response, new EditResult("ok", historyEntry, process.newCell, pool));
-            } else {
-                respond(response, "{ \"code\" : \"pending\" }");
-            }
-        } catch (Exception e) {
-            respondException(response, e);
-        }
-    }
-
-    protected static class EditOneCellProcess extends QuickHistoryEntryProcess {
-        final int rowIndex;
-        final int cellIndex;
-        final Serializable value;
-        Cell newCell;
-
-        EditOneCellProcess(
-            Project project,
-            String briefDescription,
-            int rowIndex,
-            int cellIndex,
-            Serializable value
-        ) {
-            super(project, briefDescription);
-
-            this.rowIndex = rowIndex;
-            this.cellIndex = cellIndex;
-            this.value = value;
-        }
-
-        @Override
-        protected HistoryEntry createHistoryEntry(long historyEntryID) throws Exception {
-            Cell cell = _project.rows.get(rowIndex).getCell(cellIndex);
-            Column column = _project.columnModel.getColumnByCellIndex(cellIndex);
+            
+            GridState state = project.getCurrentGridState();
+			Cell cell = state.getRow(rowIndex).getCell(cellIndex);
+            ColumnMetadata column = state.getColumnModel().getColumns().get(cellIndex);
             if (column == null) {
                 throw new Exception("No such column");
             }
 
-            newCell = new Cell(
+            Cell newCell = new Cell(
                 value,
                 cell != null ? cell.recon : null
             );
@@ -181,10 +128,27 @@ public class EditOneCellCommand extends Command {
                 "Edit single cell on row " + (rowIndex + 1) +
                 ", column " + column.getName();
 
-            Change change = new CellChange(rowIndex, cellIndex, cell, newCell);
+            Change change = new CellChange(rowIndex, column.getName(), value);
 
-            return new HistoryEntry(
-                historyEntryID, _project, description, null, change);
+            QuickHistoryEntryProcess process = new QuickHistoryEntryProcess(
+                project.getHistory(),
+                description,
+                null,
+                change
+            );
+
+            HistoryEntry historyEntry = project.getProcessManager().queueProcess(process);
+            if (historyEntry != null) {
+                /*
+                 * If the operation has been done, return the new cell's data
+                 * so the client side can update the cell's rendering right away.
+                 */
+                respondJSON(response, new EditResult("ok", historyEntry, newCell));
+            } else {
+                respond(response, "{ \"code\" : \"pending\" }");
+            }
+        } catch (Exception e) {
+            respondException(response, e);
         }
     }
 }

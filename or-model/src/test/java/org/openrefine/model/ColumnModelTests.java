@@ -26,39 +26,36 @@
  ******************************************************************************/
 package org.openrefine.model;
 
-import org.openrefine.model.Column;
+import java.util.Arrays;
+import java.util.Collections;
+
+import org.openrefine.model.ColumnMetadata;
 import org.openrefine.model.ColumnModel;
 import org.openrefine.model.ModelException;
+import org.openrefine.model.recon.ReconStats;
 import org.openrefine.util.ParsingUtilities;
 import org.openrefine.util.TestUtils;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 public class ColumnModelTests {
+    
+    ColumnModel SUT = new ColumnModel(
+            Arrays.asList(
+                    new ColumnMetadata("a", "b", null, ReconStats.create(1L, 2L, 3L)),
+                    new ColumnMetadata("c", "d", null, null)));
+    
     @Test
     public void serializeColumnModel() throws ModelException {
-        ColumnModel model = new ColumnModel();
-        model.addColumn(0, new Column(0, "a"), false);
-        model.addColumn(1, new Column(1, "b"), false);
+        ColumnModel model = new ColumnModel(
+                Arrays.asList(new ColumnMetadata("a"), new ColumnMetadata("b")));
         String json = "{\n" + 
-                "       \"columnGroups\" : [ ],\n" + 
                 "       \"columns\" : [ {\n" + 
-                "         \"cellIndex\" : 0,\n" + 
-                "         \"constraints\" : \"{}\",\n" + 
-                "         \"description\" : \"\",\n" + 
-                "         \"format\" : \"default\",\n" + 
                 "         \"name\" : \"a\",\n" + 
-                "         \"originalName\" : \"a\",\n" + 
-                "         \"title\" : \"\",\n" + 
-                "         \"type\" : \"\"\n" + 
+                "         \"originalName\" : \"a\"\n" + 
                 "       }, {\n" + 
-                "         \"cellIndex\" : 1,\n" + 
-                "         \"constraints\" : \"{}\",\n" + 
-                "         \"description\" : \"\",\n" + 
-                "         \"format\" : \"default\",\n" + 
                 "         \"name\" : \"b\",\n" + 
-                "         \"originalName\" : \"b\",\n" + 
-                "         \"title\" : \"\",\n" + 
-                "         \"type\" : \"\"\n" + 
+                "         \"originalName\" : \"b\"\n" + 
                 "       } ],\n" + 
                 "       \"keyCellIndex\" : 0,\n" + 
                 "       \"keyColumnName\" : \"a\"\n" + 
@@ -69,10 +66,30 @@ public class ColumnModelTests {
     @Test
     public void serializeColumnModelEmpty() {
         String json = "{"
-                + "\"columns\":[],"
-                + "\"columnGroups\":[]"
+                + "\"columns\":[]"
                 + "}";
-        ColumnModel m = new ColumnModel();
+        ColumnModel m = new ColumnModel(Collections.emptyList());
         TestUtils.isSerializedTo(m, json, ParsingUtilities.defaultWriter);
+    }
+    
+    @Test
+    public void testMerge() {
+        ColumnModel columnModelB = new ColumnModel(
+                Arrays.asList(
+                        new ColumnMetadata("e", "f", null, ReconStats.create(4L, 5L, 6L)),
+                        new ColumnMetadata("g", "h", null, null)));
+        ColumnModel expected = new ColumnModel(
+                Arrays.asList(
+                        new ColumnMetadata("a", "b", null, ReconStats.create(5L, 7L, 9L)),
+                        new ColumnMetadata("c", "d", null, null)));
+        
+        Assert.assertEquals(SUT.merge(columnModelB), expected);
+    }
+    
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testMergeIncompatibleNumberOfColumns() {
+        ColumnModel columnModel = new ColumnModel(
+                Arrays.asList(new ColumnMetadata("a", "b", null, ReconStats.create(1L, 2L, 3L))));
+        SUT.merge(columnModel);
     }
 }

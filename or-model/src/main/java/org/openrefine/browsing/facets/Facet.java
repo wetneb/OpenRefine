@@ -33,21 +33,35 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.openrefine.browsing.facets;
 
-import org.openrefine.browsing.FilteredRecords;
-import org.openrefine.browsing.FilteredRows;
-import org.openrefine.browsing.RecordFilter;
-import org.openrefine.browsing.RowFilter;
-import org.openrefine.model.Project;
-
 /**
  * Interface of facets.
  */
 public interface Facet  {
-    public RowFilter getRowFilter(Project project);
     
-    public RecordFilter getRecordFilter(Project project);
+    /**
+     * Returns the configuration of the facet.
+     */
+    public FacetConfig getConfig();
     
-    public void computeChoices(Project project, FilteredRows filteredRows);
+    /**
+     * An initial facet state for this facet, which can
+     * then be used to scan the table and ingest statistics
+     * about rows or records.
+     */
+    public FacetState getInitialFacetState();
     
-    public void computeChoices(Project project, FilteredRecords filteredRecords);
+    /**
+     * An aggregator used to populate the facet state for this facet.
+     * It should accept the initial state returned by {@link getInitialFacetState}.
+     */
+    public FacetAggregator<?> getAggregator();
+    
+    /**
+     * Returns all the information necessary to render the
+     * facet in the UI (aggregation statistics and configuration
+     * combined).
+     */
+    public FacetResult getFacetResult(FacetState state);
+ 
+  
 }

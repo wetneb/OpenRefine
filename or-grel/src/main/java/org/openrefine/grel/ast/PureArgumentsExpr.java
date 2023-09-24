@@ -3,8 +3,6 @@ package org.openrefine.grel.ast;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.openrefine.expr.Evaluable;
-
 /**
  * An abstract class for an expression whose column dependencies
  * are the union of those of their arguments.
@@ -12,18 +10,19 @@ import org.openrefine.expr.Evaluable;
  * @author Antonin Delpeuch
  *
  */
-public abstract class PureArgumentsExpr implements Evaluable {
+public abstract class PureArgumentsExpr implements GrelExpr {
 
-    protected final Evaluable[] _args;
+    private static final long serialVersionUID = 3199617968479062898L;
+    protected final GrelExpr[] _args;
     
-    public PureArgumentsExpr(Evaluable[] arguments) {
+    public PureArgumentsExpr(GrelExpr[] arguments) {
         _args = arguments;
     }
 
     @Override
     public final Set<String> getColumnDependencies(String baseColumn) {
     	Set<String> dependencies = new HashSet<>();
-    	for (Evaluable ev : _args) {
+    	for (GrelExpr ev : _args) {
     	    Set<String> deps = ev.getColumnDependencies(baseColumn);
     	    if (deps == null) {
     	        return null;
@@ -31,6 +30,16 @@ public abstract class PureArgumentsExpr implements Evaluable {
     		dependencies.addAll(deps);
     	}
     	return dependencies;
+    }
+    
+    @Override
+    public boolean isLocal() {
+        for (GrelExpr ev : _args) {
+            if(!ev.isLocal()) {
+                return false;
+            }
+        }
+        return true;
     }
 
 }

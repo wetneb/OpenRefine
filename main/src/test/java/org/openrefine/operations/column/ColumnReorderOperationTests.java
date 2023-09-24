@@ -26,16 +26,26 @@
  ******************************************************************************/
 package org.openrefine.operations.column;
 
+import static org.mockito.Mockito.mock;
+
 import java.io.Serializable;
 import java.util.Arrays;
-import java.util.Properties;
+import java.util.List;
 
 import org.openrefine.RefineTest;
-import org.openrefine.model.AbstractOperation;
-import org.openrefine.model.Project;
+import org.openrefine.expr.EvalError;
+import org.openrefine.expr.MetaParser;
+import org.openrefine.expr.ParsingException;
+import org.openrefine.grel.Parser;
+import org.openrefine.model.Cell;
+import org.openrefine.model.ColumnMetadata;
+import org.openrefine.model.GridState;
+import org.openrefine.model.IndexedRow;
+import org.openrefine.model.changes.Change;
+import org.openrefine.model.changes.ChangeContext;
+import org.openrefine.model.changes.Change.DoesNotApplyException;
+import org.openrefine.operations.Operation;
 import org.openrefine.operations.OperationRegistry;
-import org.openrefine.operations.column.ColumnReorderOperation;
-import org.openrefine.process.Process;
 import org.openrefine.util.ParsingUtilities;
 import org.openrefine.util.TestUtils;
 import org.testng.Assert;
@@ -45,57 +55,57 @@ import org.testng.annotations.Test;
 
 
 public class ColumnReorderOperationTests extends RefineTest {
-
-    Project project;
-
+	
+	protected GridState initialState;
+	
+	@BeforeMethod
+	public void setUpInitialState() {
+		MetaParser.registerLanguageParser("grel", "GREL", Parser.grelParser, "value");
+		initialState = createGrid(new String[] {"foo","bar","hello"},
+				new Serializable[][] {
+			{ "v1", "a", "d" },
+			{ "v3", "a", "f" },
+			{ "", "a", "g" },
+			{ "", "b", "h" },
+			{ new EvalError("error"), "a", "i"},
+			{ "v1", "b", "j" }
+		});
+	}
+	
     @BeforeSuite
     public void setUp() {
         OperationRegistry.registerOperation("core", "column-reorder", ColumnReorderOperation.class);
     }
 
-    @BeforeMethod
-    public void createProject() {
-        project = createProject(
-        		new String[] {
-                "a","b","c"},
-        		new Serializable[] {
-                "1|2","d","e",
-                "3","f","g"});
-    }
-
     @Test
     public void serializeColumnReorderOperation() {
-        AbstractOperation op = new ColumnReorderOperation(Arrays.asList("b","c","a"));
+        Operation op = new ColumnReorderOperation(Arrays.asList("b","c","a"));
         TestUtils.isSerializedTo(op, "{\"op\":\"core/column-reorder\","
 		+ "\"description\":\"Reorder columns\","
 		+ "\"columnNames\":[\"b\",\"c\",\"a\"]}", ParsingUtilities.defaultWriter);
     }
+    
+	@Test
+	public void testReorder() throws DoesNotApplyException, ParsingException {
+		Change SUT = new ColumnReorderOperation(Arrays.asList("hello", "bar")).createChange();
+		GridState applied = SUT.apply(initialState, mock(ChangeContext.class));
+		
+		List<IndexedRow> rows = applied.collectRows();
+		Assert.assertEquals(applied.getColumnModel().getColumns(),
+					Arrays.asList(new ColumnMetadata("hello"), new ColumnMetadata("bar")));
+			Assert.assertEquals(rows.get(0).getRow().getCells(),
+					Arrays.asList(new Cell("d", null), new Cell("a", null)));
+	}
+	
+	@Test(expectedExceptions = IllegalArgumentException.class)
+	public void testDuplicateFinalNames() throws ParsingException {
+		new ColumnReorderOperation(Arrays.asList("bar", "bar"));
+	}
+	
+	@Test(expectedExceptions = Change.DoesNotApplyException.class)
+	public void testDoesNotExist() throws DoesNotApplyException, ParsingException {
+		Change SUT = new ColumnReorderOperation(Arrays.asList("does_not_exist", "bar")).createChange();
+		SUT.apply(initialState, mock(ChangeContext.class));
+	}
 
-    @Test
-    public void testEraseCellsOnRemovedColumns() throws Exception {
-
-        int aCol = project.columnModel.getColumnByName("a").getCellIndex();
-        int bCol = project.columnModel.getColumnByName("b").getCellIndex();
-        int cCol = project.columnModel.getColumnByName("c").getCellIndex();
-
-        Assert.assertEquals(project.rows.get(0).getCellValue(aCol), "1|2");
-        Assert.assertEquals(project.rows.get(0).getCellValue(bCol), "d");
-        Assert.assertEquals(project.rows.get(0).getCellValue(cCol), "e");
-        Assert.assertEquals(project.rows.get(1).getCellValue(aCol), "3");
-        Assert.assertEquals(project.rows.get(1).getCellValue(bCol), "f");
-        Assert.assertEquals(project.rows.get(1).getCellValue(cCol), "g");
-
-
-        AbstractOperation op = new ColumnReorderOperation(Arrays.asList("a"));
-        Process process = op.createProcess(project, new Properties());
-        process.performImmediate();
-
-        Assert.assertEquals(project.rows.get(0).getCellValue(aCol), "1|2");
-        Assert.assertEquals(project.rows.get(0).getCellValue(bCol), null);
-        Assert.assertEquals(project.rows.get(0).getCellValue(cCol), null);
-        Assert.assertEquals(project.rows.get(1).getCellValue(aCol), "3");
-        Assert.assertEquals(project.rows.get(1).getCellValue(bCol), null);
-        Assert.assertEquals(project.rows.get(1).getCellValue(cCol), null);
-
-    }
 }

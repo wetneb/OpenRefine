@@ -26,12 +26,19 @@
  ******************************************************************************/
 package org.openrefine.browsing;
 
-import org.openrefine.browsing.EngineConfig;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Set;
+
 import org.openrefine.browsing.Engine.Mode;
 import org.openrefine.browsing.facets.Facet;
 import org.openrefine.browsing.facets.FacetConfig;
 import org.openrefine.browsing.facets.FacetConfigResolver;
-import org.openrefine.model.Project;
+import org.openrefine.model.ColumnModel;
 import org.openrefine.util.ParsingUtilities;
 import org.openrefine.util.TestUtils;
 import org.testng.Assert;
@@ -59,12 +66,14 @@ public class EngineConfigTests {
             + "    \"facets\":[]"
             + "}";
     
+    public static String engineConfigWithLimitJson = "{\"mode\":\"row-based\",\"facets\":[],\"aggregationLimit\":1000}";
+    
     public static String noFacetProvided = "{\"mode\":\"row-based\"}";
     
     protected static class MyFacetConfig implements FacetConfig {
 
 		@Override
-		public Facet apply(Project project) {
+		public Facet apply(ColumnModel columnModel) {
 			return null;
 		}
 
@@ -77,7 +86,21 @@ public class EngineConfigTests {
 		public String getFoo() {
 			return "bar";
 		}
-    	
+
+        @Override
+        public Set<String> getColumnDependencies() {
+            return null;
+        }
+
+        @Override
+        public boolean isNeutral() {
+            return false;
+        }
+
+        @Override
+        public FacetConfig renameColumnDependencies(Map<String, String> substitutions) {
+            return null;
+        }
     }
     
     @BeforeTest
@@ -98,6 +121,12 @@ public class EngineConfigTests {
     }
     
     @Test
+    public void serializeEngineConfigAggregationLimit() {
+        EngineConfig ec = EngineConfig.reconstruct(engineConfigWithLimitJson);
+        TestUtils.isSerializedTo(ec, engineConfigWithLimitJson, ParsingUtilities.defaultWriter);
+    }
+    
+    @Test
     public void reconstructNullEngineConfig() {
         EngineConfig ec = EngineConfig.reconstruct(null);
         Assert.assertEquals(ec.getMode(), Mode.RowBased);
@@ -109,5 +138,47 @@ public class EngineConfigTests {
         EngineConfig ec = EngineConfig.reconstruct(noFacetProvided);
         Assert.assertEquals(ec.getMode(), Mode.RowBased);
         Assert.assertTrue(ec.getFacetConfigs().isEmpty());
+    }
+    
+    @Test
+    public void testGetColumnDependencies() {
+        FacetConfig configA = mock(FacetConfig.class);
+        when(configA.getColumnDependencies()).thenReturn(Collections.singleton("foo"));
+        when(configA.isNeutral()).thenReturn(false);
+        FacetConfig configB = mock(FacetConfig.class);
+        when(configB.getColumnDependencies()).thenReturn(Collections.singleton("bar"));
+        when(configB.isNeutral()).thenReturn(true);
+        FacetConfig configC = mock(FacetConfig.class);
+        when(configC.getColumnDependencies()).thenReturn(null);
+        when(configC.isNeutral()).thenReturn(true);
+        
+        
+        Assert.assertEquals(
+                new EngineConfig(Arrays.asList(configA, configB), Mode.RowBased)
+                .getColumnDependencies(),
+                Collections.singleton("foo"));
+        Assert.assertEquals(
+                new EngineConfig(Arrays.asList(configA), Mode.RowBased)
+                .getColumnDependencies(),
+                Collections.singleton("foo"));
+        Assert.assertEquals(
+                new EngineConfig(Collections.emptyList(), Mode.RowBased)
+                .getColumnDependencies(),
+                Collections.emptySet());
+        
+        Assert.assertNull(
+                new EngineConfig(Arrays.asList(configA, configB), Mode.RecordBased)
+                .getColumnDependencies());
+        Assert.assertNull(
+                new EngineConfig(Arrays.asList(configB, configC), Mode.RecordBased)
+                .getColumnDependencies());
+    }
+    
+    @Test
+    public void testIsNeutral() {
+        EngineConfig ec = EngineConfig.reconstruct(noFacetProvided);
+        Assert.assertTrue(ec.isNeutral());
+        ec = EngineConfig.reconstruct(engineConfigJson);
+        Assert.assertFalse(ec.isNeutral());
     }
 }

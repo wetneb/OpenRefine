@@ -443,13 +443,9 @@ Refine.clearAjaxInProgress = function() {
 
 Refine.cellIndexToColumn = function(cellIndex) {
   var columns = theProject.columnModel.columns;
-  for (var i = 0; i < columns.length; i++) {
-    var column = columns[i];
-    if (column.cellIndex == cellIndex) {
-      return column;
-    }
+  if (0 <= cellIndex && cellIndex < columns.length) {
+     return columns[cellIndex];
   }
-  return null;
 };
 Refine.columnNameToColumn = function(columnName) {
   var columns = theProject.columnModel.columns;
@@ -488,17 +484,6 @@ Refine.fetchRows = function(start, limit, onDone, sorting) {
         data = theProject.rowModel;
       }
       theProject.rowModel = data;
-
-      // Un-pool objects
-      for (var r = 0; r < data.rows.length; r++) {
-        var row = data.rows[r];
-        for (var c = 0; c < row.cells.length; c++) {
-          var cell = row.cells[c];
-          if ((cell) && ("r" in cell)) {
-            cell.r = data.pool.recons[cell.r];
-          }
-        }
-      }
 
       if (onDone) {
         onDone();

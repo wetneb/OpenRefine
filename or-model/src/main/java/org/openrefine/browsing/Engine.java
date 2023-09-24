@@ -33,31 +33,43 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.openrefine.browsing;
 
-import java.util.Collections;
-import java.util.LinkedList;
+import java.io.Serializable;
+import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.openrefine.browsing.facets.AllFacetsAggregator;
+import org.openrefine.browsing.facets.AllFacetsState;
 import org.openrefine.browsing.facets.Facet;
-import org.openrefine.browsing.util.ConjunctiveFilteredRecords;
-import org.openrefine.browsing.util.ConjunctiveFilteredRows;
-import org.openrefine.browsing.util.FilteredRecordsAsFilteredRows;
-import org.openrefine.model.Project;
+import org.openrefine.browsing.facets.FacetResult;
+import org.openrefine.browsing.facets.FacetState;
+import org.openrefine.browsing.facets.RecordAggregator;
+import org.openrefine.browsing.facets.RowAggregator;
+import org.openrefine.model.GridState;
+import org.openrefine.model.IndexedRow;
+import org.openrefine.model.Record;
+import org.openrefine.model.RecordFilter;
 import org.openrefine.model.Row;
+import org.openrefine.model.RowFilter;
+import org.openrefine.sorting.SortingConfig;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableList.Builder;
 
 /**
  * Faceted browsing engine.
+ * Given a GridState and facet configurations,
+ * it can be used to compute facet statistics and
+ * obtain a filtered view of the grid according to the facets.
  */
 public class Engine  {
     static public enum Mode {
-        @JsonProperty("row-based")
+        @JsonProperty(MODE_ROW_BASED)
         RowBased,
-        @JsonProperty("record-based")
+        @JsonProperty(MODE_RECORD_BASED)
         RecordBased
-       
     }
 
     public final static String INCLUDE_DEPENDENT = "includeDependent";
@@ -65,12 +77,11 @@ public class Engine  {
     public final static String MODE_ROW_BASED = "row-based";
     public final static String MODE_RECORD_BASED = "record-based";
 
-    @JsonIgnore
-    protected Project _project;
-    @JsonProperty("facets")
-    protected List<Facet> _facets = new LinkedList<Facet>();
-    @JsonIgnore
-    protected EngineConfig _config = new EngineConfig(Collections.emptyList(), Mode.RowBased);
+    protected final GridState _state;
+    protected final List<Facet> _facets;
+    protected final EngineConfig _config;
+    protected AllFacetsState _facetsState;
+
 
     static public String modeToString(Mode mode) {
         return mode == Mode.RowBased ? MODE_ROW_BASED : MODE_RECORD_BASED;
@@ -79,125 +90,234 @@ public class Engine  {
         return MODE_ROW_BASED.equals(s) ? Mode.RowBased : Mode.RecordBased;
     }
 
-    public Engine(Project project) {
-        _project  = project;
+    public Engine(GridState state, EngineConfig config) {
+        _state  = state;
+        _config = config;
+        _facets = config.getFacetConfigs().stream()
+        		.map(fc -> fc.apply(state.getColumnModel()))
+        		.collect(Collectors.toList());
+        _facetsState = null;
+        
     }
 
     @JsonProperty("engine-mode")
     public Mode getMode() {
         return _config.getMode();
     }
-    public void setMode(Mode mode) {
-        _config = new EngineConfig(_config.getFacetConfigs(), mode);
-    }
 
     @JsonIgnore
-    public FilteredRows getAllRows() {
-        return new FilteredRows() {
-            @Override
-            public void accept(Project project, RowVisitor visitor) {
-                try {
-                    visitor.start(project);
-
-                    int c = project.rows.size();
-                    for (int rowIndex = 0; rowIndex < c; rowIndex++) {
-                        Row row = project.rows.get(rowIndex);
-                        if (visitor.visit(project, rowIndex, row)) {
-                            break;
-                        }
-                    }
-                } finally {
-                    visitor.end(project);
-                }
-            }
-        };
-    }
-
-    @JsonIgnore
-    public FilteredRows getAllFilteredRows() {
-        return getFilteredRows(null);
-    }
-
-    public FilteredRows getFilteredRows(Facet except) {
-        if (_config.getMode().equals(Mode.RecordBased)) {
-            return new FilteredRecordsAsFilteredRows(getFilteredRecords(except));
-        } else if (_config.getMode().equals(Mode.RowBased)) {
-            ConjunctiveFilteredRows cfr = new ConjunctiveFilteredRows();
-            for (Facet facet : _facets) {
-                if (facet != except) {
-                    RowFilter rowFilter = facet.getRowFilter(_project);
-                    if (rowFilter != null) {
-                        cfr.add(rowFilter);
-                    }
-                }
-            }
-            return cfr;
-        }
-        throw new InternalError("Unknown mode.");
-    }
-
-    @JsonIgnore
-    public FilteredRecords getAllRecords() {
-        return new FilteredRecords() {
-            @Override
-            public void accept(Project project, RecordVisitor visitor) {
-                try {
-                    visitor.start(project);
-
-                    int c = project.recordModel.getRecordCount();
-                    for (int r = 0; r < c; r++) {
-                        visitor.visit(project, project.recordModel.getRecord(r));
-                    }
-                } finally {
-                    visitor.end(project);
-                }
-            }
-        };
-    }
-
-    @JsonIgnore
-    public FilteredRecords getFilteredRecords() {
-        return getFilteredRecords(null);
-    }
-
-    public FilteredRecords getFilteredRecords(Facet except) {
-        if (_config.getMode().equals(Mode.RecordBased)) {
-            ConjunctiveFilteredRecords cfr = new ConjunctiveFilteredRecords();
-            for (Facet facet : _facets) {
-                if (facet != except) {
-                    RecordFilter recordFilter = facet.getRecordFilter(_project);
-                    if (recordFilter != null) {
-                        cfr.add(recordFilter);
-                    }
-                }
-            }
-            return cfr;
-        }
-        throw new InternalError("This method should not be called when the engine is not in record mode.");
+    public GridState getGridState() {
+    	return _state;
     }
     
-    public void initializeFromConfig(EngineConfig config) {
-        _config = config;
-        _facets = config.getFacetConfigs().stream()
-                .map(c -> c.apply(_project))
-                .collect(Collectors.toList());
+    @JsonIgnore
+    public EngineConfig getConfig() {
+        return _config;
+    }
+    
+    @JsonIgnore
+    protected AllFacetsState getFacetsState() {
+        if (_facetsState == null) {
+            if (_config.getAggregationLimit() == null) {
+                _facetsState = _state.aggregateRows(allFacetsAggregator(), allFacetsInitialState());
+            } else {
+                _facetsState = _state.aggregateRowsApprox(allFacetsAggregator(), allFacetsInitialState(), _config.getAggregationLimit());
+            }
+        }
+        return _facetsState;
     }
 
-    public void computeFacets() {
-        if (_config.getMode().equals(Mode.RowBased)) {
-            for (Facet facet : _facets) {
-                FilteredRows filteredRows = getFilteredRows(facet);
-
-                facet.computeChoices(_project, filteredRows);
-            }
-        } else if (_config.getMode().equals(Mode.RecordBased)) {
-            for (Facet facet : _facets) {
-                FilteredRecords filteredRecords = getFilteredRecords(facet);
-
-                facet.computeChoices(_project, filteredRecords);
-            }
-        } else {
-            throw new InternalError("Unknown mode.");
+    @JsonProperty("facets")
+    public ImmutableList<FacetResult> getFacetResults() {
+        AllFacetsState states = getFacetsState();
+        
+        Builder<FacetResult> facetResults = ImmutableList.<FacetResult>builder();
+        for(int i = 0; i != states.size(); i++) {
+           facetResults.add(_facets.get(i).getFacetResult(states.get(i))); 
         }
+        return facetResults.build();
+    }
+    
+    @JsonProperty("aggregatedCount")
+    public long getAggregatedCount() {
+        return getFacetsState().getAggregatedCount();
+    }
+    
+    @JsonProperty("filteredCount")
+    public long getFilteredCount() {
+        return getFacetsState().getFilteredCount();
+    }
+    
+    /**
+     * Iterates over the rows matched by the given filters. If the engine
+     * is in records mode, the rows corresponding to the matching records are
+     * returned.
+     * @param sortingConfig in which order to iterate over rows
+     */
+    @JsonIgnore
+    public Iterable<IndexedRow> getMatchingRows(SortingConfig sortingConfig) {
+        if (Mode.RowBased.equals(getMode())) {
+            return _state.iterateRows(combinedRowFilters(), sortingConfig);
+        } else {
+            Iterable<Record> records = _state.iterateRecords(combinedRecordFilters(), sortingConfig);
+            return new Iterable<IndexedRow>() {
+
+                @Override
+                public Iterator<IndexedRow> iterator() {
+                    Iterator<Record> recordIterator = records.iterator();
+                    return new Iterator<IndexedRow>() {
+                        
+                        private Iterator<IndexedRow> currentRecord = null;
+
+                        @Override
+                        public boolean hasNext() {
+                            return (currentRecord != null && currentRecord.hasNext()) || recordIterator.hasNext();
+                        }
+
+                        @Override
+                        public IndexedRow next() {
+                            if (currentRecord == null || !currentRecord.hasNext()) {
+                                currentRecord = recordIterator.next().getIndexedRows().iterator();
+                            }
+                            return currentRecord.next();
+                        }
+                        
+                    };
+                }
+                
+            };
+        }
+    }
+    
+    /**
+     * Iterates over the records matched by the given filters. If the engine
+     * is in records mode, the rows corresponding to the matching records are
+     * returned.
+     * @param sortingConfig in which order to iterate over records
+     */
+    @JsonIgnore
+    public Iterable<Record> getMatchingRecords(SortingConfig sortingConfig) {
+    	if (Mode.RowBased.equals(getMode())) {
+    		throw new IllegalStateException("Cannot iterate over records in rows mode");
+    	}
+    	return _state.iterateRecords(combinedRecordFilters(), sortingConfig);
+    }
+    
+    /**
+     * @return a row filter obtained from all applied facets
+     */
+    @JsonIgnore
+    public RowFilter combinedRowFilters() {
+        return RowFilter.conjunction(facetRowFilters());
+    }
+    
+    /**
+     * @return a record filter obtained from all applied facets
+     */
+    @JsonIgnore
+    public RecordFilter combinedRecordFilters() {
+        return RecordFilter.conjunction(facetRecordFilters());
+    }
+    
+    /**
+     * Runs an aggregator only on the rows that are selected by facets.
+     * 
+     * @param <T>
+     * @param aggregator
+     * @param initialState
+     * @return
+     */
+    public <T extends Serializable> T aggregateFilteredRows(RowAggregator<T> aggregator, T initialState) {
+        return _state.aggregateRows(restrictAggregator(aggregator, combinedRowFilters()), initialState);
+    }
+    
+    /**
+     * Runs an aggregator only on the records that are selected by facets.
+     * 
+     * @param <T>
+     * @param aggregator
+     * @param initialState
+     * @return
+     */
+    public <T extends Serializable> T aggregateFilteredRecords(RecordAggregator<T> aggregator, T initialState) {
+        return _state.aggregateRecords(restrictAggregator(aggregator, combinedRecordFilters()), initialState);
+    }
+    
+    @JsonIgnore
+	private List<RowFilter> facetRowFilters() {
+		return _facets.stream()
+        		.map(facet -> facet.getAggregator())
+        		.map(aggregator -> aggregator == null ? null : aggregator.getRowFilter())
+        		.filter(filter -> filter != null)
+        		.collect(Collectors.toList());
+	}
+    
+    @JsonIgnore
+    private List<RecordFilter> facetRecordFilters() {
+        return _facets.stream()
+                .map(facet -> facet.getAggregator())
+                .map(aggregator -> aggregator == null ? null : aggregator.getRecordFilter())
+                .filter(filter -> filter != null)
+                .collect(Collectors.toList());
+    }
+    
+    @JsonIgnore
+	private AllFacetsState allFacetsInitialState() {
+        ImmutableList<FacetState> facets = ImmutableList.copyOf(
+		        _facets
+    			.stream().map(facet -> facet.getInitialFacetState())
+    			.collect(Collectors.toList()));
+        return new AllFacetsState(facets, 0L, 0L);
+	}
+    
+    @JsonIgnore
+    private AllFacetsAggregator allFacetsAggregator() {
+        return new AllFacetsAggregator(_facets
+                .stream().map(facet -> facet.getAggregator())
+                .collect(Collectors.toList()));
+    }
+    
+    private static <T> RowAggregator<T> restrictAggregator(RowAggregator<T> aggregator, RowFilter filter) {
+        return new RowAggregator<T>() {
+
+            private static final long serialVersionUID = 8407224640500910094L;
+
+            @Override
+            public T sum(T first, T second) {
+                return aggregator.sum(first, second);
+            }
+
+            @Override
+            public T withRow(T state, long rowId, Row row) {
+                if (filter.filterRow(rowId, row)) {
+                    return aggregator.withRow(state, rowId, row);
+                } else {
+                    return state;
+                }
+            }
+            
+        };
+    }
+    
+    private static <T> RecordAggregator<T> restrictAggregator(RecordAggregator<T> aggregator, RecordFilter filter) {
+        return new RecordAggregator<T>() {
+
+            private static final long serialVersionUID = 8407224640500910094L;
+
+            @Override
+            public T sum(T first, T second) {
+                return aggregator.sum(first, second);
+            }
+
+            @Override
+            public T withRecord(T state, Record record) {
+                if (filter.filterRecord(record)) {
+                    return aggregator.withRecord(state, record);
+                } else {
+                    return state;
+                }
+            }
+            
+        };
     }
 }

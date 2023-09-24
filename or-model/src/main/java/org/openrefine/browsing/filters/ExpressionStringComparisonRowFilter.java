@@ -36,13 +36,12 @@ package org.openrefine.browsing.filters;
 import java.util.Collection;
 import java.util.Properties;
 
-import org.openrefine.browsing.RowFilter;
 import org.openrefine.expr.Evaluable;
 import org.openrefine.expr.ExpressionUtils;
 import org.openrefine.expr.util.JsonValueConverter;
 import org.openrefine.model.Cell;
-import org.openrefine.model.Project;
 import org.openrefine.model.Row;
+import org.openrefine.model.RowFilter;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
 
@@ -64,11 +63,11 @@ abstract public class ExpressionStringComparisonRowFilter implements RowFilter {
     }
 
     @Override
-    public boolean filterRow(Project project, int rowIndex, Row row) {
+    public boolean filterRow(long rowIndex, Row row) {
         Cell cell = _cellIndex < 0 ? null : row.getCell(_cellIndex);
         
-        Properties bindings = ExpressionUtils.createBindings(project);
-        ExpressionUtils.bind(bindings, row, rowIndex, _columnName, cell);
+        Properties bindings = ExpressionUtils.createBindings();
+        ExpressionUtils.bind(bindings, null, row, rowIndex, _columnName, cell);
         Boolean invert = _invert;
         Object value = _evaluable.evaluate(bindings);
         if (value != null) {

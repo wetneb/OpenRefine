@@ -40,24 +40,27 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.Properties;
 
+import org.apache.commons.lang.Validate;
 import org.openrefine.expr.EvalError;
 import org.openrefine.expr.ExpressionUtils;
 import org.openrefine.expr.HasFields;
+import org.openrefine.model.recon.Recon;
 import org.openrefine.util.ParsingUtilities;
-import org.openrefine.util.Pool;
 import org.openrefine.util.StringUtils;
 
-import com.fasterxml.jackson.annotation.JacksonInject;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.InjectableValues;
 
-public class Cell implements HasFields {
+public class Cell implements HasFields, Serializable {
+
+    private static final long serialVersionUID = 6587215646810559731L;
+    
+    public static Cell NULL = new Cell(null, null);
+    
     @JsonIgnore
     final public Serializable   value;
     @JsonIgnore
@@ -131,39 +134,22 @@ public class Cell implements HasFields {
         }
     }
     
-    /**
-     * TODO
-     * - use JsonIdentityInfo on recon
-     * - implement custom resolver to tie it to a pool
-     * - figure it all out
-     * @return
-     */
     @JsonProperty("r")
     @JsonInclude(Include.NON_NULL)
-    public String getReconIdString() {
-        if (recon != null) {
-            return Long.toString(recon.id);
-        }
-        return null;
+    public Recon getRecon() {
+        return recon;
     }
     
-    public void save(Writer writer, Properties options) {
+    public void save(Writer writer) {
         try {
-            Pool pool = (Pool)options.get("pool");
-            if(pool != null && recon != null) {
-                pool.pool(recon);
-            }
             ParsingUtilities.saveWriter.writeValue(writer, this);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
     
-    static public Cell loadStreaming(String s, Pool pool) throws Exception {
-        InjectableValues injectableValues = new InjectableValues.Std()
-                .addValue("pool", pool);
-        return ParsingUtilities.mapper.setInjectableValues(injectableValues)
-                .readValue(s, Cell.class);
+    static public Cell loadStreaming(String s) throws Exception {
+        return ParsingUtilities.mapper.readValue(s, Cell.class);
     }
     
     @JsonCreator
@@ -173,15 +159,9 @@ public class Cell implements HasFields {
             @JsonProperty("t")
             String type,
             @JsonProperty("r")
-            String reconId,
+            Recon recon,
             @JsonProperty("e")
-            String error,
-            @JacksonInject("pool")
-            Pool pool) {
-        Recon recon = null;
-        if(reconId != null) {
-            recon = pool.getRecon(reconId);
-        }
+            String error) {
         if (type != null && "date".equals(type)) {
             value = ParsingUtilities.stringToDate((String) value); 
         }
@@ -193,6 +173,27 @@ public class Cell implements HasFields {
     
     @Override
     public String toString() {
-        return StringUtils.toString(value);
+        if (recon == null) {
+            return StringUtils.toString(value);
+        } else {
+            return String.format("[Cell \"%s\" %s]", StringUtils.toString(value), recon.toString());
+        }
+    }
+    
+    @Override
+    public boolean equals(Object other) {
+        if (other == null) {
+            return value == null;
+        }
+    	if (!(other instanceof Cell) || other == null) {
+    		return false;
+    	}
+    	Cell otherCell = (Cell)other;
+    	if (value == null) {
+    	    return otherCell.value == null;
+    	}
+    	return (value.equals(otherCell.value)
+    			&& ((recon == null && otherCell.recon == null) || (recon != null && recon.equals(otherCell.recon))));
+    			
     }
 }

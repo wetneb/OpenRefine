@@ -35,14 +35,16 @@ package org.openrefine.browsing.filters;
 
 import java.util.Collection;
 import java.util.Properties;
+import java.util.Set;
 
-import org.openrefine.browsing.RowFilter;
+import org.openrefine.browsing.util.RowEvaluable;
 import org.openrefine.expr.Evaluable;
 import org.openrefine.expr.ExpressionUtils;
 import org.openrefine.expr.util.JsonValueConverter;
 import org.openrefine.model.Cell;
-import org.openrefine.model.Project;
 import org.openrefine.model.Row;
+import org.openrefine.model.RowFilter;
+import org.openrefine.util.StringUtils;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
 
@@ -52,23 +54,25 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
  * values, or if the result is blank or error and we want blank or error values. 
  */
 public class ExpressionEqualRowFilter implements RowFilter {
-    final protected Evaluable       _evaluable; // the expression to evaluate
+    private static final long serialVersionUID = 1L;
+
+    final protected RowEvaluable       _evaluable; // the expression to evaluate
     
     final protected String          _columnName;
     final protected int             _cellIndex; // the expression is based on this column;
                                                 // -1 if based on no column in particular,
                                                 // for expression such as "row.starred".
     
-    final protected Object[]        _matches;
+    final protected Set<String>     _matches;
     final protected boolean         _selectBlank;
     final protected boolean         _selectError;
     final protected boolean         _invert;
     
     public ExpressionEqualRowFilter(
-        Evaluable evaluable,
+        RowEvaluable evaluable,
         String columnName,
         int cellIndex, 
-        Object[] matches, 
+        Set<String> matches, 
         boolean selectBlank, 
         boolean selectError,
         boolean invert
@@ -83,19 +87,15 @@ public class ExpressionEqualRowFilter implements RowFilter {
     }
 
     @Override
-    public boolean filterRow(Project project, int rowIndex, Row row) {
-        return _invert ?
-                internalInvertedFilterRow(project, rowIndex, row) :
-                internalFilterRow(project, rowIndex, row);
+    public boolean filterRow(long rowIndex, Row row) {
+        return _invert ^
+                internalFilterRow(rowIndex, row);
     }
     
-    public boolean internalFilterRow(Project project, int rowIndex, Row row) {
-        Cell cell = _cellIndex < 0 ? null : row.getCell(_cellIndex);
+    public boolean internalFilterRow(long rowIndex, Row row) {
+        Properties bindings = ExpressionUtils.createBindings();
         
-        Properties bindings = ExpressionUtils.createBindings(project);
-        ExpressionUtils.bind(bindings, row, rowIndex, _columnName, cell);
-        
-        Object value = _evaluable.evaluate(bindings);
+        Object value = _evaluable.eval(rowIndex, row, bindings);
         if (value != null) {
             if (value.getClass().isArray()) {
                 Object[] a = (Object[]) value;
@@ -128,63 +128,13 @@ public class ExpressionEqualRowFilter implements RowFilter {
         return testValue(value);
     }
     
-    public boolean internalInvertedFilterRow(Project project, int rowIndex, Row row) {
-        Cell cell = _cellIndex < 0 ? null : row.getCell(_cellIndex);
-        
-        Properties bindings = ExpressionUtils.createBindings(project);
-        ExpressionUtils.bind(bindings, row, rowIndex, _columnName, cell);
-        
-        Object value = _evaluable.evaluate(bindings);
-        if (value != null) {
-            if (value.getClass().isArray()) {
-                Object[] a = (Object[]) value;
-                for (Object v : a) {
-                    if (testValue(v)) {
-                        return false;
-                    }
-                }
-                return true;
-            } else if (value instanceof Collection<?>) {
-                for (Object v : ExpressionUtils.toObjectCollection(value)) {
-                    if (testValue(v)) {
-                        return false;
-                    }
-                }
-                return true;
-            } else if (value instanceof ArrayNode) {
-                ArrayNode a = (ArrayNode) value;
-                int l = a.size();
-                
-                for (int i = 0; i < l; i++) {
-                    if (testValue(JsonValueConverter.convert(a.get(i)))) {
-                        return false;
-                    }
-                }
-                return true;
-            } // else, fall through
-        }
-        
-        return !testValue(value);
-    }
-    
     protected boolean testValue(Object v) {
         if (ExpressionUtils.isError(v)) {
             return _selectError;
         } else if (ExpressionUtils.isNonBlankData(v)) {
-            for (Object match : _matches) {
-                if (testValue(v, match)) {
-                    return true;
-                }
-            }
-            return false;
+            return _matches.contains(StringUtils.toString(v));
         } else {
             return _selectBlank;
         }
-    }
-    
-    protected boolean testValue(Object v, Object match) {
-        return (v instanceof Number && match instanceof Number) ?
-                ((Number) match).doubleValue() == ((Number) v).doubleValue() :
-                match.equals(v);
     }
 }

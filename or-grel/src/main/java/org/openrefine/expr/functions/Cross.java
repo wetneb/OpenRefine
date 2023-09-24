@@ -46,7 +46,9 @@ import org.openrefine.util.GetProjectIDException;
 import org.openrefine.util.JoinException;
 
 public class Cross implements Function {
-    
+
+    private static final long serialVersionUID = 1124002039493869757L;
+
     @Override
     public Object call(Properties bindings, Object[] args) {
         if (args.length == 3) {
@@ -71,7 +73,7 @@ public class Cross implements Function {
                     join = ProjectManager.singleton.getInterProjectModel().getJoin(
                             // getJoin(Long fromProject, String fromColumn, Long toProject, String toColumn) {
                             // source project name 
-                            (Long) ((Project) bindings.get("project")).id,
+                            (Long) ((Project) bindings.get("project")).getId(),
                             // source column name
                             (String) bindings.get("columnName"), 
                             // target project name

@@ -41,8 +41,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.openrefine.commands.Command;
-import org.openrefine.model.AbstractOperation;
 import org.openrefine.model.Project;
+import org.openrefine.operations.Operation;
 import org.openrefine.operations.UnknownOperation;
 import org.openrefine.process.Process;
 import org.openrefine.util.ParsingUtilities;
@@ -73,7 +73,7 @@ public class ApplyOperationsCommand extends Command {
             	}
             }
 
-            if (project.processManager.hasPending()) {
+            if (project.getProcessManager().hasPending()) {
                 respond(response, "{ \"code\" : \"pending\" }");
             } else {
                 respond(response, "{ \"code\" : \"ok\" }");
@@ -84,12 +84,12 @@ public class ApplyOperationsCommand extends Command {
     }
     
     protected void reconstructOperation(Project project, ObjectNode obj) throws IOException {
-        AbstractOperation operation = ParsingUtilities.mapper.convertValue(obj, AbstractOperation.class);
+        Operation operation = ParsingUtilities.mapper.convertValue(obj, Operation.class);
         if (operation != null && !(operation instanceof UnknownOperation)) {
             try {
-                Process process = operation.createProcess(project, new Properties());
+                Process process = operation.createProcess(project.getHistory(), project.getProcessManager());
                 
-                project.processManager.queueProcess(process);
+                project.getProcessManager().queueProcess(process);
             } catch (Exception e) {
                 e.printStackTrace();
             }

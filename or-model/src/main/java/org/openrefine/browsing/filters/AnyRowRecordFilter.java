@@ -33,12 +33,17 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.openrefine.browsing.filters;
 
-import org.openrefine.browsing.RecordFilter;
-import org.openrefine.browsing.RowFilter;
-import org.openrefine.model.Project;
+import java.util.List;
+
 import org.openrefine.model.Record;
+import org.openrefine.model.RecordFilter;
+import org.openrefine.model.Row;
+import org.openrefine.model.RowFilter;
+
 
 public class AnyRowRecordFilter implements RecordFilter {
+
+    private static final long serialVersionUID = 1793156053035805563L;
     final protected RowFilter _rowFilter;
 
     public AnyRowRecordFilter(RowFilter rowFilter) {
@@ -46,12 +51,15 @@ public class AnyRowRecordFilter implements RecordFilter {
     }
 
     @Override
-    public boolean filterRecord(Project project, Record record) {
-        for (int r = record.fromRowIndex; r < record.toRowIndex; r++) {
-            if (_rowFilter.filterRow(project, r, project.rows.get(r))) {
+    public boolean filterRecord(Record record) {
+        List<Row> rows = record.getRows();
+    	for (int i = 0; i < rows.size(); i++) {
+    		Row row = rows.get(i);
+    		long rowId = record.getStartRowId() + i;
+    		if (_rowFilter.filterRow(rowId, row)) {
                 return true;
             }
-        }
+    	}
         return false;
     }
 }

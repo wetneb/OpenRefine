@@ -37,18 +37,23 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import org.apache.tools.tar.TarOutputStream;
-import org.openrefine.ProjectManager;
-import org.openrefine.ProjectMetadata;
 import org.openrefine.history.HistoryEntryManager;
+import org.openrefine.model.DatamodelRunner;
 import org.openrefine.model.Project;
-
-import org.openrefine.HistoryEntryManagerStub;
+import org.openrefine.model.changes.ChangeDataStore;
+import org.openrefine.model.changes.LazyChangeDataStore;
 
 /**
  * Stub used to avoid saves and stub HistoryEntryManager
  *
  */
 public class ProjectManagerStub extends ProjectManager {
+	
+	DatamodelRunner runner;
+	
+	public ProjectManagerStub(DatamodelRunner runner) {
+		this.runner = runner;
+	}
 
     @Override
     public void deleteProject(long projectID) {
@@ -63,7 +68,7 @@ public class ProjectManagerStub extends ProjectManager {
 
     @Override
     public HistoryEntryManager getHistoryEntryManager() {
-        return new HistoryEntryManagerStub();
+        return new HistoryEntryManager(runner);
     }
 
     @Override
@@ -103,6 +108,11 @@ public class ProjectManagerStub extends ProjectManager {
     @Override
     protected void saveWorkspace() {
         // empty
+    }
+
+    @Override
+    public ChangeDataStore getChangeDataStore(long projectID) {
+        return new LazyChangeDataStore();
     }
 
 }

@@ -33,42 +33,47 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.LineNumberReader;
 import java.io.Reader;
+import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
-import org.openrefine.ProjectMetadata;
+import org.openrefine.importing.ImportingFileRecord;
 import org.openrefine.importing.ImportingJob;
-import org.openrefine.importing.ImportingUtilities;
-import org.openrefine.model.Project;
+import org.openrefine.model.Cell;
+import org.openrefine.model.DatamodelRunner;
+import org.openrefine.model.Row;
+import org.openrefine.model.RowMapper;
 import org.openrefine.util.JSONUtilities;
 import org.openrefine.util.ParsingUtilities;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
-public class FixedWidthImporter extends TabularImportingParserBase {
-    public FixedWidthImporter() {
-        super(false);
+public class FixedWidthImporter extends LineBasedImporterBase {
+
+    public FixedWidthImporter(DatamodelRunner datamodelRunner) {
+        super(datamodelRunner);
     }
     
     @Override
     public ObjectNode createParserUIInitializationData(
-            ImportingJob job, List<ObjectNode> fileRecords, String format) {
+            ImportingJob job, List<ImportingFileRecord> fileRecords, String format) {
         ObjectNode options = super.createParserUIInitializationData(job, fileRecords, format);
         ArrayNode columnWidths = ParsingUtilities.mapper.createArrayNode();
         if (fileRecords.size() > 0) {
-            ObjectNode firstFileRecord = fileRecords.get(0);
-            String encoding = ImportingUtilities.getEncoding(firstFileRecord);
-            String location = JSONUtilities.getString(firstFileRecord, "location", null);
-            if (location != null) {
-                File file = new File(job.getRawDataDir(), location);
-                int[] columnWidthsA = guessColumnWidths(file, encoding);
+            ImportingFileRecord firstFileRecord = fileRecords.get(0);
+            try {
+            	File file = firstFileRecord.getFile(job.getRawDataDir());
+                int[] columnWidthsA = guessColumnWidths(file, firstFileRecord.getEncoding());
                 if (columnWidthsA != null) {
                     for (int w : columnWidthsA) {
                         JSONUtilities.append(columnWidths, w);
                     }
                 }
+            } catch(IllegalArgumentException e) {
+            	// the file is not stored in the import directory, skipping
             }
 
             JSONUtilities.safePut(options, "headerLines", 0);
@@ -77,65 +82,30 @@ public class FixedWidthImporter extends TabularImportingParserBase {
         }
         return options;
     }
+    
 
     @Override
-    public void parseOneFile(
-        Project project,
-        ProjectMetadata metadata,
-        ImportingJob job,
-        String fileSource,
-        Reader reader,
-        int limit,
-        ObjectNode options,
-        List<Exception> exceptions
-    ) {
+    public RowMapper getRowMapper(ObjectNode options) {
         final int[] columnWidths = JSONUtilities.getIntArray(options, "columnWidths");
-        
-        List<Object> retrievedColumnNames = null;
-        if (options.has("columnNames")) {
-            String[] strings = JSONUtilities.getStringArray(options, "columnNames");
-            if (strings.length > 0) {
-                retrievedColumnNames = new ArrayList<Object>();
-                for (String s : strings) {
-                    s = s.trim();
-                    if (!s.isEmpty()) {
-                        retrievedColumnNames.add(s);
-                    }
-                }
-                
-                if (retrievedColumnNames.size() > 0) {
-                    JSONUtilities.safePut(options, "headerLines", 1);
-                } else {
-                    retrievedColumnNames = null;
-                }
-            }
-        }
-        
-        final List<Object> columnNames = retrievedColumnNames;
-        final LineNumberReader lnReader = new LineNumberReader(reader);
-        
-        TableDataReader dataReader = new TableDataReader() {
-            boolean usedColumnNames = false;
-            
+
+        return parseCells(columnWidths);
+    }
+    
+    static private RowMapper parseCells(int[] widths) {
+		return new RowMapper() {
+			private static final long serialVersionUID = 1L;
+
             @Override
-            public List<Object> getNextRowOfCells() throws IOException {
-                if (columnNames != null && !usedColumnNames) {
-                    usedColumnNames = true;
-                    return columnNames;
-                } else {
-                    String line = lnReader.readLine();
-                    if (line == null) {
-                        return null;
-                    } else {
-                        return getCells(line, columnWidths);
-                    }
-                }
+            public Row call(long rowId, Row row) {
+                String line = (String)row.getCellValue(0);
+                List<Cell> cellValues = getCells(line, widths)
+                        .stream()
+                        .map(v -> new Cell(v, null))
+                        .collect(Collectors.toList());
+                return new Row(cellValues);
             }
-        };
-        
-        TabularImportingParserBase.readTable(project, metadata, job, dataReader, fileSource, limit, options, exceptions);
-        
-        super.parseOneFile(project, metadata, job, fileSource, reader, limit, options, exceptions);
+			
+		};
     }
     
     /**
@@ -144,8 +114,8 @@ public class FixedWidthImporter extends TabularImportingParserBase {
      * @param widths array of integers with field sizes
      * @return
      */
-    static private ArrayList<Object> getCells(String line, int[] widths) {
-        ArrayList<Object> cells = new ArrayList<Object>();
+    static private List<Serializable> getCells(String line, int[] widths) {
+        ArrayList<Serializable> cells = new ArrayList<>();
         
         int columnStartCursor = 0;
         int columnEndCursor = 0;
@@ -250,4 +220,5 @@ public class FixedWidthImporter extends TabularImportingParserBase {
         }
         return null;
     }
+
 }

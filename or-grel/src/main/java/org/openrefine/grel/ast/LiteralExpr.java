@@ -34,16 +34,18 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package org.openrefine.grel.ast;
 
 import java.util.Collections;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
 import com.fasterxml.jackson.databind.node.TextNode;
-import org.openrefine.expr.Evaluable;
 
 /**
  * An abstract syntax tree node encapsulating a literal value.
  */
-public class LiteralExpr implements Evaluable {
+public class LiteralExpr implements GrelExpr {
+
+    private static final long serialVersionUID = -8738998872783303739L;
     final protected Object _value;
     
     public LiteralExpr(Object value) {
@@ -62,11 +64,21 @@ public class LiteralExpr implements Evaluable {
     
     @Override
     public boolean equals(Object other) {
-    	return (other instanceof Evaluable) && toString().equals(other.toString());
+    	return (other instanceof GrelExpr) && toString().equals(other.toString());
     }
 
 	@Override
 	public Set<String> getColumnDependencies(String baseColumn) {
 		return Collections.emptySet();
 	}
+
+    @Override
+    public LiteralExpr renameColumnDependencies(Map<String, String> substitutions) {
+        return this;
+    }
+
+    @Override
+    public boolean isLocal() {
+        return true;
+    }
 }

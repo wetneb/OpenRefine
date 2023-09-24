@@ -33,16 +33,20 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.openrefine.operations.column;
 
-import org.openrefine.history.Change;
-import org.openrefine.history.HistoryEntry;
-import org.openrefine.model.AbstractOperation;
-import org.openrefine.model.Project;
-import org.openrefine.model.changes.ColumnRenameChange;
+import org.openrefine.browsing.EngineConfig;
+import org.openrefine.model.ColumnModel;
+import org.openrefine.model.GridState;
+import org.openrefine.model.ModelException;
+import org.openrefine.model.RowMapper;
+import org.openrefine.model.changes.ChangeContext;
+import org.openrefine.model.changes.Change.DoesNotApplyException;
+import org.openrefine.operations.ImmediateRowMapOperation;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class ColumnRenameOperation extends AbstractOperation {
+public class ColumnRenameOperation extends ImmediateRowMapOperation {
     final protected String _oldColumnName;
     final protected String _newColumnName;
 
@@ -53,6 +57,7 @@ public class ColumnRenameOperation extends AbstractOperation {
         @JsonProperty("newColumnName")
         String newColumnName
     ) {
+    	super(EngineConfig.ALL_ROWS);
         _oldColumnName = oldColumnName;
         _newColumnName = newColumnName;
     }
@@ -68,21 +73,31 @@ public class ColumnRenameOperation extends AbstractOperation {
     }
 
     @Override
-    protected String getBriefDescription(Project project) {
+	public String getDescription() {
         return "Rename column " + _oldColumnName + " to " + _newColumnName;
     }
 
     @Override
-    protected HistoryEntry createHistoryEntry(Project project, long historyEntryID) throws Exception {
-        if (project.columnModel.getColumnByName(_oldColumnName) == null) {
-            throw new Exception("No column named " + _oldColumnName);
-        }
-        if (project.columnModel.getColumnByName(_newColumnName) != null) {
-            throw new Exception("Another column already named " + _newColumnName);
-        }
-        
-        Change change = new ColumnRenameChange(_oldColumnName, _newColumnName);
-        
-        return new HistoryEntry(historyEntryID, project, getBriefDescription(null), ColumnRenameOperation.this, change);
+    public ColumnModel getNewColumnModel(GridState state, ChangeContext context) throws DoesNotApplyException {
+    	ColumnModel model = state.getColumnModel();
+    	int index = columnIndex(model, _oldColumnName);
+    	try {
+			return model.renameColumn(index, _newColumnName);
+		} catch (ModelException e) {
+			throw new DoesNotApplyException(
+					String.format("Column '%s' already exists", _newColumnName));
+		}
     }
+
+	@Override
+	protected RowMapper getPositiveRowMapper(GridState state, ChangeContext context) throws DoesNotApplyException {
+		return RowMapper.IDENTITY;
+	}
+	
+	// engine config is never useful, so we remove it from the JSON serialization
+	@Override
+	@JsonIgnore
+	public EngineConfig getEngineConfig() {
+		return super.getEngineConfig();
+	}
 }

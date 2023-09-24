@@ -33,87 +33,37 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.openrefine.model;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import java.util.Arrays;
+import java.util.Collections;
 
-import java.io.StringWriter;
-import java.util.Properties;
-
-import org.openrefine.model.Cell;
-import org.openrefine.model.Project;
-import org.openrefine.model.Recon;
-import org.openrefine.model.Row;
 import org.openrefine.util.ParsingUtilities;
-import org.openrefine.util.Pool;
 import org.openrefine.util.TestUtils;
 import org.testng.Assert;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 public class RowTests {
 
-    // dependencies
-    StringWriter writer;
-    Project project;
-    Properties options;
-
-    @BeforeMethod
-    public void SetUp() {
-        writer = new StringWriter();
-        project = new Project();
-        options = mock(Properties.class);
-    }
-
-    @AfterMethod
-    public void TearDown() {
-        writer = null;
-        project = null;
-        options = null;
-    }
-
     @Test
     public void emptyRow() {
-        Row row = new Row(5);
+        Row row = new Row(Collections.emptyList());
         Assert.assertTrue(row.isEmpty());
     }
 
     @Test
     public void notEmptyRow() {
-        Row row = new Row(1);
-        row.setCell(0, new Cell("I'm not empty", null));
+        Row row = new Row(Arrays.asList(new Cell("I'm not empty", null)));
         Assert.assertFalse(row.isEmpty());
     }
 
     @Test
-    public void duplicateRow() {
-        Row row = new Row(5);
-        row.flagged = true;
-        Row duplicateRow = row.dup();
-        Assert.assertTrue(duplicateRow.flagged);
-    }
-
-    @Test
     public void saveRow() {
-        Row row = new Row(5);
-        row.setCell(0, new Cell("I'm not empty", null));
-        row.save(writer, options);
-        TestUtils.assertEqualAsJson(writer.getBuffer().toString(),
-                "{\"flagged\":false,\"starred\":false,\"cells\":[{\"v\":\"I'm not empty\"}]}");
+        Row row = new Row(Arrays.asList(new Cell("I'm not empty", null)));
+        TestUtils.isSerializedTo(
+                row,
+                "{\"flagged\":false,\"starred\":false,\"cells\":[{\"v\":\"I'm not empty\"}]}",
+                ParsingUtilities.defaultWriter);
     }
 
-    // This way of serializing a row with indices is now deprecated, see GetRowsCommand.
-    @Test(expectedExceptions=IllegalArgumentException.class)
-    public void saveRowWithRecordIndex() {
-        Row row = new Row(5);
-        row.setCell(0, new Cell("I'm not empty", null));
-        when(options.containsKey("rowIndex")).thenReturn(true);
-        when(options.get("rowIndex")).thenReturn(0);
-        when(options.containsKey("recordIndex")).thenReturn(true);
-        when(options.get("recordIndex")).thenReturn(1);
-        row.save(writer, options);
-    }
-    
     @Test
     public void serializeRowTest() throws Exception {
         
@@ -125,61 +75,80 @@ public class RowTests {
                 + "\"j\":\"matched\","
                 + "\"m\":{\"id\":\"Q551479\",\"name\":\"La Monnaie\",\"score\":100,\"types\":[\"Q153562\"]},"
                 + "\"c\":[{\"id\":\"Q551479\",\"name\":\"La Monnaie\",\"score\":100,\"types\":[\"Q153562\"]}],"
-                + "\"f\":[false,false,34,0],\"judgmentAction\":\"auto\",\"judgmentBatchSize\":1,\"matchRank\":0}";
-        Pool pool = mock(Pool.class);
-        Recon recon = Recon.loadStreaming(reconJson);
-        when(pool.getRecon("1533649346002675326")).thenReturn(recon);
+                + "\"f\":[false,false,34,0],\"judgmentAction\":\"auto\",\"matchRank\":0}";
         
         String json = "{\"flagged\":false,"
                 + "\"starred\":false,"
                 + "\"cells\":["
-                + "    {\"v\":\"http://www.wikidata.org/entity/Q41522540\",\"r\":\"1533649346002675326\"},"
+                + "    {\"v\":\"http://www.wikidata.org/entity/Q41522540\",\"r\":"+reconJson+"},"
                 + "    {\"v\":\"0000-0002-5022-0488\"},"
                 + "    null,"
                 + "    {\"v\":\"\"}"
                 + "]}";
-        Row row = Row.load(json, pool);
-        TestUtils.isSerializedTo(row, json, ParsingUtilities.defaultWriter);
+        Row row = Row.load(json);
+        TestUtils.isSerializedTo(row, json, ParsingUtilities.saveWriter);
     }
 
     @Test
     public void toStringTest() {
-        Row row = new Row(5);
-        row.setCell(0, new Cell(1, null));
-        row.setCell(1, new Cell(2, null));
-        row.setCell(2, new Cell(3, null));
-        row.setCell(3, new Cell(4, null));
-        row.setCell(4, new Cell(5, null));
+        Row row = new Row(Arrays.asList(
+            new Cell(1, null),
+            new Cell(2, null),
+            new Cell(3, null),
+            new Cell(4, null),
+            new Cell(5, null)));
         Assert.assertEquals(row.toString(), "1,2,3,4,5,");
     }
 
     @Test
     public void blankCell() {
-        Row row = new Row(5);
+        Row row = new Row(Arrays.asList(new Cell("", null)));
         Assert.assertTrue(row.isCellBlank(0));
     }
 
     @Test
     public void nonBlankCell() {
-        Row row = new Row(5);
-        row.setCell(0, new Cell("I'm not empty", null));
+        Row row = new Row(Arrays.asList(new Cell("I'm not empty", null)));
         Assert.assertFalse(row.isCellBlank(0));
-        row.setCell(3, new Cell("I'm not empty", null));
-        Assert.assertFalse(row.isCellBlank(3));
     }
 
     @Test
     public void getFlaggedField() {
-        Row row = new Row(5);
-        row.flagged = true;
+        Row row = new Row(Arrays.asList(new Cell("hello", null)), true, false);
         Assert.assertTrue((Boolean) row.getField("flagged"));
     }
 
     @Test
     public void getStarredField() {
-        Row row = new Row(5);
-        row.starred = true;
+        Row row = new Row(Arrays.asList(new Cell("hello", null)), false, true);
         Assert.assertTrue((Boolean) row.getField("starred"));
     }
+    
+    @Test
+    public void withFlagged() {
+        Row row = new Row(Arrays.asList(new Cell("hello", null)), false, false);
+        Assert.assertTrue(row.withFlagged(true).flagged);
+    }
 
+    @Test
+    public void withStarred() {
+        Row row = new Row(Arrays.asList(new Cell("hello", null)), false, false);
+        Assert.assertTrue(row.withStarred(true).starred);
+    }
+    
+    @Test
+    public void testPadWithNull() {
+        Row row = new Row(Arrays.asList(new Cell("foo", null), new Cell("bar", null)));
+        
+        Assert.assertEquals(row.padWithNull(2), row);
+        Assert.assertEquals(row.padWithNull(4),
+                new Row(Arrays.asList(new Cell("foo", null), new Cell("bar", null), null, null)));
+    }
+    
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testPadWithNullTooShort() {
+        Row row = new Row(Arrays.asList(new Cell("foo", null), new Cell("bar", null)));
+        
+        row.padWithNull(1);
+    }
 }

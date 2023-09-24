@@ -33,19 +33,21 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.openrefine.grel.ast;
 
+import java.util.Map;
 import java.util.Properties;
 
 import org.openrefine.expr.EvalError;
-import org.openrefine.expr.Evaluable;
 import org.openrefine.grel.Control;
 
 /**
  * An abstract syntax tree node encapsulating a control call, such as "if".
  */
 public class ControlCallExpr extends PureArgumentsExpr {
+
+    private static final long serialVersionUID = 7404947308121024234L;
     final protected Control     _control;
     
-    public ControlCallExpr(Evaluable[] args, Control c) {
+    public ControlCallExpr(GrelExpr[] args, Control c) {
         super(args);
         _control = c;
     }
@@ -63,7 +65,7 @@ public class ControlCallExpr extends PureArgumentsExpr {
     public String toString() {
         StringBuffer sb = new StringBuffer();
         
-        for (Evaluable ev : _args) {
+        for (GrelExpr ev : _args) {
             if (sb.length() > 0) {
                 sb.append(", ");
             }
@@ -75,6 +77,19 @@ public class ControlCallExpr extends PureArgumentsExpr {
     
     @Override
     public boolean equals(Object other) {
-    	return (other instanceof Evaluable) && toString().equals(other.toString());
+    	return (other instanceof GrelExpr) && toString().equals(other.toString());
     }
+
+    @Override
+    public ControlCallExpr renameColumnDependencies(Map<String, String> substitutions) {
+        GrelExpr[] translatedArgs = new GrelExpr[_args.length];
+        for(int i = 0; i != _args.length; i++) {
+            translatedArgs[i] = _args[i].renameColumnDependencies(substitutions);
+            if(translatedArgs[i] == null) {
+                return null;
+            }
+        }
+        return new ControlCallExpr(translatedArgs, _control);
+    }
+
 }

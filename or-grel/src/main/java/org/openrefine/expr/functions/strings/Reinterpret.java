@@ -45,6 +45,8 @@ import org.openrefine.model.Project;
 
 public class Reinterpret implements Function {
 
+    private static final long serialVersionUID = -1507580457141733313L;
+
     @Override
     public Object call(Properties bindings, Object[] args) {
         if (args.length == 2 || args.length == 3) {
@@ -58,7 +60,10 @@ public class Reinterpret implements Function {
                 encoder = (String) o2;
                 if (args.length == 2) {
                     Project project = (Project) bindings.get("project");
-                    ProjectMetadata metadata = ProjectManager.singleton.getProjectMetadata(project.id);
+                    if (project == null) {
+                        return new EvalError("Could not find project");
+                    }
+                    ProjectMetadata metadata = ProjectManager.singleton.getProjectMetadata(project.getId());
                     decoder = metadata.getEncoding(); // can return "" for broken projects
                 } else {
                     decoder = (String) args[2];

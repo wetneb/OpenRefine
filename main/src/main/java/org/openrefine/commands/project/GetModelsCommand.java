@@ -49,9 +49,9 @@ import org.openrefine.expr.MetaParser.LanguageInfo;
 import org.openrefine.importing.ImportingJob;
 import org.openrefine.importing.ImportingManager;
 import org.openrefine.model.ColumnModel;
-import org.openrefine.model.OverlayModel;
+import org.openrefine.model.GridState;
 import org.openrefine.model.Project;
-import org.openrefine.model.RecordModel;
+import org.openrefine.overlay.OverlayModel;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -98,6 +98,15 @@ public class GetModelsCommand extends Command {
         }
     }
     
+    protected static class RecordModel {
+    	@JsonProperty("hasRecords")
+    	protected final boolean hasRecords;
+    	
+    	protected RecordModel(boolean hasRecords) {
+    		this.hasRecords = hasRecords;
+    	}
+    }
+    
     protected void internalRespond(HttpServletRequest request, HttpServletResponse response)
         throws ServletException, IOException {
         
@@ -109,7 +118,7 @@ public class GetModelsCommand extends Command {
             long jobID = Long.parseLong(importingJobID);
             ImportingJob job = ImportingManager.getJob(jobID);
             if (job != null) {
-                project = job.project;
+                project = job.getProject();
             }
         }
         if (project == null) {
@@ -129,11 +138,14 @@ public class GetModelsCommand extends Command {
             HttpHeaderInfo info = HttpHeadersSupport.getHttpHeaderInfo(headerLabel);
             headersMap.put(headerLabel, info);
         }
+        
+        GridState gridState = project.getCurrentGridState();
+        RecordModel recordModel = new RecordModel(gridState.rowCount() > gridState.recordCount());
 
         respondJSON(response, new ModelsResponse(
-                project.columnModel,
-                project.recordModel,
-                project.overlayModels,
+                project.getColumnModel(),
+                recordModel,
+                project.getOverlayModels(),
                 prefixesMap,
                 headersMap));
     }

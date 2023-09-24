@@ -34,20 +34,27 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package org.openrefine.operations.cell;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
-import org.openrefine.history.HistoryEntry;
-import org.openrefine.model.AbstractOperation;
 import org.openrefine.model.Cell;
-import org.openrefine.model.Column;
-import org.openrefine.model.Project;
+import org.openrefine.model.ColumnMetadata;
+import org.openrefine.model.ColumnModel;
+import org.openrefine.model.GridState;
+import org.openrefine.model.IndexedRow;
 import org.openrefine.model.Row;
-import org.openrefine.model.changes.MassRowColumnChange;
+import org.openrefine.model.RowBuilder;
+import org.openrefine.model.RowFilter;
+import org.openrefine.model.changes.Change;
+import org.openrefine.model.changes.ChangeContext;
+import org.openrefine.operations.Operation;
+import org.openrefine.sorting.SortingConfig;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class TransposeRowsIntoColumnsOperation extends AbstractOperation {
+public class TransposeRowsIntoColumnsOperation implements Operation {
     final protected String  _columnName;
     final protected int     _rowCount;
 
@@ -73,77 +80,86 @@ public class TransposeRowsIntoColumnsOperation extends AbstractOperation {
     }
 
     @Override
-    protected String getBriefDescription(Project project) {
+	public String getDescription() {
         return "Transpose every " + _rowCount + " cells in column " + _columnName + " into separate columns";
     }
 
     @Override
-    protected HistoryEntry createHistoryEntry(Project project, long historyEntryID) throws Exception {
-        List<Column> newColumns = new ArrayList<Column>();
-        List<Column> oldColumns = project.columnModel.columns;
-        
-        int columnIndex = project.columnModel.getColumnIndexByName(_columnName);
-        int columnCount = oldColumns.size();
-        
-        for (int i = 0; i < columnCount; i++) {
-            Column column = oldColumns.get(i);
+    public Change createChange() {
+    	return new TransposeRowsIntoColumnsChange();
+    }
+    
+    public class TransposeRowsIntoColumnsChange implements Change {
+
+    	@Override
+    	public GridState apply(GridState projectState, ChangeContext context) throws DoesNotApplyException {
+            ColumnModel columnModel = projectState.getColumnModel();
+            ColumnModel newColumns = new ColumnModel(Collections.emptyList());
+            List<ColumnMetadata> oldColumns = columnModel.getColumns();
             
-            if (i == columnIndex) {
-                int newIndex = 1;
-                for (int n = 0; n < _rowCount; n++) {
-                    String columnName = _columnName + " " + newIndex++;
-                    while (project.columnModel.getColumnByName(columnName) != null) {
-                        columnName = _columnName + " " + newIndex++;
-                    }
-                    
-                    newColumns.add(new Column(i + n, columnName));
-                }
-            } else if (i < columnIndex) {
-                newColumns.add(new Column(i, column.getName()));
-            } else {
-                newColumns.add(new Column(i + _rowCount - 1, column.getName()));
+            int columnIndex = columnModel.getColumnIndexByName(_columnName);
+            if (columnIndex == -1) {
+            	throw new DoesNotApplyException(String.format("Column %s could not be found", _columnName));
             }
-        }
-        
-        List<Row> oldRows = project.rows;
-        List<Row> newRows = new ArrayList<Row>(oldRows.size() / _rowCount);
-        for (int r = 0; r < oldRows.size(); r += _rowCount) {
-            Row firstNewRow = new Row(newColumns.size());
+            int columnCount = oldColumns.size();
             
-            for (int r2 = 0; r2 < _rowCount && r + r2 < oldRows.size(); r2++) {
-                Row oldRow = oldRows.get(r + r2);
-                Row newRow = r2 == 0 ? firstNewRow : new Row(newColumns.size());
-                boolean hasData = r2 == 0;
+            for (int i = 0; i < columnCount; i++) {           
+                if (i == columnIndex) {
+                    int newIndex = 1;
+                    for (int n = 0; n < _rowCount; n++) {
+                        String columnName = _columnName + " " + newIndex++;
+                        while (columnModel.getColumnByName(columnName) != null) {
+                            columnName = _columnName + " " + newIndex++;
+                        }
+                        newColumns = newColumns.appendUnduplicatedColumn(new ColumnMetadata(columnName));
+                    }
+                } else {
+                	newColumns = newColumns.appendUnduplicatedColumn(oldColumns.get(i));
+                }
+            }
+            
+            int nbNewColumns = newColumns.getColumns().size();
+            RowBuilder firstNewRow = null;
+            List<RowBuilder> newRows = new ArrayList<>();
+            for (IndexedRow indexedRow : projectState.iterateRows(RowFilter.ANY_ROW, SortingConfig.NO_SORTING)) {
+            	long r = indexedRow.getIndex();
+            	int r2 = (int)(r % (long)_rowCount);
+            	
+            	RowBuilder newRow = RowBuilder.create(nbNewColumns);
+            	newRows.add(newRow);
+            	if (r2 == 0) {
+            		firstNewRow = newRow;
+            	}
+                
+                Row oldRow = indexedRow.getRow();
                 
                 for (int c = 0; c < oldColumns.size(); c++) {
-                    Column column = oldColumns.get(c);
-                    Cell cell = oldRow.getCell(column.getCellIndex());
+                    Cell cell = oldRow.getCell(c);
                     
                     if (cell != null && cell.value != null) {
                         if (c == columnIndex) {
-                            firstNewRow.setCell(columnIndex + r2, cell);
+                            firstNewRow.withCell(columnIndex + r2, cell);
                         } else if (c < columnIndex) {
-                            newRow.setCell(c, cell);
-                            hasData = true;
+                            newRow.withCell(c, cell);
                         } else {
-                            newRow.setCell(c + _rowCount - 1, cell);
-                            hasData = true;
+                            newRow.withCell(c + _rowCount - 1, cell);
                         }
                     }
                 }
-                
-                if (hasData) {
-                    newRows.add(newRow);
-                }
             }
-        }
-        
-        return new HistoryEntry(
-            historyEntryID,
-            project, 
-            getBriefDescription(null), 
-            this, 
-            new MassRowColumnChange(newColumns, newRows)
-        );
+            
+            List<Row> rows = newRows.stream()
+            		.map(rb -> rb.build(nbNewColumns))
+            		.filter(row -> !row.isEmpty())
+            		.collect(Collectors.toList());
+    		
+            return projectState.getDatamodelRunner().create(newColumns, rows, projectState.getOverlayModels());
+    	}
+
+    	@Override
+    	public boolean isImmediate() {
+    		return true;
+    	}
+
     }
 }
