@@ -35,10 +35,11 @@ package org.openrefine.expr.functions.math;
 
 import java.util.List;
 
-import org.openrefine.expr.EvalError;
-import org.openrefine.expr.ExpressionUtils;
 import org.openrefine.grel.ControlFunctionRegistry;
 import org.openrefine.grel.PureFunction;
+
+import org.openrefine.expr.EvalError;
+import org.openrefine.expr.ExpressionUtils;
 
 public class Sum extends PureFunction {
 

@@ -33,18 +33,19 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.openrefine.expr.functions;
 
-import org.testng.Assert;
-import org.testng.annotations.Test;
-
+import org.openrefine.RefineTest;
 import org.openrefine.expr.EvalError;
+import org.openrefine.grel.FunctionTestBase;
 import org.openrefine.util.ParsingUtilities;
 import org.openrefine.util.TestUtils;
+import org.testng.Assert;
+import org.testng.annotations.Test;
 
 
 public class CoalesceTests extends FunctionTestBase {
 
     private static final Integer[] ZERO_TO_TWO = new Integer[] {0, 1, 2};
-    
+
     @Test
     public void testCoalesceInvalidParams() {        
         Assert.assertTrue(invoke("coalesce") instanceof EvalError);

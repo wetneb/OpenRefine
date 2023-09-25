@@ -35,11 +35,12 @@ package org.openrefine.expr.functions.strings;
 
 import java.util.TreeSet;
 
+import org.openrefine.grel.ControlFunctionRegistry;
+import org.openrefine.grel.PureFunction;
+
 import org.openrefine.clustering.binning.Keyer;
 import org.openrefine.clustering.binning.NGramFingerprintKeyer;
 import org.openrefine.expr.EvalError;
-import org.openrefine.grel.ControlFunctionRegistry;
-import org.openrefine.grel.PureFunction;
 
 public class NGramFingerprint extends PureFunction {
 

@@ -26,6 +26,7 @@
  ******************************************************************************/
 package org.openrefine.grel.controls;
 
+import org.openrefine.grel.controls.If;
 import org.testng.annotations.Test;
 
 import org.openrefine.util.ParsingUtilities;

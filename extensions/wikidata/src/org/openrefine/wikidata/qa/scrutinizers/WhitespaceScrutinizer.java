@@ -55,11 +55,16 @@ public class WhitespaceScrutinizer extends ValueScrutinizer {
     }
 
     @Override
+    public boolean prepareDependencies() {
+        return true;
+    }
+
+    @Override
     public void scrutinize(Value value) {
         String str = null;
-        if (MonolingualTextValue.class.isInstance(value)) {
+        if (value instanceof MonolingualTextValue) {
             str = ((MonolingualTextValue) value).getText();
-        } else if (StringValue.class.isInstance(value)) {
+        } else if (value instanceof StringValue) {
             str = ((StringValue) value).getString();
         }
 

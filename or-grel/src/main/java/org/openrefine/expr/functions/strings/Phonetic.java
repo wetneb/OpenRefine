@@ -33,14 +33,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.openrefine.expr.functions.strings;
 
+import org.openrefine.grel.ControlFunctionRegistry;
+import org.openrefine.grel.PureFunction;
+
 import org.openrefine.clustering.binning.ColognePhoneticKeyer;
 import org.openrefine.clustering.binning.DoubleMetaphoneKeyer;
 import org.openrefine.clustering.binning.Metaphone3Keyer;
 import org.openrefine.clustering.binning.MetaphoneKeyer;
 import org.openrefine.clustering.binning.SoundexKeyer;
 import org.openrefine.expr.EvalError;
-import org.openrefine.grel.ControlFunctionRegistry;
-import org.openrefine.grel.PureFunction;
 
 public class Phonetic extends PureFunction {
 
@@ -71,7 +72,10 @@ public class Phonetic extends PureFunction {
                     return new EvalError(ControlFunctionRegistry.getFunctionName(this)
                             + " expects a string for the second argument");
                 }
-            }
+            } else {
+                return new EvalError(ControlFunctionRegistry.getFunctionName(this)
+                        + " expects a string for the second argument, the phonetic encoding to use.");
+            }     
         }
         if (args.length < 3) {
             if ("doublemetaphone".equalsIgnoreCase(encoding)) {

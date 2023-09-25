@@ -40,7 +40,11 @@ import static org.mockito.Mockito.when;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Properties;
 
 import org.apache.commons.io.FileUtils;
 import org.openrefine.expr.Evaluable;
@@ -77,13 +81,14 @@ import com.fasterxml.jackson.databind.node.TextNode;
  */
 public class RefineTest extends PowerMockTestCase {
 
+    protected static Properties bindings = null;
+
     protected Logger logger;
     
     boolean testFailed;
     protected File workspaceDir;
     
     private DatamodelRunner runner;
-    private Properties bindings;
     
     /**
      * Method that subclasses can override to change the datamodel runner
@@ -112,9 +117,9 @@ public class RefineTest extends PowerMockTestCase {
             FileUtils.writeStringToFile(jsonPath, "{\"projectIDs\":[]\n" + 
                     ",\"preferences\":{\"entries\":{\"scripting.starred-expressions\":" +
                     "{\"class\":\"org.openrefine.preference.TopList\",\"top\":2147483647," +
-                    "\"list\":[]},\"scripting.expressions\":{\"class\":\"org.openrefine.preference.TopList\",\"top\":100,\"list\":[]}}}}");
+                    "\"list\":[]},\"scripting.expressions\":{\"class\":\"org.openrefine.preference.TopList\",\"top\":100,\"list\":[]}}}}",
+                    "UTF-8"); // JSON is always UTF-8
             FileProjectManager.initialize(runner, workspaceDir);
-            
 
         } catch (IOException e) {
             workspaceDir = null;
@@ -142,7 +147,7 @@ public class RefineTest extends PowerMockTestCase {
      *          the cell values, as a flattened array of arrays
      * @return
      */
-    protected Project createProject(String[] columns, Serializable[] rows) {
+    protected Project createProject(String[] columns, Serializable[][] rows) {
         return createProject("test project", columns, rows);
     }
     

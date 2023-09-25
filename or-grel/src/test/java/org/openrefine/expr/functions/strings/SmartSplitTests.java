@@ -29,10 +29,10 @@ package org.openrefine.expr.functions.strings;
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertTrue;
 
+import org.openrefine.expr.functions.strings.SmartSplit;
+import org.openrefine.grel.FunctionTestBase;
 import org.testng.annotations.Test;
-
 import org.openrefine.expr.EvalError;
-import org.openrefine.expr.functions.FunctionTestBase;
 import org.openrefine.util.ParsingUtilities;
 import org.openrefine.util.TestUtils;
 

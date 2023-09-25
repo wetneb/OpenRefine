@@ -35,11 +35,12 @@ package org.openrefine.expr.functions;
 
 import java.util.Collection;
 
+import org.openrefine.grel.ControlFunctionRegistry;
+import org.openrefine.grel.PureFunction;
+
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.openrefine.expr.EvalError;
 import org.openrefine.expr.HasFieldsList;
-import org.openrefine.grel.ControlFunctionRegistry;
-import org.openrefine.grel.PureFunction;
 
 public class Length extends PureFunction {
 

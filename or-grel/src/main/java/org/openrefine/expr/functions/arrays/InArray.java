@@ -36,10 +36,11 @@ package org.openrefine.expr.functions.arrays;
 import java.util.Arrays;
 import java.util.List;
 
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import org.openrefine.expr.EvalError;
 import org.openrefine.grel.ControlFunctionRegistry;
 import org.openrefine.grel.PureFunction;
+
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import org.openrefine.expr.EvalError;
 import org.openrefine.util.JSONUtilities;
 
 public class InArray extends PureFunction {

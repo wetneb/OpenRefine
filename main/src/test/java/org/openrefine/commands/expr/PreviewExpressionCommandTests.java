@@ -65,10 +65,10 @@ public class PreviewExpressionCommandTests extends RefineTest {
         }
         command = new PreviewExpressionCommand();
         project = createProject(new String[] {"a","b"},
-        		new Serializable[] {
-        		"c","d",
-        		"e","f",
-        		"g","h"
+        		new Serializable[][] {
+        		{"c","d"},
+        		{"e","f"},
+        		{"g","h"}
         		});
     }
     
@@ -85,7 +85,7 @@ public class PreviewExpressionCommandTests extends RefineTest {
                 "       \"results\" : [ \"d_u\", \"h_u\" ]\n" + 
                 "     }";
         command.doPost(request, response);
-        TestUtils.assertEqualAsJson(json, writer.toString());
+        TestUtils.assertEqualsAsJson(writer.toString(), json);
     }
     
     @Test
@@ -102,6 +102,6 @@ public class PreviewExpressionCommandTests extends RefineTest {
                 "       \"type\" : \"parser\"\n" + 
                 "     }";
         command.doPost(request, response);
-        TestUtils.assertEqualAsJson(json, writer.toString());
+        TestUtils.assertEqualsAsJson(writer.toString(), json);
     }
 }

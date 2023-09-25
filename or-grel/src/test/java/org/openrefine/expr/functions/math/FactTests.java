@@ -26,6 +26,7 @@
  ******************************************************************************/
 package org.openrefine.expr.functions.math;
 
+import org.openrefine.expr.functions.math.Fact;
 import org.testng.annotations.Test;
 
 import org.openrefine.util.ParsingUtilities;
@@ -38,4 +39,5 @@ public class FactTests {
         TestUtils.isSerializedTo(new Fact(), json, ParsingUtilities.defaultWriter);
     }
 }
+
 

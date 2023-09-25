@@ -33,9 +33,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.openrefine.expr.functions.strings;
 
+import org.openrefine.grel.PureFunction;
+
 import org.openrefine.clustering.binning.FingerprintKeyer;
 import org.openrefine.clustering.binning.Keyer;
-import org.openrefine.grel.PureFunction;
 
 public class Fingerprint extends PureFunction {
 

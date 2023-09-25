@@ -26,6 +26,7 @@
  ******************************************************************************/
 package org.openrefine.expr.functions.math;
 
+import org.openrefine.expr.functions.math.Radians;
 import org.testng.annotations.Test;
 
 import org.openrefine.util.ParsingUtilities;

@@ -26,6 +26,7 @@
  ******************************************************************************/
 package org.openrefine.expr.functions;
 
+import org.openrefine.expr.functions.Length;
 import org.testng.annotations.Test;
 
 import org.openrefine.util.ParsingUtilities;

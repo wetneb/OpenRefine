@@ -33,9 +33,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.openrefine.expr.functions.strings;
 
+import org.openrefine.grel.PureFunction;
+
 import com.google.common.base.CharMatcher;
 import org.openrefine.expr.EvalError;
-import org.openrefine.grel.PureFunction;
 
 public class Trim extends PureFunction {
 

@@ -26,6 +26,7 @@
  ******************************************************************************/
 package org.openrefine.expr.functions.strings;
 
+import org.openrefine.expr.functions.strings.NGramFingerprint;
 import org.testng.annotations.Test;
 
 import org.openrefine.util.ParsingUtilities;

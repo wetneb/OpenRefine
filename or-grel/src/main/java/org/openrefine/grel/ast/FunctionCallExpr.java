@@ -38,10 +38,11 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
-import org.openrefine.expr.EvalError;
-import org.openrefine.expr.ExpressionUtils;
 import org.openrefine.grel.Function;
 import org.openrefine.grel.PureFunction;
+
+import org.openrefine.expr.EvalError;
+import org.openrefine.expr.ExpressionUtils;
 
 /**
  * An abstract syntax tree node encapsulating a function call. The function's

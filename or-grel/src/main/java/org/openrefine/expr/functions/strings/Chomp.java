@@ -34,7 +34,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package org.openrefine.expr.functions.strings;
 
 import org.apache.commons.lang3.StringUtils;
-
 import org.openrefine.grel.PureFunction;
 
 public class Chomp extends PureFunction {
@@ -47,7 +46,7 @@ public class Chomp extends PureFunction {
             Object o1 = args[0];
             Object o2 = args[1];
             if (o1 != null && o2 != null && o1 instanceof String && o2 instanceof String) {
-                return StringUtils.chomp((String) o1, (String) o2);
+                return StringUtils.removeEnd((String) o1, (String) o2);
             }
         }
         return null;

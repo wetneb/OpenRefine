@@ -283,6 +283,7 @@ public class DatabaseImportController implements ImportingController {
                     metadata,
                     job,
                     querySource, // fileSource
+                    "", // archiveFileName
                     new DBQueryResultImportReader(job, databaseService, querySource, columns, dbQueryInfo, 100),
                     limit,
                     options);
@@ -410,6 +411,7 @@ public class DatabaseImportController implements ImportingController {
                     metadata,
                     job,
                     querySource, // fileSource
+                    "", // archiveFileName
                     new DBQueryResultImportReader(job, databaseService, querySource, columns, dbQueryInfo, getCreateBatchSize()),
                     limit,
                     options);
@@ -452,7 +454,11 @@ public class DatabaseImportController implements ImportingController {
         jdbcConfig.setConnectionName(request.getParameter("connectionName"));
         jdbcConfig.setDatabaseType(request.getParameter("databaseType"));
         jdbcConfig.setDatabaseHost(request.getParameter("databaseServer"));
-        jdbcConfig.setDatabasePort(Integer.parseInt(request.getParameter("databasePort")));
+        try {
+        	jdbcConfig.setDatabasePort(Integer.parseInt(request.getParameter("databasePort")));
+        } catch(NumberFormatException nfE) {
+        	logger.error("getQueryInfo :: invalid database port ::{}", nfE);
+        }
         jdbcConfig.setDatabaseUser(request.getParameter("databaseUser"));
         jdbcConfig.setDatabasePassword(request.getParameter("databasePassword"));
         jdbcConfig.setDatabaseName(request.getParameter("initialDatabase"));
@@ -464,7 +470,7 @@ public class DatabaseImportController implements ImportingController {
         }
         if (jdbcConfig.getDatabaseHost() == null || jdbcConfig.getDatabaseName() == null
                 || jdbcConfig.getDatabasePassword() == null || jdbcConfig.getDatabaseType() == null
-                || jdbcConfig.getDatabaseUser() == null || query == null) {
+                || jdbcConfig.getDatabaseUser() == null || query == null || jdbcConfig.getDatabasePort() == 0) {
             if(logger.isDebugEnabled()) {
                 logger.debug("Missing Database Configuration::{}", jdbcConfig);
             }

@@ -34,10 +34,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package org.openrefine.expr.functions.strings;
 
 import org.apache.commons.codec.digest.DigestUtils;
-
-import org.openrefine.expr.EvalError;
 import org.openrefine.grel.ControlFunctionRegistry;
 import org.openrefine.grel.PureFunction;
+
+import org.openrefine.expr.EvalError;
 
 public class SHA1 extends PureFunction {
 
@@ -48,7 +48,7 @@ public class SHA1 extends PureFunction {
         if (args.length == 1 && args[0] != null) {
             Object o = args[0];
             String s = (o instanceof String) ? (String) o : o.toString();
-            return DigestUtils.shaHex(s);
+            return DigestUtils.sha1Hex(s);
         }
         return new EvalError(ControlFunctionRegistry.getFunctionName(this) + " expects a string");
     }

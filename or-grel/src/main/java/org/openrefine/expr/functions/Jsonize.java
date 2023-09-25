@@ -36,6 +36,7 @@ package org.openrefine.expr.functions;
 import java.io.IOException;
 
 import org.openrefine.grel.PureFunction;
+
 import org.openrefine.util.ParsingUtilities;
 
 public class Jsonize extends PureFunction {
