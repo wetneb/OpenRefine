@@ -245,7 +245,7 @@ public class PairPLL<K,V> extends PLL<Tuple2<K, V>> {
             return pairPLL;
         }
         PLL<Long> keys = pairPLL.keys();
-        List<Long> firstKeys = keys.runOnPartitions(p -> keys.iterate(p).findFirst())
+        List<Long> firstKeys = keys.runOnPartitionsWithoutInterruption(p -> keys.iterate(p).findFirst())
                 .stream()
                 .map(optional -> optional.isPresent() ? optional.get() : null)
                 .collect(Collectors.toList());
@@ -282,7 +282,7 @@ public class PairPLL<K,V> extends PLL<Tuple2<K, V>> {
             return pairPLL;
         }
         PLL<Long> keys = pairPLL.keys();
-        List<Long> firstKeys = keys.runOnPartitions(p -> keys.iterate(p).findFirst())
+        List<Long> firstKeys = keys.runOnPartitionsWithoutInterruption(p -> keys.iterate(p).findFirst())
                 .stream()
                 .map(optional -> optional.isEmpty() ? null : optional.get())
                 .skip(1)
@@ -300,6 +300,17 @@ public class PairPLL<K,V> extends PLL<Tuple2<K, V>> {
      */
     public PairPLL<K, V> withPartitioner(Optional<Partitioner<K>> partitioner) {
         return new PairPLL<K, V>(pll, partitioner, cachedPartitionSizes);
+    }
+    
+    /**
+     * Returns a copy of this PairPLL with the given partition sizes, when they
+     * are externally known.
+     */
+    public PairPLL<K, V> withCachedPartitionSizes(List<Long> newCachedPartitionSizes) {
+        if (newCachedPartitionSizes.size() != pll.numPartitions()) {
+            throw new IllegalArgumentException("Invalid number of partition sizes provided");
+        }
+        return new PairPLL<K, V>(pll, partitioner, newCachedPartitionSizes);
     }
     
     /**

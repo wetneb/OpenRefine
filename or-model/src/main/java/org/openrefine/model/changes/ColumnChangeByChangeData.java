@@ -18,7 +18,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 /**
  * Adds a new column based on data fetched from an external process.
  * If no column name is supplied, then the change will replace the column
- * at the given index instead.
+ * at the given index instead (merging with existing contents in rows not
+ * covered by the change data).
  * 
  * New recon config and stats can be supplied for the column changed or created.
  * If a recon config and no recon stats are provided, the change computes the
@@ -134,7 +135,11 @@ public class ColumnChangeByChangeData implements Change {
             if (_add) {
                 return row.insertCell(_columnIndex, cell);
             } else {
-                return row.withCell(_columnIndex, cell);
+                if (cell != null) {
+                    return row.withCell(_columnIndex, cell);
+                } else {
+                    return row;
+                }
             }
         }
         

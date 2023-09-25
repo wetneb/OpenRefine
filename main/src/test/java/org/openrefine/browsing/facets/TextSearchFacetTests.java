@@ -41,8 +41,8 @@ import java.util.stream.Collectors;
 
 import org.openrefine.RefineTest;
 import org.openrefine.browsing.Engine;
-import org.openrefine.browsing.EngineConfig;
 import org.openrefine.browsing.Engine.Mode;
+import org.openrefine.browsing.EngineConfig;
 import org.openrefine.browsing.facets.TextSearchFacet.TextSearchFacetConfig;
 import org.openrefine.model.GridState;
 import org.openrefine.model.ModelException;
@@ -194,6 +194,26 @@ public class TextSearchFacetTests extends RefineTest {
         Assert.assertEquals(rowFilter.filterRow(0, rows.get(0)),false);
         Assert.assertEquals(rowFilter.filterRow(1, rows.get(1)),false);
         Assert.assertEquals(rowFilter.filterRow(2, rows.get(2)),false);
+        Assert.assertEquals(rowFilter.filterRow(3, rows.get(3)),true);
+    }
+    
+    @Test
+    public void testCaseInsensitiveFilterWithUpperCaseQuery() throws Exception {
+        //Apply case-sensitive filter "A"
+        
+        configureFilter("{\"type\":\"core/text\","
+                + "\"name\":\"Value\","
+                + "\"columnName\":\"Value\","
+                + "\"mode\":\"text\","
+                + "\"caseSensitive\":false,"
+                + "\"invert\":false,"
+                + "\"query\":\"A\"}");
+
+        //Check each row in the project against the filter
+        //Expect to retrieve one row containing "Abc"
+        Assert.assertEquals(rowFilter.filterRow(0, rows.get(0)),true);
+        Assert.assertEquals(rowFilter.filterRow(1, rows.get(1)),false);
+        Assert.assertEquals(rowFilter.filterRow(2, rows.get(2)),true);
         Assert.assertEquals(rowFilter.filterRow(3, rows.get(3)),true);
     }
     

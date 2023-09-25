@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -35,22 +36,32 @@ public class LocalDatamodelRunner implements DatamodelRunner {
     final static protected String GRID_PATH = "grid";
     
     protected final PLLContext pllContext;
-    protected int numPartitions;
     
-    public LocalDatamodelRunner(Integer defaultParallelism) {
+    // Partitioning strategy settings
+    protected int   defaultParallelism;
+    protected long  minSplitSize;
+    protected long  maxSplitSize;
+    
+    public LocalDatamodelRunner(RunnerConfiguration configuration) {
+        defaultParallelism = configuration.getIntParameter("defaultParallelism", 4);
+        minSplitSize = configuration.getLongParameter("minSplitSize", 4096L);
+        maxSplitSize = configuration.getLongParameter("maxSplitSize", 16777216L);
         Configuration fsConf = new Configuration();
         fsConf.set("fs.file.impl", OrderedLocalFileSystem.class.getName());
+        fsConf.set("mapreduce.input.fileinputformat.split.minsize", Long.toString(minSplitSize));
+        fsConf.set("mapreduce.input.fileinputformat.split.maxsize", Long.toString(maxSplitSize));
         try {
             pllContext = new PLLContext(MoreExecutors.listeningDecorator(
-                    Executors.newCachedThreadPool()), LocalFileSystem.get(fsConf));
+                    Executors.newCachedThreadPool()),
+                    LocalFileSystem.get(fsConf),
+                    defaultParallelism);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-        numPartitions = defaultParallelism;
     }
-
+    
     public LocalDatamodelRunner() {
-        this(4);
+        this(RunnerConfiguration.empty);
     }
     
     public PLLContext getPLLContext() {
@@ -88,7 +99,7 @@ public class LocalDatamodelRunner implements DatamodelRunner {
     @Override
     public GridState create(ColumnModel columnModel, List<Row> rows, Map<String, OverlayModel> overlayModels) {
         // the call to zipWithIndex is efficient as the first PLL is in memory already
-        PairPLL<Long, Row> pll = pllContext.parallelize(numPartitions, rows)
+        PairPLL<Long, Row> pll = pllContext.parallelize(defaultParallelism, rows)
                 .zipWithIndex();
         return new LocalGridState(this, pll, columnModel, overlayModels);
     }
@@ -105,7 +116,7 @@ public class LocalDatamodelRunner implements DatamodelRunner {
                 }})
                 .mapToPair(indexedData -> Tuple2.of(indexedData.getId(), indexedData.getData()));
         pll = PairPLL.assumeSorted(pll);
-        return new LocalChangeData<T>(this, pll);
+        return new LocalChangeData<T>(this, pll, null);
     }
 
     @Override
@@ -140,12 +151,18 @@ public class LocalDatamodelRunner implements DatamodelRunner {
 
     @Override
     public <T extends Serializable> ChangeData<T> create(List<IndexedData<T>> changeData) {
+        // We do this filtering on the list itself rather than on the PLL
+        // so that the PLL has known partition sizes
+        List<IndexedData<T>> withoutNulls = changeData
+                .stream()
+                .filter(id -> id.getData() != null)
+                .collect(Collectors.toList());
+        
         PairPLL<Long, T> pll = pllContext
-                .parallelize(numPartitions, changeData)
-                .mapToPair(indexedData -> Tuple2.of(indexedData.getId(), indexedData.getData()))
-                .filter(tuple -> tuple.getValue() != null);
+                .parallelize(defaultParallelism, withoutNulls)
+                .mapToPair(indexedData -> Tuple2.of(indexedData.getId(), indexedData.getData()));
         pll = PairPLL.assumeSorted(pll);
-        return new LocalChangeData<T>(this, pll);
+        return new LocalChangeData<T>(this, pll, null); // no need for parent partition sizes, since pll has cached ones
     }
 
 }

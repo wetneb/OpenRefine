@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -26,6 +27,7 @@ import org.openrefine.model.local.PairPLL;
 import org.openrefine.model.local.RecordPLL;
 import org.openrefine.model.local.Tuple2;
 import org.openrefine.overlay.OverlayModel;
+import org.openrefine.process.ProgressReporter;
 import org.openrefine.sorting.RecordSorter;
 import org.openrefine.sorting.RowSorter;
 import org.openrefine.sorting.SortingConfig;
@@ -280,13 +282,22 @@ public class LocalGridState implements GridState {
     }
 
     @Override
-    public void saveToFile(File file) throws IOException {
+    public void saveToFile(File file, ProgressReporter progressReporter) throws IOException, InterruptedException {
+        saveToFile(file, Optional.ofNullable(progressReporter));
+    }
+    
+    @Override
+    public void saveToFile(File file) throws IOException, InterruptedException {
+        saveToFile(file, Optional.empty());
+    }
+    
+    protected void saveToFile(File file, Optional<ProgressReporter> progressReporter) throws IOException, InterruptedException {
         File metadataFile = new File(file, METADATA_PATH);
         File gridFile = new File(file, GRID_PATH);
 
         grid
         .map(LocalGridState::serializeIndexedRow)
-        .saveAsTextFile(gridFile.getAbsolutePath());
+        .saveAsTextFile(gridFile.getAbsolutePath(), progressReporter);
         
         ParsingUtilities.saveWriter.writeValue(metadataFile, getMetadata());
     }
@@ -435,7 +446,10 @@ public class LocalGridState implements GridState {
                     .mapToPair(indexedData -> indexedData)
                     .withPartitioner(grid.getPartitioner());
         }
-        return new LocalChangeData<T>(runner, data.filter(tuple -> tuple.getValue() != null));
+        return new LocalChangeData<T>(
+                runner,
+                data.filter(tuple -> tuple.getValue() != null),
+                grid.hasCachedPartitionSizes() ? grid.getPartitionSizes() : null);
     }
     
     protected static <T extends Serializable> Stream<Tuple2<Long,T>> applyRowChangeDataMapper(RowChangeDataProducer<T> rowMapper, List<Tuple2<Long, Row>> rowBatch) {
@@ -465,7 +479,10 @@ public class LocalGridState implements GridState {
                     .mapToPair(tuple -> tuple)
                     .withPartitioner(filteredRecords.getPartitioner());
         }
-        return new LocalChangeData<T>(runner, data.filter(tuple -> tuple.getValue() != null));
+        return new LocalChangeData<T>(
+                runner,
+                data.filter(tuple -> tuple.getValue() != null),
+                grid.hasCachedPartitionSizes() ? grid.getPartitionSizes() : null);
     }
     
     protected static <T extends Serializable> Stream<Tuple2<Long,T>> applyRecordChangeDataMapper(
@@ -546,10 +563,19 @@ public class LocalGridState implements GridState {
     public void uncache() {
         grid.uncache();
     }
-
+    
+    @Override
+    public boolean cache(ProgressReporter progressReporter) {
+        return cache(Optional.of(progressReporter));
+    }
+    
     @Override
     public boolean cache() {
-        grid.cache();
+        return cache(Optional.empty());
+    }
+
+    protected boolean cache(Optional<ProgressReporter> progressReporter) {
+        grid.cache(progressReporter);
         return grid.isCached();
     }
 

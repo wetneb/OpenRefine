@@ -11,16 +11,19 @@ import org.openrefine.model.Record;
 public interface RecordAggregator<T> extends Combiner<T> {
     
     /**
-     * Adds statistics obtained from a single record to the facet state.
-     * Given that facet states are expected to be immutable, this 
-     * returns a new facet state object.
+     * Adds statistics obtained from a single record to the aggregation state.
+     * Given that states are expected to be immutable, this 
+     * returns a new aggregation state object.
      * 
-     * @param rowId
-     *      the row id of the row to ingest
-     * @param row
-     *      the row to ingest
+     * This function is required to be associative with the combining function:
+     * combine(a, withRecord(b, record)) == withRecord(combine(a, b), record)
+     * 
+     * @param state
+     *      the current aggregation state
+     * @param record
+     *      the record to ingest
      * @return
-     *      the facet state updated with this row
+     *      the aggregation state updated with this row
      */
     public T withRecord(T state, Record record);
 }

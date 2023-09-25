@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import org.openrefine.model.local.partitioning.Partitioner;
 import org.openrefine.model.local.partitioning.RangePartitioner;
 import org.testng.Assert;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
@@ -18,7 +19,7 @@ public class PairPLLTests extends PLLTestsBase {
     PairPLL<Integer, String> SUT;
     PairPLL<Integer, String> noPartitionerSUT;
     
-    @BeforeTest
+    @BeforeClass
     public void setUpPLL() {
         List<Tuple2<Integer, String>> list = Arrays.asList(
                 Tuple2.of(1, "foo"),
@@ -189,5 +190,23 @@ public class PairPLLTests extends PLLTestsBase {
         Assert.assertTrue(reSorted.getPartitioner().get() instanceof RangePartitioner<?>);
         RangePartitioner<Long> partitioner = (RangePartitioner<Long>) reSorted.getPartitioner().get();
         Assert.assertEquals(partitioner.getFirstKeys(), expectedFirstKeys);
+    }
+    
+    @Test
+    public void testWithCachedPartitionSizes() {
+        PLL<Integer> list = parallelize(3, Arrays.asList(3, 8, 1, -3, 9, 10, 22, 15, 4));
+        PairPLL<Long, Integer> indexed = list.zipWithIndex();
+        List<Long> partitionSizes = indexed.cachedPartitionSizes;
+        indexed.cachedPartitionSizes = null;
+        
+        PairPLL<Long, Integer> indexedWithPartitionSizes = indexed.withCachedPartitionSizes(partitionSizes);
+        Assert.assertNotNull(indexedWithPartitionSizes.cachedPartitionSizes);
+    }
+    
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testWithInvalidCachedPartitionSizes() {
+        PLL<Integer> list = parallelize(3, Arrays.asList(3, 8, 1, -3, 9, 10, 22, 15, 4));
+        PairPLL<Long, Integer> indexed = list.zipWithIndex();
+        indexed.withCachedPartitionSizes(Arrays.asList(2L, 3L));
     }
 }
