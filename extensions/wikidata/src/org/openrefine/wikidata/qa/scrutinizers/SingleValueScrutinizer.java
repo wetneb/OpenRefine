@@ -24,6 +24,7 @@
 package org.openrefine.wikidata.qa.scrutinizers;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.openrefine.wikidata.qa.QAWarning;

@@ -35,9 +35,6 @@ package org.openrefine.overlay;
 
 import org.openrefine.model.Project;
 
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.fasterxml.jackson.databind.annotation.JsonTypeIdResolver;
-
 /**
  * Overlay models must be serializable and deserializable with Jackson.
  * It is possible to have access to the project at deserialization time
@@ -45,12 +42,6 @@ import com.fasterxml.jackson.databind.annotation.JsonTypeIdResolver;
  * @JacksonInject("project").
  *
  */
-@JsonTypeInfo(
-        use=JsonTypeInfo.Id.CUSTOM,
-        include=JsonTypeInfo.As.PROPERTY,
-        property="overlayModelType",
-        visible=true) // for UnknownOverlayModel, which needs to read its own id
-@JsonTypeIdResolver(OverlayModelResolver.class)
 public interface OverlayModel {
 	
     public default void onBeforeSave(Project project) {

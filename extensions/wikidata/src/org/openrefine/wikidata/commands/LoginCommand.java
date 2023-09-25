@@ -23,18 +23,39 @@
  ******************************************************************************/
 package org.openrefine.wikidata.commands;
 
+import static org.apache.commons.lang.StringUtils.isBlank;
+import static org.apache.commons.lang.StringUtils.isNotBlank;
+
+import java.io.*;
+import java.net.HttpCookie;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import java.io.IOException;
-import java.io.Writer;
+import java.io.UnsupportedEncodingException;
+import java.net.HttpCookie;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import javax.servlet.ServletException;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.fasterxml.jackson.core.JsonGenerator;
 import org.openrefine.commands.Command;
 import org.openrefine.util.ParsingUtilities;
 import org.openrefine.wikidata.editing.ConnectionManager;
-
-import com.fasterxml.jackson.core.JsonGenerator;
+import org.wikidata.wdtk.wikibaseapi.ApiConnection;
+import org.wikidata.wdtk.wikibaseapi.BasicApiConnection;
 
 public class LoginCommand extends Command {
 

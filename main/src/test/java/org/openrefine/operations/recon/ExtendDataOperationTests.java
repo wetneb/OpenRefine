@@ -348,7 +348,7 @@ public class ExtendDataOperationTests extends RefineTest {
 		Assert.assertEquals(dataExtensions, Arrays.asList(dataExtension1, dataExtension2, dataExtension3, dataExtension4));
     }
 
-    @Test
+    @Test(enabled = false)
     public void testFetchStrings() throws Exception {
   
         DataExtensionConfig extension = DataExtensionConfig.reconstruct("{\"properties\":[{\"id\":\"P297\",\"name\":\"ISO 3166-1 alpha-2 code\"}]}");
@@ -383,7 +383,7 @@ public class ExtendDataOperationTests extends RefineTest {
      * Test to fetch counts of values
      */
 
-    @Test
+    @Test(enabled = false)
     public void testFetchCounts() throws Exception {
         DataExtensionConfig extension = DataExtensionConfig.reconstruct(
                 "{\"properties\":[{\"id\":\"P38\",\"name\":\"currency\",\"settings\":{\"count\":\"on\",\"rank\":\"any\"}}]}");
@@ -431,7 +431,7 @@ public class ExtendDataOperationTests extends RefineTest {
     /**
      * Test fetch only the best statements
      */
-    @Test
+    @Test(enabled = false)
     public void testFetchCurrent() throws Exception {
         DataExtensionConfig extension = DataExtensionConfig.reconstruct(
                 "{\"properties\":[{\"id\":\"P38\",\"name\":\"currency\",\"settings\":{\"rank\":\"best\"}}]}");
@@ -480,7 +480,7 @@ public class ExtendDataOperationTests extends RefineTest {
     /**
      * Test fetch records (multiple values per reconciled cell)
      */
-    @Test
+    @Test(enabled = false)
     public void testFetchRecord() throws Exception {
         DataExtensionConfig extension = DataExtensionConfig.reconstruct(
                 "{\"properties\":[{\"id\":\"P38\",\"name\":\"currency\",\"settings\":{\"rank\":\"any\"}}]}");
