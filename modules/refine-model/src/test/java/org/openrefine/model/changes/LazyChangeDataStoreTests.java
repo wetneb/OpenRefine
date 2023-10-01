@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.Optional;
 import java.util.function.Function;
 
+import org.openrefine.history.History;
 import org.openrefine.model.Runner;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
@@ -59,7 +60,9 @@ public class LazyChangeDataStoreTests {
         Function<Optional<ChangeData<String>>, ChangeData<String>> completionProcess = existingChangeData -> changeData;
 
         ChangeDataId changeDataId = new ChangeDataId(456, "data");
-        ChangeData<String> returnedChangeData = SUT.retrieveOrCompute(changeDataId, serializer, completionProcess, "description");
+        ChangeData<String> returnedChangeData = SUT.retrieveOrCompute(
+                changeDataId, serializer, completionProcess,
+                "description", mock(History.class), 2);
 
         Assert.assertEquals(returnedChangeData, changeData);
         Assert.assertFalse(SUT.needsRefreshing(456));

@@ -47,7 +47,7 @@ import org.testng.annotations.Test;
 public class ProcessManagerTests {
 
     ProcessManager processManager;
-    Process firstProcess, secondProcess, erroringProcess;
+    ProcessStub firstProcess, secondProcess, erroringProcess;
 
     @BeforeMethod
     public void setUp() {
@@ -67,16 +67,18 @@ public class ProcessManagerTests {
     }
 
     @Test
-    public void testLifeCycle() {
+    public void testPendingProcess() {
         assertEquals(processManager.getProcesses(), Collections.emptyList());
         assertFalse(processManager.hasPending());
 
+        firstProcess.setSatisfiedDependencies(true);
         processManager.queueProcess(firstProcess);
 
         assertEquals(processManager.getProcesses(), Collections.singletonList(firstProcess));
         assertTrue(processManager.hasPending());
         assertEquals(firstProcess.getState(), State.RUNNING);
 
+        secondProcess.setSatisfiedDependencies(false);
         processManager.queueProcess(secondProcess);
 
         assertEquals(processManager.getProcesses(), Arrays.asList(firstProcess, secondProcess));
@@ -86,10 +88,32 @@ public class ProcessManagerTests {
     }
 
     @Test
+    public void testConcurrentExecution() {
+        assertEquals(processManager.getProcesses(), Collections.emptyList());
+        assertFalse(processManager.hasPending());
+
+        firstProcess.setSatisfiedDependencies(true);
+        processManager.queueProcess(firstProcess);
+
+        assertEquals(processManager.getProcesses(), Collections.singletonList(firstProcess));
+        assertTrue(processManager.hasPending());
+        assertEquals(firstProcess.getState(), State.RUNNING);
+
+        secondProcess.setSatisfiedDependencies(true);
+        processManager.queueProcess(secondProcess);
+
+        assertEquals(processManager.getProcesses(), Arrays.asList(firstProcess, secondProcess));
+        assertTrue(processManager.hasPending());
+        assertEquals(firstProcess.getState(), State.RUNNING);
+        assertEquals(secondProcess.getState(), State.RUNNING);
+    }
+
+    @Test
     public void testErroringProcess() {
         assertEquals(processManager.getProcesses(), Collections.emptyList());
         assertFalse(processManager.hasPending());
 
+        erroringProcess.setSatisfiedDependencies(true);
         processManager.queueProcess(erroringProcess);
 
         assertEquals(processManager.getProcesses(), Collections.singletonList(erroringProcess));
@@ -97,6 +121,7 @@ public class ProcessManagerTests {
         assertEquals(erroringProcess.getState(), State.FAILED);
         assertEquals(erroringProcess.getErrorMessage(), "some problem occured!");
 
+        secondProcess.setSatisfiedDependencies(false);
         processManager.queueProcess(secondProcess);
 
         assertEquals(processManager.getProcesses(), Arrays.asList(erroringProcess, secondProcess));
@@ -107,6 +132,7 @@ public class ProcessManagerTests {
 
     @Test
     public void testSerialize() throws Exception {
+        firstProcess.setSatisfiedDependencies(true);
         processManager.queueProcess(firstProcess);
         processManager.queueProcess(secondProcess);
 

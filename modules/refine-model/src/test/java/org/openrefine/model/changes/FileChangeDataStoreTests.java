@@ -15,6 +15,7 @@ import java.util.Optional;
 import java.util.function.Function;
 
 import org.apache.commons.io.FileUtils;
+import org.openrefine.history.History;
 import org.openrefine.model.Runner;
 import org.openrefine.process.Process;
 import org.openrefine.process.ProgressingFuture;
@@ -36,6 +37,7 @@ public class FileChangeDataStoreTests {
     File incompleteDir;
     FileChangeDataStore SUT;
     VoidFuture future;
+    History history;
 
     @BeforeClass
     public void setUpDir() throws IOException {
@@ -55,6 +57,7 @@ public class FileChangeDataStoreTests {
         changeData = mock(MyChangeData.class);
         emptyChangeData = mock(MyChangeData.class);
         serializer = mock(MySerializer.class);
+        history = mock(History.class);
 
         when(runner.<String> emptyChangeData()).thenReturn(emptyChangeData);
         future = mock(VoidFuture.class);
@@ -102,7 +105,7 @@ public class FileChangeDataStoreTests {
 
         Function<Optional<ChangeData<String>>, ChangeData<String>> completionProcess = (oldChangeData -> oldChangeData.get());
 
-        ChangeData<String> returnedChangeData = SUT.retrieveOrCompute(changeDataId, serializer, completionProcess, "description");
+        ChangeData<String> returnedChangeData = SUT.retrieveOrCompute(changeDataId, serializer, completionProcess, "description", history, 2);
 
         Assert.assertTrue(SUT.needsRefreshing(198));
         Assert.assertTrue(newChangeDataLocation.exists());
@@ -114,6 +117,7 @@ public class FileChangeDataStoreTests {
     public void testDiscardAll() {
         Process process = mock(Process.class);
         when(process.getChangeDataId()).thenReturn(new ChangeDataId(456, "data"));
+        when(process.getState()).thenReturn(Process.State.RUNNING);
         SUT.getProcessManager().queueProcess(process);
 
         SUT.discardAll(456);
@@ -135,7 +139,7 @@ public class FileChangeDataStoreTests {
         ChangeDataId changeDataId = new ChangeDataId(456L, "data");
         Function<Optional<ChangeData<String>>, ChangeData<String>> completionProcess = (oldChangeData -> changeData);
 
-        SUT.retrieveOrCompute(changeDataId, serializer, completionProcess, "description");
+        SUT.retrieveOrCompute(changeDataId, serializer, completionProcess, "description", history, 2);
 
         // A history entry with a corresponding running process needs refreshing
         Assert.assertTrue(SUT.needsRefreshing(456L));
@@ -151,7 +155,7 @@ public class FileChangeDataStoreTests {
         ChangeDataId changeDataId = new ChangeDataId(789L, "data");
         Function<Optional<ChangeData<String>>, ChangeData<String>> completionProcess = (oldChangeData -> changeData);
 
-        SUT.retrieveOrCompute(changeDataId, serializer, completionProcess, "description");
+        SUT.retrieveOrCompute(changeDataId, serializer, completionProcess, "description", history, 2);
         // artificially pause the process
         when(future.isPaused()).thenReturn(true);
 
