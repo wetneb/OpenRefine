@@ -40,7 +40,8 @@ public class LocalGridTests {
                 Tuple2.of(3L, new IndexedData<>(3L, "foo")),
                 Tuple2.of(4L, new IndexedData<>(4L, null)));
 
-        CloseableIterator<Tuple2<Long, IndexedData<String>>> result = applyRowChangeDataMapperWithIncompleteData(rowMapper, batch, columnModel);
+        CloseableIterator<Tuple2<Long, IndexedData<String>>> result = applyRowChangeDataMapperWithIncompleteData(rowMapper, batch,
+                columnModel);
 
         List<Tuple2<Long, IndexedData<String>>> collected = result.collect(Collectors.toList());
         Assert.assertEquals(collected, expected);

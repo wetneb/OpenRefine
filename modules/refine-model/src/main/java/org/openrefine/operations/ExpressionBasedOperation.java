@@ -111,10 +111,13 @@ public abstract class ExpressionBasedOperation extends RowMapOperation {
                 ChangeData<Cell> changeData = null;
                 try {
                     changeData = context.getChangeData(_changeDataId, new CellChangeDataSerializer(),
-                            partialChangeData -> {
-                                RowFilter filter = engine.combinedRowFilters();
-                                return projectState.mapRows(filter, producer, partialChangeData);
-                            });
+                            (grid, partialChangeData) -> {
+                                Engine localEngine = new Engine(grid, _engineConfig, context.getProjectId());
+                                RowFilter filter = localEngine.combinedRowFilters();
+                                return grid.mapRows(filter, producer, partialChangeData);
+                            },
+                            producer.getColumnDependencies(), // TODO add dependencies from facets!
+                            Engine.Mode.RowBased);
                 } catch (IOException e) {
                     throw new UncheckedIOException(e);
                 }
@@ -123,10 +126,13 @@ public abstract class ExpressionBasedOperation extends RowMapOperation {
                 ChangeData<List<Cell>> changeData = null;
                 try {
                     changeData = context.getChangeData(_changeDataId, new CellListChangeDataSerializer(),
-                            partialChangeData -> {
-                                RecordFilter filter = engine.combinedRecordFilters();
-                                return projectState.mapRecords(filter, producer, partialChangeData);
-                            });
+                            (grid, partialChangeData) -> {
+                                Engine localEngine = new Engine(grid, _engineConfig, context.getProjectId());
+                                RecordFilter filter = localEngine.combinedRecordFilters();
+                                return grid.mapRecords(filter, producer, partialChangeData);
+                            },
+                            producer.getColumnDependencies(),
+                            Engine.Mode.RecordBased);
                 } catch (IOException e) {
                     throw new UncheckedIOException(e);
                 }
@@ -170,7 +176,7 @@ public abstract class ExpressionBasedOperation extends RowMapOperation {
             return evaluatingChangeDataProducer(_baseColumnName, _onError,
                     _repeatCount, _eval,
                     columnModel, state.getOverlayModels(), context.getProjectId());
-        } catch(ColumnDependencyException e) {
+        } catch (ColumnDependencyException e) {
             throw new MissingColumnException(e.getId().getColumnName());
         }
     }
@@ -187,7 +193,8 @@ public abstract class ExpressionBasedOperation extends RowMapOperation {
         RowInRecordChangeDataJoiner joiner;
         ColumnModel columnModel; // TODO: delete once RowMapper is migrated to a similar signature
 
-        public PositiveRowMapper(RowInRecordChangeDataProducer<Cell> producer, RowInRecordChangeDataJoiner joiner, ColumnModel columnModel) {
+        public PositiveRowMapper(RowInRecordChangeDataProducer<Cell> producer, RowInRecordChangeDataJoiner joiner,
+                ColumnModel columnModel) {
             this.producer = producer;
             this.joiner = joiner;
             this.columnModel = columnModel;
@@ -240,8 +247,8 @@ public abstract class ExpressionBasedOperation extends RowMapOperation {
             Map<String, OverlayModel> overlayModels,
             long projectId) {
         Set<String> columnNames = eval.getColumnDependencies(baseColumnName);
-        List<ColumnId> dependencies = columnNames == null ? null :
-                columnNames.stream()
+        List<ColumnId> dependencies = columnNames == null ? null
+                : columnNames.stream()
                         .map(name -> columnModel.getColumnByName(name).getColumnId())
                         .collect(Collectors.toList());
 
@@ -290,7 +297,8 @@ public abstract class ExpressionBasedOperation extends RowMapOperation {
                         }
 
                         for (int i = 0; i < repeatCount; i++) {
-                            ExpressionUtils.bind(bindings, null, translatedRow, rowId, translatedRecord, baseColumnName, newCell, overlayModels, projectId);
+                            ExpressionUtils.bind(bindings, null, translatedRow, rowId, translatedRecord, baseColumnName, newCell,
+                                    overlayModels, projectId);
 
                             v = ExpressionUtils.wrapStorable(eval.evaluate(bindings));
                             if (ExpressionUtils.isError(v)) {

@@ -63,11 +63,14 @@ public class ColumnMetadata implements Serializable {
     /**
      * Constructor.
      *
-     * @param name the name of the column, displayed to the user
-     * @param reconConfig the reconciliation settings of the column,
-     *                    which are set if this column has been reconciled before (otherwise set to null)
-     * @param lastModified the id of the history entry which last modified this column, or 0L if it has been
-     *                     unchanged since project creation
+     * @param name
+     *            the name of the column, displayed to the user
+     * @param reconConfig
+     *            the reconciliation settings of the column, which are set if this column has been reconciled before
+     *            (otherwise set to null)
+     * @param lastModified
+     *            the id of the history entry which last modified this column, or 0L if it has been unchanged since
+     *            project creation
      */
     @JsonCreator
     public ColumnMetadata(
@@ -83,8 +86,7 @@ public class ColumnMetadata implements Serializable {
 
     public ColumnMetadata(
             String name,
-            ReconConfig reconConfig
-    ) {
+            ReconConfig reconConfig) {
         this(name, name, 0L, reconConfig);
     }
 
@@ -125,8 +127,8 @@ public class ColumnMetadata implements Serializable {
     }
 
     /**
-     * The id of the history entry which last modified this column, 0L
-     * if the column has not changed since project creation.
+     * The id of the history entry which last modified this column, 0L if the column has not changed since project
+     * creation.
      */
     @JsonProperty("lastModified")
     public long getLastModified() {
@@ -134,8 +136,7 @@ public class ColumnMetadata implements Serializable {
     }
 
     /**
-     * @return the earliest point in the history where this column was present,
-     * and its original name at that point.
+     * @return the earliest point in the history where this column was present, and its original name at that point.
      */
     @JsonIgnore
     public ColumnId getColumnId() {
@@ -175,7 +176,7 @@ public class ColumnMetadata implements Serializable {
 
     @Override
     public int hashCode() {
-        return _name.hashCode() + 87 * _originalName.hashCode() + (int)_lastModified;
+        return _name.hashCode() + 87 * _originalName.hashCode() + (int) _lastModified;
     }
 
 }

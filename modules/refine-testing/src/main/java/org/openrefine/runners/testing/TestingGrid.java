@@ -590,7 +590,8 @@ public class TestingGrid implements Grid {
 
         if (deserializedMapper.getBatchSize() == 1) {
             filteredRecords.forEach(record -> changeData.put(record.getStartRowId(),
-                    new IndexedData<>(record.getStartRowId(), deserializedMapper.call(columnMapper.translateRecord(record), reducedColumnModel))));
+                    new IndexedData<>(record.getStartRowId(),
+                            deserializedMapper.call(columnMapper.translateRecord(record), reducedColumnModel))));
         } else {
             Iterator<List<Record>> batches = Iterators.partition(filteredRecords.iterator(), deserializedMapper.getBatchSize());
             while (batches.hasNext()) {

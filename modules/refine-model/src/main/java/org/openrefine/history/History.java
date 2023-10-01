@@ -247,7 +247,7 @@ public class History {
      * @param refresh
      *            whether the grid should be refreshed if it depends on change data being currently fetched
      */
-    protected synchronized Grid getGrid(int position, boolean refresh) throws OperationException {
+    public synchronized Grid getGrid(int position, boolean refresh) throws OperationException {
         Step step = _steps.get(position);
         Grid grid = step.grid;
         if (grid != null && !(refresh && step.inProgress)) {
@@ -259,7 +259,7 @@ public class History {
             // is always present
             Grid previous = getGrid(position - 1, refresh);
             HistoryEntry entry = _entries.get(position - 1);
-            ChangeContext context = ChangeContext.create(entry.getId(), _projectId, _dataStore, entry.getDescription());
+            ChangeContext context = ChangeContext.create(entry.getId(), _projectId, position - 1, this, _dataStore, entry.getDescription());
             Operation operation = entry.getOperation();
             Grid newState;
             newState = operation.apply(previous, context).getGrid();
@@ -311,7 +311,7 @@ public class History {
     public Instant getLastModified() {
         return _lastModified;
     }
-    
+
     /**
      * Applies an operation on top of the existing history. This will modify this instance. If the operation application
      * failed, the exception will be returned in {@link OperationApplicationResult#getException()}.
@@ -358,7 +358,7 @@ public class History {
         }
 
         // TODO refactor this so that it does not duplicate the logic of getGrid
-        ChangeContext context = ChangeContext.create(id, _projectId, _dataStore, operation.getDescription());
+        ChangeContext context = ChangeContext.create(id, _projectId, _position, this, _dataStore, operation.getDescription());
         ChangeResult changeResult = null;
         try {
             changeResult = operation.apply(getCurrentGrid(), context);
@@ -507,23 +507,26 @@ public class History {
     }
 
     /**
-     * Locates the earliest step in the history from which a {@link org.openrefine.model.changes.ChangeData} can
-     * be computed. This requires the following conditions:
+     * Locates the earliest step in the history from which a {@link org.openrefine.model.changes.ChangeData} can be
+     * computed. This requires the following conditions:
      * <ul>
-     *     <li>the step must be at or before the step provided as argument;</li>
-     *     <li>the grid at this step must contain all column dependencies supplied as second argument;</li>
-     *     <li>all of the transformations between the two steps must preserve row ids. If the change is computed
-     *     in records mode, then they must also preserve record ids.</li>
+     * <li>the step must be at or before the step provided as argument;</li>
+     * <li>the grid at this step must contain all column dependencies supplied as second argument;</li>
+     * <li>all of the transformations between the two steps must preserve row ids. If the change is computed in records
+     * mode, then they must also preserve record ids.</li>
      * </ul>
      *
-     * @param beforeStepIndex upper bound on the index to return, which must contain the column dependencies supplied.
-     *                        This means that the grid at this step must be present (while not necessarily complete).
-     * @param dependencies list of column dependencies, or null if dependencies could not be isolated, in which case
-     *                     the supplied upper bound will be returned
-     * @param engineMode the mode of the engine, determining the type of grid preservation to require
+     * @param beforeStepIndex
+     *            upper bound on the index to return, which must contain the column dependencies supplied. This means
+     *            that the grid at this step must be present (while not necessarily complete).
+     * @param dependencies
+     *            list of column dependencies, or null if dependencies could not be isolated, in which case the supplied
+     *            upper bound will be returned
+     * @param engineMode
+     *            the mode of the engine, determining the type of grid preservation to require
      * @return the index of the step
      */
-    protected int earliestStepContainingDependencies(int beforeStepIndex, List<ColumnId> dependencies, Engine.Mode engineMode) {
+    public int earliestStepContainingDependencies(int beforeStepIndex, List<ColumnId> dependencies, Engine.Mode engineMode) {
         if (dependencies == null || beforeStepIndex == 0) {
             return beforeStepIndex;
         } else {
@@ -550,7 +553,9 @@ public class History {
             int currentIndex = beforeStepIndex - 1;
             while (currentIndex >= 0 &&
                     (_entries.get(currentIndex).getGridPreservation() != GridPreservation.NO_ROW_PRESERVATION) &&
-                    (engineMode == Engine.Mode.RowBased || _entries.get(currentIndex).getGridPreservation() == GridPreservation.PRESERVES_RECORDS) &&
+                    (engineMode == Engine.Mode.RowBased
+                            || _entries.get(currentIndex).getGridPreservation() == GridPreservation.PRESERVES_RECORDS)
+                    &&
                     stepSatisfiesDependencies(currentIndex, fullDependencies)) {
                 currentIndex--;
             }

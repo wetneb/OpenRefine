@@ -138,6 +138,7 @@ public class ColumnModel implements Serializable {
 
     /**
      * Replaces the recon config at the given column index.
+     * 
      * @return a modified copy of this column model.
      */
     public ColumnModel withReconConfig(int index, ReconConfig config) {
@@ -150,6 +151,7 @@ public class ColumnModel implements Serializable {
 
     /**
      * Updates the last modification field of a column to a newer history entry id.
+     * 
      * @return a modified copy of this column model
      */
     public ColumnModel markColumnAsModified(int index, long historyEntryId) {
@@ -319,7 +321,8 @@ public class ColumnModel implements Serializable {
     /**
      * Utility method to get a column index based on its column id (original column name and version).
      *
-     * @throws ColumnDependencyException if the column does not exist
+     * @throws ColumnDependencyException
+     *             if the column does not exist
      */
     public int getRequiredColumnIndex(ColumnId id) throws ColumnDependencyException {
         if (_idToPosition.containsKey(id)) {
@@ -332,7 +335,8 @@ public class ColumnModel implements Serializable {
     /**
      * Checks whether this column model contains a column with the sepecified id.
      *
-     * @param columnId the id of the column to lookup
+     * @param columnId
+     *            the id of the column to lookup
      * @return true if the column is present
      */
     public boolean hasColumnId(ColumnId columnId) {
