@@ -52,13 +52,8 @@ import org.openrefine.browsing.facets.ListFacet;
 import org.openrefine.browsing.facets.RangeFacet;
 import org.openrefine.history.GridPreservation;
 import org.openrefine.messages.OpenRefineMessage;
-import org.openrefine.model.Cell;
-import org.openrefine.model.ColumnModel;
-import org.openrefine.model.Grid;
-import org.openrefine.model.IndexedRow;
+import org.openrefine.model.*;
 import org.openrefine.model.Record;
-import org.openrefine.model.Row;
-import org.openrefine.model.RowFilter;
 import org.openrefine.model.changes.CellChangeDataSerializer;
 import org.openrefine.model.changes.CellListChangeDataSerializer;
 import org.openrefine.model.changes.ChangeContext;
@@ -115,7 +110,7 @@ public class ReconOperation extends EngineDependentOperation {
 
         Grid joined;
         Engine engine = new Engine(projectState, _engineConfig, context.getProjectId());
-        ReconChangeDataProducer producer = new ReconChangeDataProducer(_columnName, baseColumnIndex, _reconConfig,
+        ReconChangeDataProducer producer = new ReconChangeDataProducer(_columnName, _reconConfig,
                 context.getHistoryEntryId(), columnModel);
         if (Engine.Mode.RowBased.equals(_engineConfig.getMode())) {
             ChangeData<Cell> changeData = null;
@@ -124,7 +119,8 @@ public class ReconOperation extends EngineDependentOperation {
                         (grid, partialChangeData) -> {
                             Engine localEngine = new Engine(grid, _engineConfig, context.getProjectId());
                             return grid.mapRows(localEngine.combinedRowFilters(), producer, partialChangeData);
-                        }, producer.getColumnDependencies(), Engine.Mode.RowBased);
+                        }, producer.getColumnDependencies(), // TODO add dependencies from facets
+                        Engine.Mode.RowBased);
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
             }
@@ -221,21 +217,18 @@ public class ReconOperation extends EngineDependentOperation {
         transient private LoadingCache<ReconJob, Cell> cache = null;
         private final ReconConfig reconConfig;
         private final String columnName;
-        private final int columnIndex;
         private final long historyEntryId;
-        private final ColumnModel columnModel;
+        private final ColumnModel originalColumnModel;
 
         protected ReconChangeDataProducer(
                 String columnName,
-                int columnIndex,
                 ReconConfig reconConfig,
                 long historyEntryId,
-                ColumnModel columnModel) {
+                ColumnModel originalColumnModel) {
             this.reconConfig = reconConfig;
             this.columnName = columnName;
-            this.columnIndex = columnIndex;
             this.historyEntryId = historyEntryId;
-            this.columnModel = columnModel;
+            this.originalColumnModel = originalColumnModel;
         }
 
         private void initCache() {
@@ -273,13 +266,14 @@ public class ReconOperation extends EngineDependentOperation {
             if (cache == null) {
                 initCache();
             }
+            int columnIndex = columnModel.getColumnIndexByName(columnName);
             List<ReconJob> reconJobs = new ArrayList<>(rows.size());
             for (IndexedRow indexedRow : rows) {
                 Row row = indexedRow.getRow();
                 Cell cell = row.getCell(columnIndex);
                 if (cell != null) {
                     reconJobs.add(reconConfig.createJob(
-                            this.columnModel,
+                            columnModel,
                             indexedRow.getIndex(),
                             row,
                             columnName,
@@ -301,6 +295,20 @@ public class ReconOperation extends EngineDependentOperation {
         @Override
         public int getBatchSize() {
             return reconConfig.getBatchSize();
+        }
+
+        @Override
+        public List<ColumnId> getColumnDependencies() {
+            List<ColumnId> dependencies = new ArrayList<>();
+            dependencies.add(originalColumnModel.getColumnByName(columnName).getColumnId());
+            List<String> depNames = reconConfig.getColumnDependencies();
+            if (depNames != null) {
+                dependencies.addAll(depNames.stream()
+                        .map(depName -> originalColumnModel.getColumnByName(depName).getColumnId())
+                        .collect(Collectors.toList())
+                );
+            }
+            return dependencies;
         }
 
     }

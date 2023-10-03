@@ -37,6 +37,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.io.StringWriter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang.StringUtils;
 import org.openrefine.expr.ExpressionUtils;
@@ -636,6 +637,13 @@ public class StandardReconConfig extends ReconConfig {
     @Override
     public String getMode() {
         return "standard-service";
+    }
+
+    @Override
+    public List<String> getColumnDependencies() {
+        return columnDetails.stream()
+                .map(columnDetail -> columnDetail.columnName)
+                .collect(Collectors.toList());
     }
 
     public boolean equals(Object other) {

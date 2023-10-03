@@ -36,9 +36,12 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.Collections;
 
 import org.openrefine.RefineTest;
 import org.openrefine.browsing.EngineConfig;
+import org.openrefine.expr.MetaParser;
+import org.openrefine.grel.Parser;
 import org.openrefine.model.Cell;
 import org.openrefine.model.Project;
 import org.openrefine.model.Row;
@@ -71,6 +74,7 @@ public class StandardReconConfigTests extends RefineTest {
     public void registerOperation() {
         OperationRegistry.registerOperation("core", "recon", ReconOperation.class);
         ReconConfig.registerReconConfig("core", "standard-service", StandardReconConfig.class);
+        MetaParser.registerLanguageParser("grel", "GREL", Parser.grelParser, "value");
     }
 
     @Override
@@ -529,5 +533,11 @@ public class StandardReconConfigTests extends RefineTest {
         Recon recon = stub.createNewRecon(2384738L);
         stub.computeFeatures(recon, null);
         assertNotNull(recon.features);
+    }
+
+    @Test
+    public void testDependencies() {
+        StandardReconConfigStub stub = new StandardReconConfigStub();
+        assertEquals(stub.getColumnDependencies(), Collections.emptyList());
     }
 }
