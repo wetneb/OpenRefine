@@ -298,8 +298,7 @@
         <version>5.8.1</version>
         <configuration>
           <activeRecipes>
-            <recipe>org.openrewrite.java.RemoveUnusedImports</recipe>
-            <recipe>org.openrewrite.java.OrderImports</recipe>
+            <recipe>org.openrewrite.staticanalysis.CodeCleanup</recipe>
           </activeRecipes>
           <failOnDryRunResults>true</failOnDryRunResults>
           <exclusions> <!-- workaround for https://github.com/openrewrite/rewrite-maven-plugin/issues/643 -->
@@ -310,6 +309,21 @@
           </exclusions>
           <configLocation>${maven.multiModuleProjectDirectory}/conf/openrewrite.yml</configLocation>
           <activeStyles>org.openrefine.RewriteStyle</activeStyles>
+        </configuration>
+        <dependencies>
+          <dependency>
+            <groupId>org.openrewrite.recipe</groupId>
+            <artifactId>rewrite-static-analysis</artifactId>
+            <version>1.0.8</version>
+          </dependency>
+        </dependencies>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <version>3.1.2</version>
+        <configuration>
+          <configLocation>${maven.multiModuleProjectDirectory}/conf/checkstyle.xml</configLocation>
         </configuration>
       </plugin>
       <plugin>
