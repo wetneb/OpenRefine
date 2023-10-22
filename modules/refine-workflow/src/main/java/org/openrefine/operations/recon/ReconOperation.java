@@ -306,8 +306,7 @@ public class ReconOperation extends EngineDependentOperation {
             if (depNames != null) {
                 dependencies.addAll(depNames.stream()
                         .map(depName -> originalColumnModel.getColumnByName(depName).getColumnId())
-                        .collect(Collectors.toList())
-                );
+                        .collect(Collectors.toList()));
             }
             return dependencies;
         }

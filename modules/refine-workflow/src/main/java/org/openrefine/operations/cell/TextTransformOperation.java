@@ -33,10 +33,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.openrefine.operations.cell;
 
+import java.util.Map;
+
 import org.openrefine.browsing.EngineConfig;
 import org.openrefine.model.Cell;
 import org.openrefine.model.ColumnModel;
-import org.openrefine.model.Grid;
 import org.openrefine.model.Row;
 import org.openrefine.model.changes.ChangeContext;
 import org.openrefine.model.changes.IndexedData;
@@ -44,6 +45,7 @@ import org.openrefine.model.changes.RowInRecordChangeDataJoiner;
 import org.openrefine.operations.ExpressionBasedOperation;
 import org.openrefine.operations.OnError;
 import org.openrefine.operations.exceptions.OperationException;
+import org.openrefine.overlay.OverlayModel;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -111,8 +113,8 @@ public class TextTransformOperation extends ExpressionBasedOperation {
     }
 
     @Override
-    protected RowInRecordChangeDataJoiner changeDataJoiner(Grid grid, ChangeContext context) throws OperationException {
-        ColumnModel columnModel = grid.getColumnModel();
+    protected RowInRecordChangeDataJoiner changeDataJoiner(ColumnModel columnModel, Map<String, OverlayModel> overlayModels,
+            ChangeContext context) throws OperationException {
         int baseColumnIndex = columnModel.getRequiredColumnIndex(_baseColumnName);
         return new Joiner(baseColumnIndex, columnModel.getKeyColumnIndex());
     }

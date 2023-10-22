@@ -576,7 +576,8 @@ public class History {
     /**
      * Is the grid already fully computed at this step in the history?
      *
-     * @param stepIndex the 0-based index of the step of the request
+     * @param stepIndex
+     *            the 0-based index of the step of the request
      */
     public boolean isFullyComputedAtStep(int stepIndex) {
         refreshGrid(stepIndex);

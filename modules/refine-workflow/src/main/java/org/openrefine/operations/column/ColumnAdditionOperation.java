@@ -33,12 +33,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.openrefine.operations.column;
 
+import java.util.Map;
+
 import org.openrefine.browsing.EngineConfig;
 import org.openrefine.expr.Evaluable;
 import org.openrefine.model.Cell;
 import org.openrefine.model.ColumnMetadata;
 import org.openrefine.model.ColumnModel;
-import org.openrefine.model.Grid;
 import org.openrefine.model.ModelException;
 import org.openrefine.model.Record;
 import org.openrefine.model.Row;
@@ -48,6 +49,7 @@ import org.openrefine.model.changes.IndexedData;
 import org.openrefine.model.changes.RowInRecordChangeDataJoiner;
 import org.openrefine.operations.exceptions.DuplicateColumnException;
 import org.openrefine.operations.exceptions.OperationException;
+import org.openrefine.overlay.OverlayModel;
 import org.openrefine.operations.ExpressionBasedOperation;
 import org.openrefine.operations.OnError;
 
@@ -113,8 +115,8 @@ public class ColumnAdditionOperation extends ExpressionBasedOperation {
     }
 
     @Override
-    protected ColumnModel getNewColumnModel(Grid state, ChangeContext context, Evaluable eval) throws OperationException {
-        ColumnModel columnModel = state.getColumnModel();
+    protected ColumnModel getNewColumnModel(ColumnModel columnModel, Map<String, OverlayModel> overlayModels, ChangeContext context,
+            Evaluable eval) throws OperationException {
         try {
             return columnModel.insertColumn(_columnInsertIndex, new ColumnMetadata(_newColumnName));
         } catch (ModelException e) {
@@ -123,8 +125,9 @@ public class ColumnAdditionOperation extends ExpressionBasedOperation {
     }
 
     @Override
-    protected RowInRecordChangeDataJoiner changeDataJoiner(Grid grid, ChangeContext context) throws OperationException {
-        return new Joiner(_columnInsertIndex, grid.getColumnModel().getKeyColumnIndex());
+    protected RowInRecordChangeDataJoiner changeDataJoiner(ColumnModel columnModel, Map<String, OverlayModel> overlayModels,
+            ChangeContext context) throws OperationException {
+        return new Joiner(_columnInsertIndex, columnModel.getKeyColumnIndex());
     }
 
     public static class Joiner extends RowInRecordChangeDataJoiner {

@@ -573,7 +573,7 @@ public class LocalGrid implements Grid {
                         .values()
                         .batchPartitions(rowMapper.getBatchSize())
                         .flatMap(rowBatch -> applyRowChangeDataMapper(rowMapper,
-                                        columnMapper.translateIndexedRowBatch(rowBatch), reducedColumnModel),
+                                columnMapper.translateIndexedRowBatch(rowBatch), reducedColumnModel),
                                 "apply row change data producer")
                         .mapToPair(indexedData -> indexedData, "bureaucratic map to pair")
                         .withPartitioner(grid.getPartitioner());
@@ -584,7 +584,7 @@ public class LocalGrid implements Grid {
                     .leftJoinOrdered(incompletePLL, Comparator.naturalOrder())
                     .batchPartitions(rowMapper.getBatchSize())
                     .flatMap(rowBatch -> applyRowChangeDataMapperWithIncompleteData(rowMapper, columnMapper, rowBatch,
-                                    reducedColumnModel),
+                            reducedColumnModel),
                             "apply row change data producer to missing rows")
                     .mapToPair(indexedData -> indexedData, "bureaucratic map to pair")
                     .withPartitioner(grid.getPartitioner());
@@ -657,7 +657,7 @@ public class LocalGrid implements Grid {
                 data = filteredRecords
                         .batchPartitions(recordMapper.getBatchSize())
                         .flatMap(batch -> applyRecordChangeDataMapper(recordMapper,
-                                        columnMapper, batch, reducedColumnModel),
+                                columnMapper, batch, reducedColumnModel),
                                 "apply record change data mapper")
                         .mapToPair(tuple -> tuple, "bureaucratic map to pair")
                         .withPartitioner(filteredRecords.getPartitioner());

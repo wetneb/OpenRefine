@@ -95,6 +95,7 @@ public class ColumnMetadataTests {
         Assert.assertEquals(SUT.markAsModified(5678L),
                 new ColumnMetadata("organization_name", "organization_name", 5678L, reconConfig));
     }
+
     @Test
     public void testEquals() {
         Assert.assertNotEquals(SUT, 4L);

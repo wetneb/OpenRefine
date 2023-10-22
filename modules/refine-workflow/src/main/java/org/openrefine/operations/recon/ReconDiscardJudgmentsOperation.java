@@ -33,9 +33,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.openrefine.operations.recon;
 
+import java.util.Map;
+
 import org.openrefine.browsing.EngineConfig;
 import org.openrefine.model.Cell;
-import org.openrefine.model.Grid;
+import org.openrefine.model.ColumnModel;
 import org.openrefine.model.Record;
 import org.openrefine.model.Row;
 import org.openrefine.model.RowInRecordMapper;
@@ -45,6 +47,7 @@ import org.openrefine.model.recon.Recon.Judgment;
 import org.openrefine.operations.OperationDescription;
 import org.openrefine.operations.RowMapOperation;
 import org.openrefine.operations.exceptions.OperationException;
+import org.openrefine.overlay.OverlayModel;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -84,8 +87,9 @@ public class ReconDiscardJudgmentsOperation extends RowMapOperation {
     }
 
     @Override
-    public RowInRecordMapper getPositiveRowMapper(Grid projectState, ChangeContext context) throws OperationException {
-        int columnIndex = projectState.getColumnModel().getRequiredColumnIndex(_columnName);
+    public RowInRecordMapper getPositiveRowMapper(ColumnModel columnModel, Map<String, OverlayModel> overlayModels, ChangeContext context)
+            throws OperationException {
+        int columnIndex = columnModel.getRequiredColumnIndex(_columnName);
         return rowMapper(columnIndex, _clearData, context.getHistoryEntryId());
     }
 

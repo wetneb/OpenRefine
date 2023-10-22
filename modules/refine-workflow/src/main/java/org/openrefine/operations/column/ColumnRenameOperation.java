@@ -33,9 +33,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.openrefine.operations.column;
 
+import java.util.Map;
+
 import org.openrefine.browsing.EngineConfig;
 import org.openrefine.model.ColumnModel;
-import org.openrefine.model.Grid;
 import org.openrefine.model.ModelException;
 import org.openrefine.model.RowInRecordMapper;
 import org.openrefine.model.changes.ChangeContext;
@@ -43,6 +44,7 @@ import org.openrefine.operations.OperationDescription;
 import org.openrefine.operations.RowMapOperation;
 import org.openrefine.operations.exceptions.DuplicateColumnException;
 import org.openrefine.operations.exceptions.OperationException;
+import org.openrefine.overlay.OverlayModel;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -78,8 +80,9 @@ public class ColumnRenameOperation extends RowMapOperation {
     }
 
     @Override
-    public ColumnModel getNewColumnModel(Grid state, ChangeContext context) throws OperationException {
-        ColumnModel model = state.getColumnModel();
+    public ColumnModel getNewColumnModel(ColumnModel columnModel, Map<String, OverlayModel> overlayModels, ChangeContext context)
+            throws OperationException {
+        ColumnModel model = columnModel;
         int index = model.getRequiredColumnIndex(_oldColumnName);
         try {
             return model.renameColumn(index, _newColumnName);
@@ -89,7 +92,8 @@ public class ColumnRenameOperation extends RowMapOperation {
     }
 
     @Override
-    protected RowInRecordMapper getPositiveRowMapper(Grid state, ChangeContext context) throws OperationException {
+    protected RowInRecordMapper getPositiveRowMapper(ColumnModel columnModel, Map<String, OverlayModel> overlayModels,
+            ChangeContext context) throws OperationException {
         return RowInRecordMapper.IDENTITY;
     }
 

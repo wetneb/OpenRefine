@@ -105,7 +105,8 @@ public class FileChangeDataStoreTests {
 
         Function<Optional<ChangeData<String>>, ChangeData<String>> completionProcess = (oldChangeData -> oldChangeData.get());
 
-        ChangeData<String> returnedChangeData = SUT.retrieveOrCompute(changeDataId, serializer, completionProcess, "description", history, 2);
+        ChangeData<String> returnedChangeData = SUT.retrieveOrCompute(changeDataId, serializer, completionProcess, "description", history,
+                2);
 
         Assert.assertTrue(SUT.needsRefreshing(198));
         Assert.assertTrue(newChangeDataLocation.exists());
