@@ -28,7 +28,6 @@
 package org.openrefine.operations.column;
 
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import java.io.Serializable;
 import java.util.Arrays;
@@ -51,6 +50,7 @@ import org.openrefine.operations.OperationRegistry;
 import org.openrefine.operations.exceptions.OperationException;
 import org.openrefine.util.ParsingUtilities;
 import org.openrefine.util.TestUtils;
+
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.BeforeSuite;
@@ -82,9 +82,17 @@ public class ColumnRenameOperationTests extends RefineTest {
     @Test
     public void serializeColumnRenameOperation() throws Exception {
         String json = "{\"op\":\"core/column-rename\","
-                + "\"description\":\"Rename column old name to new name\","
-                + "\"oldColumnName\":\"old name\","
-                + "\"newColumnName\":\"new name\"}";
+                + "  \"description\":\"Rename column old name to new name\","
+                + "  \"oldColumnName\":\"old name\","
+                + "  \"newColumnName\":\"new name\","
+                + "  \"columnDependencies\" : [ ],"
+                + "  \"columnInsertions\" : [ {"
+                + "    \"copiedFrom\" : \"old name\","
+                + "    \"insertAt\" : \"old name\","
+                + "    \"name\" : \"new name\","
+                + "    \"replace\" : true"
+                + "  } ]"
+                + "}";
         Operation op = ParsingUtilities.mapper.readValue(json, Operation.class);
         TestUtils.isSerializedTo(op, json, ParsingUtilities.defaultWriter);
     }
