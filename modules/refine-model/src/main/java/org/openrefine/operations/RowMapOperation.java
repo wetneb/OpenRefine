@@ -225,6 +225,8 @@ abstract public class RowMapOperation extends EngineDependentOperation {
                     negativeIndicesMap.remove(index);
                     newColumnNames.remove(index);
                     newColumnMetadata.remove(index);
+                } else {
+                    throw new MissingColumnException(deletedColumn);
                 }
             }
 

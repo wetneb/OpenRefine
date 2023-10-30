@@ -96,12 +96,6 @@ public class ColumnRenameOperation extends RowMapOperation {
                         .build());
     }
 
-    @Override
-    protected RowInRecordMapper getPositiveRowMapper(ColumnModel columnModel, Map<String, OverlayModel> overlayModels,
-            ChangeContext context) throws OperationException {
-        return RowInRecordMapper.IDENTITY;
-    }
-
     // engine config is never useful, so we remove it from the JSON serialization
     @Override
     @JsonIgnore
