@@ -87,7 +87,13 @@ public class ColumnRenameOperation extends RowMapOperation {
 
     @Override
     public List<ColumnInsertion> getColumnInsertions() {
-        return Collections.singletonList(new ColumnInsertion(_newColumnName, _oldColumnName, true, _oldColumnName));
+        return Collections.singletonList(
+                ColumnInsertion.builder()
+                        .withName(_newColumnName)
+                        .withInsertAt(_oldColumnName)
+                        .withReplace(true)
+                        .withCopiedFrom(_oldColumnName)
+                        .build());
     }
 
     @Override

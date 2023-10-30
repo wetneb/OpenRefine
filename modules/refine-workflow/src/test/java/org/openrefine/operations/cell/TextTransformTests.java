@@ -63,7 +63,13 @@ public class TextTransformTests extends RefineTest {
                 + "   \"expression\":\"grel:value.parseJson()[\\\"employment-summary\\\"].join('###')\","
                 + "   \"onError\":\"set-to-blank\","
                 + "   \"repeat\": false,"
-                + "   \"repeatCount\": 0"
+                + "   \"repeatCount\": 0,"
+                + "   \"columnDependencies\" : [ \"organization_json\" ],"
+                + "   \"columnInsertions\" : [ {"
+                + "     \"insertAt\" : \"organization_json\","
+                + "     \"name\" : \"organization_json\","
+                + "     \"replace\" : true"
+                + "   } ]"
                 + "}";
         TestUtils.isSerializedTo(ParsingUtilities.mapper.readValue(json, TextTransformOperation.class), json,
                 ParsingUtilities.defaultWriter);
@@ -92,6 +98,7 @@ public class TextTransformTests extends RefineTest {
                         { new EvalError("error"), null, "i" },
                         { "v1", "v1_b", "j" }
                 });
+        expected = markAsModified(expected, "bar", project.getHistory().getCurrentEntryId());
         assertGridEquals(applied, expected);
     }
 
@@ -127,6 +134,7 @@ public class TextTransformTests extends RefineTest {
                         { new EvalError("error"), null, "i" },
                         { "v1", "v1_b", "j" }
                 });
+        expected = markAsModified(expected, "bar", project.getHistory().getCurrentEntryId());
         assertGridEquals(applied, expected);
     }
 
@@ -143,7 +151,9 @@ public class TextTransformTests extends RefineTest {
         Assert.assertEquals(changeResult.getGridPreservation(), GridPreservation.PRESERVES_RECORDS);
         Grid applied = changeResult.getGrid();
 
-        assertGridEquals(applied, initialState);
+        // we do not detect (yet?) that the expression is the identity, hence the column is still marked as modified
+        Grid expected = markAsModified(initialState, "bar", project.getHistory().getCurrentEntryId());
+        assertGridEquals(applied, expected);
     }
 
     @Test
@@ -169,6 +179,7 @@ public class TextTransformTests extends RefineTest {
                         { new EvalError("error"), null, "i" },
                         { "v1", null, "j" }
                 });
+        expected = markAsModified(expected, "bar", project.getHistory().getCurrentEntryId());
         assertGridEquals(applied, expected);
     }
 
@@ -195,6 +206,7 @@ public class TextTransformTests extends RefineTest {
                         { new EvalError("error"), null, "i" },
                         { "v1", "v1_1", "j" }
                 });
+        expected = markAsModified(expected, "bar", project.getHistory().getCurrentEntryId());
         assertGridEquals(applied, expected);
     }
 
@@ -220,6 +232,7 @@ public class TextTransformTests extends RefineTest {
                         { new EvalError("error"), "a_4", "i" },
                         { "v1", "b_2", "j" }
                 });
+        expected = markAsModified(expected, "bar", project.getHistory().getCurrentEntryId());
         assertGridEquals(applied, expected);
     }
 }

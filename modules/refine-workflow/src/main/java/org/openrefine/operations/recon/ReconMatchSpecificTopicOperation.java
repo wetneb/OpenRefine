@@ -119,7 +119,7 @@ public class ReconMatchSpecificTopicOperation extends RowMapOperation {
 
     @Override
     public List<ColumnInsertion> getColumnInsertions() {
-        return Collections.singletonList(new ColumnInsertion(columnName, columnName, true, null));
+        return Collections.singletonList(ColumnInsertion.replacement(columnName));
     }
 
     @Override

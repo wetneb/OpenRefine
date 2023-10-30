@@ -28,6 +28,7 @@
 package org.openrefine.operations.column;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -45,7 +46,10 @@ import org.openrefine.expr.ParsingException;
 import org.openrefine.grel.Parser;
 import org.openrefine.history.GridPreservation;
 import org.openrefine.model.Cell;
+import org.openrefine.model.ColumnMetadata;
+import org.openrefine.model.ColumnModel;
 import org.openrefine.model.Grid;
+import org.openrefine.model.ModelException;
 import org.openrefine.model.Project;
 import org.openrefine.model.Runner;
 import org.openrefine.model.changes.ChangeContext;
@@ -66,9 +70,14 @@ import org.testng.annotations.Test;
 
 public class ColumnAdditionOperationTests extends RefineTest {
 
+    long historyEntryId = 4567L;
+    ChangeContext context;
+
     @BeforeSuite
     public void registerOperation() {
         OperationRegistry.registerOperation("core", "column-addition", ColumnAdditionOperation.class);
+        context = mock(ChangeContext.class);
+        when(context.getHistoryEntryId()).thenReturn(historyEntryId);
     }
 
     protected Project project;
@@ -93,7 +102,16 @@ public class ColumnAdditionOperationTests extends RefineTest {
     public void serializeColumnAdditionOperation() throws Exception {
         String json = "{"
                 + "   \"op\":\"core/column-addition\","
-                + "   \"description\":\"Create column organization_json at index 3 based on column employments using expression grel:value.parseJson()[\\\"employment-summary\\\"].join('###')\",\"engineConfig\":{\"mode\":\"row-based\",\"facets\":[]},\"newColumnName\":\"organization_json\",\"columnInsertIndex\":3,\"baseColumnName\":\"employments\","
+                + "   \"description\":\"Create column organization_json based on column employments using expression grel:value.parseJson()[\\\"employment-summary\\\"].join('###')\","
+                + "    \"engineConfig\":{\"mode\":\"row-based\",\"facets\":[]},"
+                + "    \"newColumnName\":\"organization_json\","
+                + "    \"columnDependencies\" : [ \"employments\" ],"
+                + "    \"columnInsertions\" : [ {"
+                + "      \"insertAt\" : \"employments\","
+                + "      \"name\" : \"organization_json\","
+                + "      \"replace\" : false"
+                + "    } ],"
+                + "    \"baseColumnName\":\"employments\","
                 + "    \"expression\":\"grel:value.parseJson()[\\\"employment-summary\\\"].join('###')\","
                 + "   \"onError\":\"set-to-blank\""
                 + "}";
@@ -108,10 +126,9 @@ public class ColumnAdditionOperationTests extends RefineTest {
                 "bar",
                 "grel:cells[\"foo\"].value+'_'+value",
                 OnError.SetToBlank,
-                "newcolumn",
-                2);
+                "newcolumn");
 
-        ChangeResult changeResult = operation.apply(initialState, mock(ChangeContext.class));
+        ChangeResult changeResult = operation.apply(initialState, context);
         Assert.assertEquals(changeResult.getGridPreservation(), GridPreservation.PRESERVES_RECORDS);
         Grid applied = changeResult.getGrid();
 
@@ -125,6 +142,7 @@ public class ColumnAdditionOperationTests extends RefineTest {
                         { new EvalError("error"), "a", null, "i" },
                         { "v1", "b", "v1_b", "j" }
                 });
+        expected = markAsModified(expected, "newcolumn");
         assertGridEquals(applied, expected);
     }
 
@@ -138,10 +156,9 @@ public class ColumnAdditionOperationTests extends RefineTest {
                 "bar",
                 "grel:cells[\"foo\"].value+'_'+value",
                 OnError.SetToBlank,
-                "newcolumn",
-                2);
+                "newcolumn");
 
-        ChangeResult changeResult = operation.apply(initialState, mock(ChangeContext.class));
+        ChangeResult changeResult = operation.apply(initialState, context);
         Assert.assertEquals(changeResult.getGridPreservation(), GridPreservation.PRESERVES_RECORDS);
         Grid applied = changeResult.getGrid();
 
@@ -155,6 +172,7 @@ public class ColumnAdditionOperationTests extends RefineTest {
                         { new EvalError("error"), "a", null, "i" },
                         { "v1", "b", null, "j" }
                 });
+        expected = markAsModified(expected, "newcolumn");
         assertGridEquals(applied, expected);
     }
 
@@ -172,10 +190,9 @@ public class ColumnAdditionOperationTests extends RefineTest {
                 "bar",
                 "grel:cells[\"foo\"].value+'_'+value",
                 OnError.SetToBlank,
-                "newcolumn",
-                2);
+                "newcolumn");
 
-        ChangeResult changeResult = operation.apply(pendingGrid, mock(ChangeContext.class));
+        ChangeResult changeResult = operation.apply(pendingGrid, context);
         Assert.assertEquals(changeResult.getGridPreservation(), GridPreservation.PRESERVES_RECORDS);
         Grid applied = changeResult.getGrid();
 
@@ -187,6 +204,7 @@ public class ColumnAdditionOperationTests extends RefineTest {
                         { "", "a", "_a", Cell.PENDING_NULL },
                         { "", "b", "_b", "h" }
                 });
+        expected = markAsModified(expected, "newcolumn");
         assertGridEquals(applied, expected);
     }
 
@@ -197,10 +215,9 @@ public class ColumnAdditionOperationTests extends RefineTest {
                 "bar",
                 "grel:length(row.record.cells['hello'])",
                 OnError.SetToBlank,
-                "newcolumn",
-                2);
+                "newcolumn");
 
-        ChangeResult changeResult = operation.apply(initialState, mock(ChangeContext.class));
+        ChangeResult changeResult = operation.apply(initialState, context);
         Assert.assertEquals(changeResult.getGridPreservation(), GridPreservation.PRESERVES_RECORDS);
         Grid applied = changeResult.getGrid();
 
@@ -214,6 +231,7 @@ public class ColumnAdditionOperationTests extends RefineTest {
                         { new EvalError("error"), "a", 4, "i" },
                         { "v1", "b", 1, "j" }
                 });
+        expected = markAsModified(expected, "newcolumn");
         assertGridEquals(applied, expected);
     }
 
@@ -227,10 +245,9 @@ public class ColumnAdditionOperationTests extends RefineTest {
                 "bar",
                 "grel:length(row.record.cells['hello'])",
                 OnError.SetToBlank,
-                "newcolumn",
-                2);
+                "newcolumn");
 
-        ChangeResult changeResult = operation.apply(initialState, mock(ChangeContext.class));
+        ChangeResult changeResult = operation.apply(initialState, context);
         Assert.assertEquals(changeResult.getGridPreservation(), GridPreservation.PRESERVES_RECORDS);
         Grid applied = changeResult.getGrid();
 
@@ -244,6 +261,7 @@ public class ColumnAdditionOperationTests extends RefineTest {
                         { new EvalError("error"), "a", 4, "i" },
                         { "v1", "b", 1, "j" }
                 });
+        expected = markAsModified(expected, "newcolumn");
         assertGridEquals(applied, expected);
     }
 
@@ -254,8 +272,7 @@ public class ColumnAdditionOperationTests extends RefineTest {
                 "bar",
                 "grel:facetCount(value, 'value', 'bar')",
                 OnError.SetToBlank,
-                "newcolumn",
-                2);
+                "newcolumn");
 
         project.getHistory().addEntry(operation);
 
@@ -269,6 +286,7 @@ public class ColumnAdditionOperationTests extends RefineTest {
                         { new EvalError("error"), "a", 4L, "i" },
                         { "v1", "b", 2L, "j" }
                 });
+        expected = markAsModified(expected, "newcolumn", project.getHistory().getCurrentEntryId());
         assertGridEquals(project.getCurrentGrid(), expected);
     }
 
@@ -279,8 +297,7 @@ public class ColumnAdditionOperationTests extends RefineTest {
                 "bar",
                 "grel:facetCount(value, 'value', 'bar')",
                 OnError.SetToBlank,
-                "newcolumn",
-                2);
+                "newcolumn");
 
         project.getHistory().addEntry(operation);
 
@@ -294,6 +311,7 @@ public class ColumnAdditionOperationTests extends RefineTest {
                         { new EvalError("error"), "a", 4L, "i" },
                         { "v1", "b", 2L, "j" }
                 });
+        expected = markAsModified(expected, "newcolumn", project.getHistory().getCurrentEntryId());
         assertGridEquals(project.getCurrentGrid(), expected);
     }
 
@@ -307,8 +325,7 @@ public class ColumnAdditionOperationTests extends RefineTest {
                 "bar",
                 "grel:facetCount(value, 'value', 'bar')",
                 OnError.SetToBlank,
-                "newcolumn",
-                2);
+                "newcolumn");
 
         project.getHistory().addEntry(operation);
 
@@ -322,6 +339,7 @@ public class ColumnAdditionOperationTests extends RefineTest {
                         { new EvalError("error"), "a", 4L, "i" },
                         { "v1", "b", 2L, "j" }
                 });
+        expected = markAsModified(expected, "newcolumn", project.getHistory().getCurrentEntryId());
         assertGridEquals(project.getCurrentGrid(), expected);
     }
 
@@ -332,13 +350,11 @@ public class ColumnAdditionOperationTests extends RefineTest {
                 "bar",
                 "grel:facetCount(value, 'value', 'bar')",
                 OnError.SetToBlank,
-                "newcolumn",
-                2);
+                "newcolumn");
 
         Runner runner = initialState.getRunner();
         ChangeData<Cell> incompleteChangeData = runner.emptyChangeData();
         ChangeDataSerializer<Cell> serializer = mock(MySerializer.class);
-        long historyEntryId = 138908L;
         project.getHistory().getChangeDataStore().store(
                 incompleteChangeData, new ChangeDataId(historyEntryId, "eval"), serializer, Optional.empty());
         project.getHistory().addEntry(historyEntryId, operation);
@@ -353,10 +369,16 @@ public class ColumnAdditionOperationTests extends RefineTest {
                         { new EvalError("error"), "a", Cell.PENDING_NULL, "i" },
                         { "v1", "b", Cell.PENDING_NULL, "j" }
                 });
+        expected = markAsModified(expected, "newcolumn");
         assertGridEquals(project.getCurrentGrid(), expected);
+    }
+
+    protected Grid markAsModified(Grid grid, String columnName) {
+        return markAsModified(grid, columnName, historyEntryId);
     }
 
     private abstract class MySerializer implements ChangeDataSerializer<Cell> {
 
     }
+
 }
