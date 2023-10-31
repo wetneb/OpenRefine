@@ -79,6 +79,12 @@ public class ReconMatchBestCandidatesOperationTests extends RefineTest {
                 + "\"description\":\"Match each cell to its best recon candidate in column organization_name\","
                 + "\"engineConfig\":{\"mode\":\"row-based\",\"facets\":["
                 + "]},"
+                + "\"columnDependencies\" : [ \"organization_name\" ],"
+                + "\"columnInsertions\" : [ {"
+                + "  \"insertAt\" : \"organization_name\","
+                + "  \"name\" : \"organization_name\","
+                + "  \"replace\" : true"
+                + "} ],"
                 + "\"columnName\":\"organization_name\""
                 + "}";
         TestUtils.isSerializedTo(ParsingUtilities.mapper.readValue(json, ReconMatchBestCandidatesOperation.class), json,
@@ -116,6 +122,7 @@ public class ReconMatchBestCandidatesOperationTests extends RefineTest {
                                 .withJudgmentAction("mass")
                                 .withJudgment(Recon.Judgment.Matched)) }
                 });
+        expected = markAsModified(expected, "bar", context.getHistoryEntryId());
 
         assertGridEquals(applied, expected);
     }

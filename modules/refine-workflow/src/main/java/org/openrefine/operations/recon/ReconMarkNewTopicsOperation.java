@@ -34,11 +34,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package org.openrefine.operations.recon;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 import org.openrefine.browsing.EngineConfig;
 import org.openrefine.expr.ExpressionUtils;
 import org.openrefine.model.Cell;
+import org.openrefine.model.ColumnInsertion;
 import org.openrefine.model.ColumnMetadata;
 import org.openrefine.model.ColumnModel;
 import org.openrefine.model.Record;
@@ -121,29 +123,37 @@ public class ReconMarkNewTopicsOperation extends RowMapOperation {
     }
 
     @Override
-    protected ColumnModel getNewColumnModel(ColumnModel columnModel, Map<String, OverlayModel> overlayModels, ChangeContext context)
-            throws OperationException {
-        int columnIndex = columnModel.getRequiredColumnIndex(_columnName);
-        return columnModel.withReconConfig(columnIndex, getNewReconConfig(columnModel.getColumnByIndex(columnIndex)));
+    public List<String> getColumnDependencies() {
+        return Collections.singletonList(_columnName);
     }
 
-    protected ReconConfig getNewReconConfig(ColumnMetadata column) {
-        return column.getReconConfig() != null ? column.getReconConfig()
-                : new StandardReconConfig(
-                        _service,
-                        _identifierSpace,
-                        _schemaSpace,
-                        null,
-                        false,
-                        Collections.emptyList(),
-                        0);
+    @Override
+    public List<ColumnInsertion> getColumnInsertions() {
+        return Collections.singletonList(ColumnInsertion.builder()
+                .withName(_columnName)
+                .withInsertAt(_columnName)
+                .withReplace(true)
+                .withReconConfig(getNewReconConfig())
+                .build());
+    }
+
+    protected ReconConfig getNewReconConfig() {
+        return new StandardReconConfig(
+                _service,
+                _identifierSpace,
+                _schemaSpace,
+                null,
+                false,
+                Collections.emptyList(),
+                0);
     }
 
     @Override
     public RowInRecordMapper getPositiveRowMapper(ColumnModel columnModel, Map<String, OverlayModel> overlayModels, ChangeContext context)
             throws OperationException {
         int columnIndex = columnModel.getRequiredColumnIndex(_columnName);
-        ReconConfig reconConfig = getNewReconConfig(columnModel.getColumnByName(_columnName));
+        ColumnMetadata column = columnModel.getColumnByName(_columnName);
+        ReconConfig reconConfig = column.getReconConfig() != null ? column.getReconConfig() : getNewReconConfig();
         long historyEntryId = context.getHistoryEntryId();
         long seedId = new Recon(0L, "", "").getId();
 

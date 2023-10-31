@@ -33,10 +33,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.openrefine.operations.recon;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 import org.openrefine.browsing.EngineConfig;
 import org.openrefine.model.Cell;
+import org.openrefine.model.ColumnInsertion;
 import org.openrefine.model.ColumnModel;
 import org.openrefine.model.Record;
 import org.openrefine.model.Row;
@@ -73,6 +76,16 @@ public class ReconMatchBestCandidatesOperation extends RowMapOperation {
     @Override
     public String getDescription() {
         return OperationDescription.recon_match_best_candidates_brief(_columnName);
+    }
+
+    @Override
+    public List<String> getColumnDependencies() {
+        return Collections.singletonList(_columnName);
+    }
+
+    @Override
+    public List<ColumnInsertion> getColumnInsertions() {
+        return Collections.singletonList(ColumnInsertion.replacement(_columnName));
     }
 
     @Override

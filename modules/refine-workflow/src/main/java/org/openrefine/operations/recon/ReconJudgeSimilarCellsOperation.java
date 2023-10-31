@@ -33,11 +33,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package org.openrefine.operations.recon;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 import org.openrefine.browsing.EngineConfig;
 import org.openrefine.expr.ExpressionUtils;
 import org.openrefine.model.Cell;
+import org.openrefine.model.ColumnInsertion;
 import org.openrefine.model.ColumnModel;
 import org.openrefine.model.Record;
 import org.openrefine.model.Row;
@@ -119,6 +122,16 @@ public class ReconJudgeSimilarCellsOperation extends RowMapOperation {
             return OperationDescription.recon_judge_similar_cells_matched_brief(_match.name, _match.id, _similarValue, _columnName);
         }
         throw new InternalError("Can't get here");
+    }
+
+    @Override
+    public List<String> getColumnDependencies() {
+        return Collections.singletonList(_columnName);
+    }
+
+    @Override
+    public List<ColumnInsertion> getColumnInsertions() {
+        return Collections.singletonList(ColumnInsertion.replacement(_columnName));
     }
 
     @Override

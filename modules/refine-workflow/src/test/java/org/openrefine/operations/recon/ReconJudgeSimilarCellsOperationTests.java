@@ -96,6 +96,12 @@ public class ReconJudgeSimilarCellsOperationTests extends RefineTest {
                 + "\"description\":\"Mark to create one single new item for all cells containing \\\"foo\\\" in column A\","
                 + "\"engineConfig\":{\"mode\":\"row-based\",\"facets\":[]},"
                 + "\"columnName\":\"A\","
+                + "\"columnDependencies\" : [ \"A\" ],\n"
+                + "\"columnInsertions\" : [ {\n"
+                + "   \"insertAt\" : \"A\",\n"
+                + "   \"name\" : \"A\",\n"
+                + "   \"replace\" : true\n"
+                + "} ],"
                 + "\"similarValue\":\"foo\","
                 + "\"judgment\":\"new\","
                 + "\"shareNewTopics\":true}";
@@ -109,6 +115,12 @@ public class ReconJudgeSimilarCellsOperationTests extends RefineTest {
                 + "\"description\":\"Match item Douglas Adams (Q42) for cells containing \\\"foo\\\" in column A\","
                 + "\"engineConfig\":{\"mode\":\"row-based\",\"facets\":[]},"
                 + "\"columnName\":\"A\","
+                + "\"columnDependencies\" : [ \"A\" ],\n"
+                + "\"columnInsertions\" : [ {\n"
+                + "   \"insertAt\" : \"A\",\n"
+                + "   \"name\" : \"A\",\n"
+                + "   \"replace\" : true\n"
+                + "} ],"
                 + "\"similarValue\":\"foo\","
                 + "\"judgment\":\"matched\","
                 + "\"match\":{\"id\":\"Q42\",\"name\":\"Douglas Adams\",\"types\":[\"Q5\"],\"score\":85},"
@@ -148,6 +160,7 @@ public class ReconJudgeSimilarCellsOperationTests extends RefineTest {
                                 .withJudgmentAction("similar")
                                 .withJudgment(Judgment.New)) }
                 });
+        expected = markAsModified(expected, "bar", context.getHistoryEntryId());
         ColumnModel columnModel = expected.getColumnModel().withReconConfig(1, reconConfig);
         expected = expected.withColumnModel(columnModel);
 
@@ -183,6 +196,7 @@ public class ReconJudgeSimilarCellsOperationTests extends RefineTest {
                         { "c", new Cell("d", testRecon("b", "j", Recon.Judgment.None)) },
                         { "d", "b" }
                 });
+        expected = markAsModified(expected, "bar", context.getHistoryEntryId());
         ColumnModel columnModel = expected.getColumnModel().withReconConfig(1, reconConfig);
         expected = expected.withColumnModel(columnModel);
 
