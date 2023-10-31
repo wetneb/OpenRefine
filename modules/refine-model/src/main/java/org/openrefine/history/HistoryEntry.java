@@ -37,6 +37,7 @@ import java.io.IOException;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Objects;
 
 import org.apache.commons.lang.Validate;
 import org.openrefine.browsing.facets.FacetConfig;
@@ -120,5 +121,29 @@ public class HistoryEntry {
     @JsonProperty("gridPreservation")
     public GridPreservation getGridPreservation() {
         return gridPreservation;
+    }
+
+    @Override
+    public String toString() {
+        return "HistoryEntry [id=" + id + ", time=" + time + ", operation=" + operation + ", gridPreservation="
+                + gridPreservation + "]";
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(gridPreservation, id, operation, time);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        HistoryEntry other = (HistoryEntry) obj;
+        return gridPreservation == other.gridPreservation && id == other.id
+                && Objects.equals(operation, other.operation) && Objects.equals(time, other.time);
     }
 }
