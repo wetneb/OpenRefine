@@ -19,6 +19,7 @@ import org.wikidata.wdtk.datamodel.interfaces.SnakGroup;
 import org.wikidata.wdtk.datamodel.interfaces.Statement;
 import org.wikidata.wdtk.datamodel.interfaces.StatementRank;
 
+import com.google.refine.util.ParsingUtilities;
 import com.google.refine.util.TestUtils;
 
 public class QualifiersStatementMergerTests {
@@ -121,14 +122,14 @@ public class QualifiersStatementMergerTests {
                 + "       \"valueMatcher\" : {\n"
                 + "         \"type\" : \"strict\"\n"
                 + "       }\n"
-                + "     }");
+                + "     }", ParsingUtilities.defaultWriter);
         TestUtils.isSerializedTo(SUTwithPids, "{\n"
                 + "       \"pids\" : [ \"P1234\" ],\n"
                 + "       \"type\" : \"qualifiers\",\n"
                 + "       \"valueMatcher\" : {\n"
                 + "         \"type\" : \"strict\"\n"
                 + "       }\n"
-                + "     }");
+                + "     }", ParsingUtilities.defaultWriter);
     }
 
     public Statement statement(Claim claim) {

@@ -24,16 +24,12 @@
 
 package org.openrefine.wikibase.operations;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
 import java.io.IOException;
 import java.io.LineNumberReader;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.Properties;
 
-import edu.mit.simile.butterfly.ButterflyModule;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -50,19 +46,16 @@ import org.openrefine.wikibase.testing.WikidataRefineTest;
 public abstract class OperationTest extends WikidataRefineTest {
 
     protected Project project = null;
-    protected ButterflyModule module = null;
     protected Pool pool = null;
 
     @BeforeMethod
     public void setUp() {
         project = createCSVProject("a,b\nc,d");
-        module = mock(ButterflyModule.class);
-        when(module.getName()).thenReturn("wikidata");
         pool = new Pool();
     }
 
     protected void registerOperation(String name, Class klass) {
-        OperationRegistry.registerOperation(module, name, klass);
+        OperationRegistry.registerOperation("wikidata", name, klass);
     }
 
     public abstract AbstractOperation reconstruct()

@@ -23,8 +23,8 @@ LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
 A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
 OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
 SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,           
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY           
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
 THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
@@ -63,6 +63,7 @@ import com.google.refine.expr.MetaParser;
 import com.google.refine.expr.ParsingException;
 import com.google.refine.grel.ControlFunctionRegistry;
 import com.google.refine.grel.Function;
+import com.google.refine.grel.Parser;
 import com.google.refine.importers.SeparatorBasedImporter;
 import com.google.refine.importing.ImportingJob;
 import com.google.refine.importing.ImportingManager;
@@ -108,6 +109,8 @@ public class RefineTest {
             workspaceDir = null;
             e.printStackTrace();
         }
+
+        MetaParser.registerLanguageParser("grel", "General Refine Expression Language (GREL)", Parser.grelParser, "value");
         // This just keeps track of any failed test, for cleanupWorkspace
         testFailed = false;
     }
@@ -139,7 +142,7 @@ public class RefineTest {
      * Helper to create a project from a CSV encoded as a file. Not much control is given on the import options, because
      * this method is intended to be a quick way to create a project for a test. For more control over the import, just
      * call the importer directly.
-     * 
+     *
      * @param input
      *            contents of the CSV file to create the project from
      * @return
@@ -152,9 +155,9 @@ public class RefineTest {
      * Helper to create a project from a CSV encoded as a file. Not much control is given on the import options, because
      * this method is intended to be a quick way to create a project for a test. For more control over the import, just
      * call the importer directly.
-     * 
+     *
      * The projects created via this method and their importing jobs will be disposed of at the end of each test.
-     * 
+     *
      * @param projectName
      *            the name of the project to create
      * @param input
@@ -187,7 +190,7 @@ public class RefineTest {
 
     /**
      * Initializes the importing options for the CSV importer.
-     * 
+     *
      * @param options
      * @param sep
      * @param limit
@@ -227,7 +230,7 @@ public class RefineTest {
 
     /**
      * Check that a project was created with the appropriate number of columns and rows.
-     * 
+     *
      * @param project
      *            project to check
      * @param numCols
@@ -246,7 +249,7 @@ public class RefineTest {
 
     /**
      * Check that a project was created with the appropriate number of columns, rows, and records.
-     * 
+     *
      * @param project
      *            project to check
      * @param numCols

@@ -1,18 +1,18 @@
 /*******************************************************************************
  * MIT License
- * 
+ *
  * Copyright (c) 2018 Antonin Delpeuch
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -46,7 +46,7 @@ import org.wikidata.wdtk.wikibaseapi.ApiConnection;
 import org.wikidata.wdtk.wikibaseapi.WikibaseDataEditor;
 import org.wikidata.wdtk.wikibaseapi.WikibaseDataFetcher;
 
-import com.google.refine.RefineServlet;
+import com.google.refine.RefineModel;
 import com.google.refine.browsing.Engine;
 import com.google.refine.browsing.EngineConfig;
 import com.google.refine.history.Change;
@@ -198,7 +198,7 @@ public class PerformWikibaseEditsOperation extends EngineDependentOperation {
             String tag = tagTemplate;
             if (tag.contains("${version}")) {
                 Pattern pattern = Pattern.compile("^(\\d+\\.\\d+).*$");
-                Matcher matcher = pattern.matcher(RefineServlet.VERSION);
+                Matcher matcher = pattern.matcher(RefineModel.ASSIGNED_VERSION);
                 if (matcher.matches()) {
                     tag = tag.replace("${version}", matcher.group(1));
                 }

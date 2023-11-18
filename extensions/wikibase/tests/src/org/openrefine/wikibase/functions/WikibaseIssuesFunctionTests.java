@@ -13,7 +13,6 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import com.google.refine.ProjectManager;
-import com.google.refine.RefineTest;
 import com.google.refine.expr.EvalError;
 import com.google.refine.expr.ExpressionUtils;
 import com.google.refine.grel.ControlFunctionRegistry;
@@ -25,8 +24,9 @@ import org.openrefine.wikibase.manifests.Manifest;
 import org.openrefine.wikibase.manifests.ManifestException;
 import org.openrefine.wikibase.manifests.ManifestParser;
 import org.openrefine.wikibase.schema.WikibaseSchema;
+import org.openrefine.wikibase.testing.WikidataRefineTest;
 
-public class WikibaseIssuesFunctionTests extends RefineTest {
+public class WikibaseIssuesFunctionTests extends WikidataRefineTest {
 
     String schemaJson = "{\"entityEdits\":[{\"type\":\"wbitemeditexpr\",\"subject\":"
             + "{\"type\":\"wbentityidvalueconstant\",\"id\":\"Q4115189\",\"label\":\"Fancy Sandbox\"},"

@@ -28,6 +28,7 @@ import org.wikidata.wdtk.datamodel.interfaces.StatementRank;
 import org.wikidata.wdtk.wikibaseapi.WikibaseDataEditor;
 import org.wikidata.wdtk.wikibaseapi.apierrors.MediaWikiApiErrorException;
 
+import com.google.refine.util.ParsingUtilities;
 import com.google.refine.util.TestUtils;
 
 import org.openrefine.wikibase.editing.MediaFileUtils;
@@ -87,7 +88,7 @@ public class MediaInfoEditTest {
         MediaInfoEdit update = new MediaInfoEditBuilder(existingSubject).addStatement(statementUpdate1)
                 .addStatement(statementUpdate2)
                 .build();
-        TestUtils.isSerializedTo(update, TestingData.jsonFromFile("updates/mediainfo_update.json"));
+        TestUtils.isSerializedTo(update, TestingData.jsonFromFile("updates/mediainfo_update.json"), ParsingUtilities.defaultWriter);
     }
 
     @Test
@@ -150,7 +151,7 @@ public class MediaInfoEditTest {
                 .thenReturn(mid);
         when(mediaFileUtils.uploadRemoteFile(new URL(url), "Foo.png", "{{wikitext}}\n[[Category:Uploaded with OpenRefine]]", "summary",
                 Collections.emptyList()))
-                        .thenReturn(response);
+                .thenReturn(response);
 
         MediaInfoIdValue returnedMid = edit.uploadNewFile(editor, mediaFileUtils, "summary", Collections.emptyList());
         assertEquals(returnedMid, mid);

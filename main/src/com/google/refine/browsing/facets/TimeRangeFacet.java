@@ -100,7 +100,7 @@ public class TimeRangeFacet implements Facet {
 
         @Override
         public String getJsonType() {
-            return "timerange";
+            return "core/timerange";
         }
     }
 

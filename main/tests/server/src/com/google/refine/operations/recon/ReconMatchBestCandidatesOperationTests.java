@@ -31,6 +31,9 @@ import org.testng.annotations.BeforeSuite;
 import org.testng.annotations.Test;
 
 import com.google.refine.RefineTest;
+import com.google.refine.browsing.facets.FacetConfigResolver;
+import com.google.refine.browsing.facets.RangeFacet.RangeFacetConfig;
+import com.google.refine.browsing.facets.TimeRangeFacet.TimeRangeFacetConfig;
 import com.google.refine.operations.OperationRegistry;
 import com.google.refine.util.ParsingUtilities;
 import com.google.refine.util.TestUtils;
@@ -39,7 +42,10 @@ public class ReconMatchBestCandidatesOperationTests extends RefineTest {
 
     @BeforeSuite
     public void registerOperation() {
-        OperationRegistry.registerOperation(getCoreModule(), "recon-match-best-candidates", ReconMatchBestCandidatesOperation.class);
+        FacetConfigResolver.registerFacetConfig("core", "range", RangeFacetConfig.class);
+        FacetConfigResolver.registerFacetConfig("core", "timerange", TimeRangeFacetConfig.class);
+        OperationRegistry.registerOperation(getCoreModule().getName(), "recon-match-best-candidates",
+                ReconMatchBestCandidatesOperation.class);
     }
 
     @Test
@@ -48,11 +54,12 @@ public class ReconMatchBestCandidatesOperationTests extends RefineTest {
                 + "\"op\":\"core/recon-match-best-candidates\","
                 + "\"description\":\"Match each cell to its best recon candidate in column organization_name\","
                 + "\"engineConfig\":{\"mode\":\"row-based\",\"facets\":["
-                + "       {\"selectNumeric\":true,\"expression\":\"cell.recon.best.score\",\"selectBlank\":false,\"selectNonNumeric\":true,\"selectError\":true,\"name\":\"organization_name: best candidate's score\",\"from\":13,\"to\":101,\"type\":\"range\",\"columnName\":\"organization_name\"},"
-                + "       {\"selectNonTime\":true,\"expression\":\"grel:toDate(value)\",\"selectBlank\":true,\"selectError\":true,\"selectTime\":true,\"name\":\"start_year\",\"from\":410242968000,\"to\":1262309184000,\"type\":\"timerange\",\"columnName\":\"start_year\"}"
+                + "       {\"selectNumeric\":true,\"expression\":\"cell.recon.best.score\",\"selectBlank\":false,\"selectNonNumeric\":true,\"selectError\":true,\"name\":\"organization_name: best candidate's score\",\"from\":13,\"to\":101,\"type\":\"core/range\",\"columnName\":\"organization_name\"},"
+                + "       {\"selectNonTime\":true,\"expression\":\"grel:toDate(value)\",\"selectBlank\":true,\"selectError\":true,\"selectTime\":true,\"name\":\"start_year\",\"from\":410242968000,\"to\":1262309184000,\"type\":\"core/timerange\",\"columnName\":\"start_year\"}"
                 + "]},"
                 + "\"columnName\":\"organization_name\""
                 + "}";
-        TestUtils.isSerializedTo(ParsingUtilities.mapper.readValue(json, ReconMatchBestCandidatesOperation.class), json);
+        TestUtils.isSerializedTo(ParsingUtilities.mapper.readValue(json, ReconMatchBestCandidatesOperation.class), json,
+                ParsingUtilities.defaultWriter);
     }
 }

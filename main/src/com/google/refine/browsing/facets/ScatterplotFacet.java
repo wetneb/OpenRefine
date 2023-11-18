@@ -162,7 +162,7 @@ public class ScatterplotFacet implements Facet {
 
         @Override
         public String getJsonType() {
-            return "scatterplot";
+            return "core/scatterplot";
         }
     }
 

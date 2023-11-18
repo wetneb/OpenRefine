@@ -20,6 +20,7 @@ import com.google.refine.model.Cell;
 import com.google.refine.model.Column;
 import com.google.refine.model.ColumnModel;
 import com.google.refine.model.ModelException;
+import com.google.refine.util.ParsingUtilities;
 import com.google.refine.util.TestUtils;
 
 import org.openrefine.wikibase.qa.QAWarning;
@@ -136,7 +137,7 @@ public class WbMediaInfoEditExprTest extends WbExpressionTest<MediaInfoEdit> {
                 + "\"wikitext\":null,"
                 + "\"overrideWikitext\":false,"
                 + "\"nameDescs\":[],\"statementGroups\":[]}";
-        TestUtils.isSerializedTo(filePathExpr, expressionJson);
+        TestUtils.isSerializedTo(filePathExpr, expressionJson, ParsingUtilities.defaultWriter);
     }
 
     @Test
@@ -186,7 +187,7 @@ public class WbMediaInfoEditExprTest extends WbExpressionTest<MediaInfoEdit> {
                 + "\"wikitext\":null,"
                 + "\"overrideWikitext\":false,"
                 + "\"nameDescs\":[],\"statementGroups\":[]}";
-        TestUtils.isSerializedTo(filePathExpr, expressionJson);
+        TestUtils.isSerializedTo(filePathExpr, expressionJson, ParsingUtilities.defaultWriter);
     }
 
     @Test

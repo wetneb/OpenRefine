@@ -23,8 +23,8 @@ LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
 A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
 OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
 SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,           
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY           
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
 THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
@@ -38,9 +38,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URLConnection;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -63,8 +61,6 @@ import com.google.refine.importing.ImportingManager;
 import com.google.refine.io.FileProjectManager;
 
 public class RefineServlet extends Butterfly {
-
-    static private String ASSIGNED_VERSION = "3.8-SNAPSHOT";
 
     static public String VERSION = "";
     static public String REVISION = "";
@@ -106,7 +102,7 @@ public class RefineServlet extends Butterfly {
         REVISION = getInitParameter("refine.revision");
 
         if (VERSION.equals("$VERSION")) {
-            VERSION = ASSIGNED_VERSION;
+            VERSION = RefineModel.ASSIGNED_VERSION;
         }
         if (REVISION.equals("$REVISION")) {
             ClassLoader classLoader = getClass().getClassLoader();
@@ -313,78 +309,23 @@ public class RefineServlet extends Butterfly {
      *            command verb for command
      * @param commandObject
      *            object implementing the command
-     * 
+     *
      * @return true if command was loaded and registered successfully
      */
     static public boolean registerCommand(ButterflyModule module, String commandName, Command commandObject) {
         return s_singleton.registerOneCommand(module, commandName, commandObject);
     }
 
-    static private class ClassMapping {
-
-        final String from;
-        final String to;
-
-        ClassMapping(String from, String to) {
-            this.from = from;
-            this.to = to;
-        }
-    }
-
-    static final private List<ClassMapping> classMappings = new ArrayList<ClassMapping>();
-
-    /**
-     * Add a mapping that determines how old class names can be updated to newer class names. Such updates are desirable
-     * as the Java code changes from version to version. If the "from" argument ends with *, then it's considered a
-     * prefix; otherwise, it's an exact string match.
-     * 
-     * @param from
-     * @param to
-     */
-    static public void registerClassMapping(String from, String to) {
-        classMappings.add(new ClassMapping(from, to.endsWith("*") ? to.substring(0, to.length() - 1) : to));
-    }
-
-    static {
-        registerClassMapping("com.metaweb.*", "com.google.*");
-        registerClassMapping("com.google.gridworks.*", "com.google.refine.*");
-    }
-
-    static final private Map<String, String> classMappingsCache = new HashMap<String, String>();
-    static final private Map<String, Class<?>> classCache = new HashMap<String, Class<?>>();
-
-    // TODO(dfhuynh): Temporary solution until we figure out why cross butterfly module class resolution
-    // doesn't entirely work
     static public void cacheClass(Class<?> klass) {
-        classCache.put(klass.getName(), klass);
+        RefineModel.cacheClass(klass);
     }
 
     static public Class<?> getClass(String className) throws ClassNotFoundException {
-        String toClassName = classMappingsCache.get(className);
-        if (toClassName == null) {
-            toClassName = className;
+        return RefineModel.getClass(className);
+    }
 
-            for (ClassMapping m : classMappings) {
-                if (m.from.endsWith("*")) {
-                    if (toClassName.startsWith(m.from.substring(0, m.from.length() - 1))) {
-                        toClassName = m.to + toClassName.substring(m.from.length() - 1);
-                    }
-                } else {
-                    if (m.from.equals(toClassName)) {
-                        toClassName = m.to;
-                    }
-                }
-            }
-
-            classMappingsCache.put(className, toClassName);
-        }
-
-        Class<?> klass = classCache.get(toClassName);
-        if (klass == null) {
-            klass = Class.forName(toClassName);
-            classCache.put(toClassName, klass);
-        }
-        return klass;
+    static public void registerClassMapping(String from, String to) {
+        RefineModel.registerClassMapping(from, to);
     }
 
     /**

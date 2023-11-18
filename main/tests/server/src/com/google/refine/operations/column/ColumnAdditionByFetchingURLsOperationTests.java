@@ -102,11 +102,10 @@ public class ColumnAdditionByFetchingURLsOperationTests extends RefineTest {
             "    \"status\" : \"pending\"\n" +
             " }";
 
-    @Override
     @BeforeTest
-    public void init() {
+    public void initOperationTest() {
         logger = LoggerFactory.getLogger(this.getClass());
-        OperationRegistry.registerOperation(getCoreModule(), "column-addition-by-fetching-urls",
+        OperationRegistry.registerOperation(getCoreModule().getName(), "column-addition-by-fetching-urls",
                 ColumnAdditionByFetchingURLsOperation.class);
     }
 
@@ -128,14 +127,15 @@ public class ColumnAdditionByFetchingURLsOperationTests extends RefineTest {
 
     @Test
     public void serializeColumnAdditionByFetchingURLsOperation() throws Exception {
-        TestUtils.isSerializedTo(ParsingUtilities.mapper.readValue(json, ColumnAdditionByFetchingURLsOperation.class), json);
+        TestUtils.isSerializedTo(ParsingUtilities.mapper.readValue(json, ColumnAdditionByFetchingURLsOperation.class), json,
+                ParsingUtilities.defaultWriter);
     }
 
     @Test
     public void serializeUrlFetchingProcess() throws Exception {
         AbstractOperation op = ParsingUtilities.mapper.readValue(json, ColumnAdditionByFetchingURLsOperation.class);
         Process process = op.createProcess(project, new Properties());
-        TestUtils.isSerializedTo(process, String.format(processJson, process.hashCode()));
+        TestUtils.isSerializedTo(process, String.format(processJson, process.hashCode()), ParsingUtilities.defaultWriter);
     }
 
     /**

@@ -31,6 +31,7 @@ import java.io.IOException;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
+import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 import com.google.refine.RefineTest;
@@ -52,7 +53,7 @@ public class RangeFacetTests extends RefineTest {
             "          \"name\": \"my column\",\n" +
             "          \"from\": -30,\n" +
             "          \"to\": 90,\n" +
-            "          \"type\": \"range\",\n" +
+            "          \"type\": \"core/range\",\n" +
             "          \"columnName\": \"my column\"\n" +
             "        }";
 
@@ -76,10 +77,15 @@ public class RangeFacetTests extends RefineTest {
             + "\"blankCount\":0,"
             + "\"errorCount\":0}";
 
+    @BeforeTest
+    public void registerFacetConfig() {
+        FacetConfigResolver.registerFacetConfig("core", "range", RangeFacetConfig.class);
+    }
+
     @Test
     public void serializeRangeFacetConfig() throws JsonParseException, JsonMappingException, IOException {
         RangeFacetConfig config = ParsingUtilities.mapper.readValue(configJson, RangeFacetConfig.class);
-        TestUtils.isSerializedTo(config, configJson);
+        TestUtils.isSerializedTo(config, configJson, ParsingUtilities.defaultWriter);
     }
 
     @Test
@@ -96,6 +102,6 @@ public class RangeFacetTests extends RefineTest {
         RangeFacetConfig config = ParsingUtilities.mapper.readValue(configJson, RangeFacetConfig.class);
         RangeFacet facet = config.apply(project);
         facet.computeChoices(project, engine.getAllFilteredRows());
-        TestUtils.isSerializedTo(facet, facetJson);
+        TestUtils.isSerializedTo(facet, facetJson, ParsingUtilities.defaultWriter);
     }
 }

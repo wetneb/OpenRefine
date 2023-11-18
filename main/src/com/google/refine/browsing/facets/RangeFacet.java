@@ -123,7 +123,7 @@ public class RangeFacet implements Facet {
 
         @Override
         public String getJsonType() {
-            return "range";
+            return "core/range";
         }
     }
 

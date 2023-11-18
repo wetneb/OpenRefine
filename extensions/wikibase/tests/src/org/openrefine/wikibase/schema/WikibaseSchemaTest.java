@@ -1,18 +1,18 @@
 /*******************************************************************************
  * MIT License
- * 
+ *
  * Copyright (c) 2018 Antonin Delpeuch
- * 
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
  * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
- * 
+ *
  * The above copyright notice and this permission notice shall be included in all
  * copies or substantial portions of the Software.
- * 
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -50,8 +50,11 @@ import org.wikidata.wdtk.wikibaseapi.ApiConnection;
 
 import com.google.refine.browsing.Engine;
 import com.google.refine.browsing.EngineConfig;
+import com.google.refine.browsing.facets.FacetConfigResolver;
+import com.google.refine.browsing.facets.TextSearchFacet.TextSearchFacetConfig;
 import com.google.refine.model.ColumnModel;
 import com.google.refine.model.Project;
+import com.google.refine.util.ParsingUtilities;
 import com.google.refine.util.TestUtils;
 
 import org.openrefine.wikibase.schema.strategies.StatementEditingMode;
@@ -111,6 +114,7 @@ public class WikibaseSchemaTest extends WikidataRefineTest {
         project = this.createCSVProject(TestingData.inceptionCsv);
         project.rows.get(0).cells.set(0, TestingData.makeMatchedCell("Q1377", "University of Ljubljana"));
         project.rows.get(1).cells.set(0, TestingData.makeMatchedCell("Q865528", "University of Warwick"));
+        FacetConfigResolver.registerFacetConfig("core", "text", TextSearchFacetConfig.class);
     }
 
     @Test
@@ -118,14 +122,15 @@ public class WikibaseSchemaTest extends WikidataRefineTest {
             throws IOException {
         String serialized = TestingData.jsonFromFile("schema/history_of_medicine.json");
         WikibaseSchema parsed = WikibaseSchema.reconstruct(serialized);
-        TestUtils.isSerializedTo(parsed, TestingData.jsonFromFile("schema/history_of_medicine_normalized.json").toString());
+        TestUtils.isSerializedTo(parsed, TestingData.jsonFromFile("schema/history_of_medicine_normalized.json").toString(),
+                ParsingUtilities.defaultWriter);
     }
 
     @Test
     public void testDeserializeMediaInfo() throws IOException {
         String serialized = TestingData.jsonFromFile("schema/with_mediainfo.json");
         WikibaseSchema parsed = WikibaseSchema.reconstruct(serialized);
-        TestUtils.isSerializedTo(parsed, TestingData.jsonFromFile("schema/with_mediainfo.json"));
+        TestUtils.isSerializedTo(parsed, TestingData.jsonFromFile("schema/with_mediainfo.json"), ParsingUtilities.defaultWriter);
     }
 
     @Test

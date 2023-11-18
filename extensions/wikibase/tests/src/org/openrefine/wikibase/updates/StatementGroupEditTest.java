@@ -17,6 +17,7 @@ import org.wikidata.wdtk.datamodel.interfaces.Statement;
 import org.wikidata.wdtk.datamodel.interfaces.StatementGroup;
 import org.wikidata.wdtk.datamodel.interfaces.StatementUpdate;
 
+import com.google.refine.util.ParsingUtilities;
 import com.google.refine.util.TestUtils;
 
 import org.openrefine.wikibase.schema.strategies.PropertyOnlyStatementMerger;
@@ -176,6 +177,6 @@ public class StatementGroupEditTest {
 
     @Test
     public void testJsonSerialization() throws IOException {
-        TestUtils.isSerializedTo(SUT, TestingData.jsonFromFile("updates/statement_group_update.json"));
+        TestUtils.isSerializedTo(SUT, TestingData.jsonFromFile("updates/statement_group_update.json"), ParsingUtilities.defaultWriter);
     }
 }

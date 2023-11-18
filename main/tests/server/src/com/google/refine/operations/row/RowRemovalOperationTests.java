@@ -61,7 +61,7 @@ public class RowRemovalOperationTests extends RefineTest {
 
     @BeforeSuite
     public void registerOperation() {
-        OperationRegistry.registerOperation(getCoreModule(), "row-removal", RowRemovalOperation.class);
+        OperationRegistry.registerOperation(getCoreModule().getName(), "row-removal", RowRemovalOperation.class);
     }
 
     @Override
@@ -83,7 +83,7 @@ public class RowRemovalOperationTests extends RefineTest {
                 + "\"op\":\"core/row-removal\","
                 + "\"description\":\"Remove rows\","
                 + "\"engineConfig\":{\"mode\":\"row-based\",\"facets\":[]}}";
-        TestUtils.isSerializedTo(ParsingUtilities.mapper.readValue(json, RowRemovalOperation.class), json);
+        TestUtils.isSerializedTo(ParsingUtilities.mapper.readValue(json, RowRemovalOperation.class), json, ParsingUtilities.defaultWriter);
     }
 
     @BeforeMethod

@@ -78,7 +78,7 @@ public class TextSearchFacet implements Facet {
 
         @Override
         public String getJsonType() {
-            return "text";
+            return "core/text";
         }
     }
 

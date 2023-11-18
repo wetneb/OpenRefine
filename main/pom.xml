@@ -162,6 +162,11 @@
 
   <dependencies>
     <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>or-model</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
       <groupId>javax.servlet</groupId>
       <artifactId>javax.servlet-api</artifactId>
       <version>${servlet-api.version}</version>
@@ -185,6 +190,11 @@
           <artifactId>log4j-core</artifactId>
         </exclusion>
       </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-core</artifactId>
+      <version>${jackson.version}</version>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
@@ -236,11 +246,6 @@
       <groupId>org.marc4j</groupId>
       <artifactId>marc4j</artifactId>
       <version>${marc4j.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.commons</groupId>
-      <artifactId>commons-compress</artifactId>
-      <version>${commons-compress.version}</version>
     </dependency>
     <dependency>
       <groupId>org.jsoup</groupId>
@@ -363,17 +368,23 @@
       <artifactId>jetty-servlets</artifactId>
       <version>${jetty.version}</version>
     </dependency>
-
     <!-- Language detector api -->
     <dependency>
       <groupId>com.optimaize.languagedetector</groupId>
       <artifactId>language-detector</artifactId>
       <version>0.6</version>
     </dependency>
+
     <!-- ############################ -->
 
     <!-- test dependencies -->
 
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>or-testing</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency> 
     <dependency>
       <groupId>org.testng</groupId>
       <artifactId>testng</artifactId>
@@ -410,6 +421,5 @@
       <version>${log4j.version}</version>
       <scope>test</scope>
     </dependency>
-
   </dependencies>
 </project>

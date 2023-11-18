@@ -98,7 +98,7 @@ public class SnakOnlyStatementMergerTests {
     @Test
     public void testJsonSerialization() throws JsonProcessingException {
         String json = "{\"type\":\"snak\",\"valueMatcher\":{\"type\":\"strict\"}}";
-        TestUtils.isSerializedTo(SUT, json);
+        TestUtils.isSerializedTo(SUT, json, ParsingUtilities.defaultWriter);
         assertEquals(ParsingUtilities.mapper.readValue(json, StatementMerger.class), SUT);
     }
 }

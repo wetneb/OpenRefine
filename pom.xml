@@ -54,6 +54,8 @@
   </developers>
 
   <modules>
+        <module>or-model</module>
+        <module>or-testing</module>
         <module>main</module>
         <module>server</module>
         <module>extensions</module>
@@ -131,10 +133,6 @@
   <build>
     <!-- It is nice for "mvn" with no arguments to do a reasonable default. -->
     <defaultGoal>install</defaultGoal>
-
-    <finalName>openrefine</finalName>
-    <resources>
-    </resources>
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -168,7 +166,7 @@
         <artifactId>maven-dependency-plugin</artifactId>
 	<version>${maven-dependency-plugin.version}</version>
       </plugin>
-      <plugin>
+      <!-- <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <version>${surefire.version}</version>
@@ -178,7 +176,7 @@
             <suiteXmlFile>main/tests/server/conf/tests.xml</suiteXmlFile>
           </suiteXmlFiles>
         </configuration>
-      </plugin>
+      </plugin> -->
       <plugin>
         <groupId>org.jacoco</groupId>
         <artifactId>jacoco-maven-plugin</artifactId>

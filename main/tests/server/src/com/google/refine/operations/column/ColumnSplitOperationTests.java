@@ -39,7 +39,7 @@ public class ColumnSplitOperationTests extends RefineTest {
 
     @BeforeSuite
     public void registerOperation() {
-        OperationRegistry.registerOperation(getCoreModule(), "column-split", ColumnSplitOperation.class);
+        OperationRegistry.registerOperation(getCoreModule().getName(), "column-split", ColumnSplitOperation.class);
     }
 
     @Test
@@ -59,7 +59,7 @@ public class ColumnSplitOperationTests extends RefineTest {
                 "    \"regex\": false,\n" +
                 "    \"maxColumns\": 0\n" +
                 "  }";
-        TestUtils.isSerializedTo(ParsingUtilities.mapper.readValue(json, ColumnSplitOperation.class), json);
+        TestUtils.isSerializedTo(ParsingUtilities.mapper.readValue(json, ColumnSplitOperation.class), json, ParsingUtilities.defaultWriter);
     }
 
     @Test
@@ -77,6 +77,6 @@ public class ColumnSplitOperationTests extends RefineTest {
                 "    \"mode\": \"lengths\",\n" +
                 "    \"fieldLengths\": [1,1]\n" +
                 "  }";
-        TestUtils.isSerializedTo(ParsingUtilities.mapper.readValue(json, ColumnSplitOperation.class), json);
+        TestUtils.isSerializedTo(ParsingUtilities.mapper.readValue(json, ColumnSplitOperation.class), json, ParsingUtilities.defaultWriter);
     }
 }

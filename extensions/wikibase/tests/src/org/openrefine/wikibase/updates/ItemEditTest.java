@@ -48,6 +48,7 @@ import org.wikidata.wdtk.datamodel.interfaces.PropertyIdValue;
 import org.wikidata.wdtk.datamodel.interfaces.Statement;
 import org.wikidata.wdtk.datamodel.interfaces.StatementRank;
 
+import com.google.refine.util.ParsingUtilities;
 import com.google.refine.util.TestUtils;
 
 import org.openrefine.wikibase.schema.strategies.PropertyOnlyStatementMerger;
@@ -134,7 +135,7 @@ public class ItemEditTest {
         ItemEdit update = new ItemEditBuilder(existingSubject).addStatement(statementUpdate1)
                 .addStatement(statementUpdate2)
                 .build();
-        TestUtils.isSerializedTo(update, TestingData.jsonFromFile("updates/entity_update.json"));
+        TestUtils.isSerializedTo(update, TestingData.jsonFromFile("updates/entity_update.json"), ParsingUtilities.defaultWriter);
     }
 
     @Test

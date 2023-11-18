@@ -22,7 +22,7 @@ public class TransposeColumnsIntoRowsOperationTest extends RefineTest {
 
     @BeforeSuite
     public void registerOperation() {
-        OperationRegistry.registerOperation(getCoreModule(), "transpose-columns-into-rows", TransposeColumnsIntoRowsOperation.class);
+        OperationRegistry.registerOperation("core", "transpose-columns-into-rows", TransposeColumnsIntoRowsOperation.class);
     }
 
     @BeforeMethod

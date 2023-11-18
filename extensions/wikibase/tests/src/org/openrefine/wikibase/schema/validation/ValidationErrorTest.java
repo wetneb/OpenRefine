@@ -5,6 +5,7 @@ import java.util.Arrays;
 
 import org.testng.annotations.Test;
 
+import com.google.refine.util.ParsingUtilities;
 import com.google.refine.util.TestUtils;
 
 import org.openrefine.wikibase.schema.validation.PathElement.Type;
@@ -41,6 +42,6 @@ public class ValidationErrorTest {
                 new PathElement(Type.VALUE, "retrieved (P813)")),
                 "Empty date field");
 
-        TestUtils.isSerializedTo(validation, expectedJson);
+        TestUtils.isSerializedTo(validation, expectedJson, ParsingUtilities.defaultWriter);
     }
 }

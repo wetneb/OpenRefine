@@ -40,7 +40,7 @@ public class ColumnRenameOperationTests extends RefineTest {
 
     @BeforeSuite
     public void setUp() {
-        OperationRegistry.registerOperation(getCoreModule(), "column-rename", ColumnRenameOperation.class);
+        OperationRegistry.registerOperation(getCoreModule().getName(), "column-rename", ColumnRenameOperation.class);
     }
 
     @Test
@@ -50,6 +50,6 @@ public class ColumnRenameOperationTests extends RefineTest {
                 + "\"oldColumnName\":\"old name\","
                 + "\"newColumnName\":\"new name\"}";
         AbstractOperation op = ParsingUtilities.mapper.readValue(json, AbstractOperation.class);
-        TestUtils.isSerializedTo(op, json);
+        TestUtils.isSerializedTo(op, json, ParsingUtilities.defaultWriter);
     }
 }
