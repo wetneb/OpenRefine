@@ -391,7 +391,7 @@ function init() {
     ];
 
   var RC = Packages.org.openrefine.model.recon.ReconConfig;
-  RC.registerReconConfig(module, "standard-service", Packages.org.openrefine.model.recon.StandardReconConfig);
+  RC.registerReconConfig(module.getName(), "standard-service", Packages.org.openrefine.model.recon.StandardReconConfig);
 
   ClientSideResourceManager.addPaths(
     "index/scripts",
