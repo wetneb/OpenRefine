@@ -12,8 +12,8 @@ import javax.servlet.ServletException;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import com.google.refine.util.ParsingUtilities;
-import com.google.refine.util.TestUtils;
+import org.openrefine.util.ParsingUtilities;
+import org.openrefine.util.TestUtils;
 
 public class ParseWikibaseSchemaCommandTest extends CommandTest {
 

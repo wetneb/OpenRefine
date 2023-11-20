@@ -28,11 +28,10 @@ import java.util.Map;
 
 import org.apache.commons.lang.Validate;
 
-import com.google.refine.model.Cell;
-import com.google.refine.model.Column;
-import com.google.refine.model.ColumnModel;
-import com.google.refine.model.Row;
-
+import org.openrefine.model.Cell;
+import org.openrefine.model.Column;
+import org.openrefine.model.ColumnModel;
+import org.openrefine.model.Row;
 import org.openrefine.wikibase.qa.QAWarning;
 import org.openrefine.wikibase.qa.QAWarningStore;
 

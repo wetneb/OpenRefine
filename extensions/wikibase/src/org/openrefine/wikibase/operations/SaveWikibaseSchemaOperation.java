@@ -33,13 +33,12 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import com.google.refine.history.Change;
-import com.google.refine.history.HistoryEntry;
-import com.google.refine.model.AbstractOperation;
-import com.google.refine.model.Project;
-import com.google.refine.util.ParsingUtilities;
-import com.google.refine.util.Pool;
-
+import org.openrefine.history.Change;
+import org.openrefine.history.HistoryEntry;
+import org.openrefine.model.AbstractOperation;
+import org.openrefine.model.Project;
+import org.openrefine.util.ParsingUtilities;
+import org.openrefine.util.Pool;
 import org.openrefine.wikibase.schema.WikibaseSchema;
 
 public class SaveWikibaseSchemaOperation extends AbstractOperation {

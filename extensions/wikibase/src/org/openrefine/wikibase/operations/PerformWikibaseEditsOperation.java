@@ -46,17 +46,16 @@ import org.wikidata.wdtk.wikibaseapi.ApiConnection;
 import org.wikidata.wdtk.wikibaseapi.WikibaseDataEditor;
 import org.wikidata.wdtk.wikibaseapi.WikibaseDataFetcher;
 
-import com.google.refine.RefineModel;
-import com.google.refine.browsing.Engine;
-import com.google.refine.browsing.EngineConfig;
-import com.google.refine.history.Change;
-import com.google.refine.history.HistoryEntry;
-import com.google.refine.model.Project;
-import com.google.refine.operations.EngineDependentOperation;
-import com.google.refine.process.LongRunningProcess;
-import com.google.refine.process.Process;
-import com.google.refine.util.Pool;
-
+import org.openrefine.RefineModel;
+import org.openrefine.browsing.Engine;
+import org.openrefine.browsing.EngineConfig;
+import org.openrefine.history.Change;
+import org.openrefine.history.HistoryEntry;
+import org.openrefine.model.Project;
+import org.openrefine.operations.EngineDependentOperation;
+import org.openrefine.process.LongRunningProcess;
+import org.openrefine.process.Process;
+import org.openrefine.util.Pool;
 import org.openrefine.wikibase.commands.ConnectionManager;
 import org.openrefine.wikibase.editing.EditBatchProcessor;
 import org.openrefine.wikibase.editing.NewEntityLibrary;

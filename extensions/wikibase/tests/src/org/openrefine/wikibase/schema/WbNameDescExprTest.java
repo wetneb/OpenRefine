@@ -34,10 +34,9 @@ import org.wikidata.wdtk.datamodel.helpers.Datamodel;
 import org.wikidata.wdtk.datamodel.interfaces.ItemIdValue;
 import org.wikidata.wdtk.datamodel.interfaces.MonolingualTextValue;
 
-import com.google.refine.model.Column;
-import com.google.refine.model.ColumnModel;
-import com.google.refine.model.ModelException;
-
+import org.openrefine.model.Column;
+import org.openrefine.model.ColumnModel;
+import org.openrefine.model.ModelException;
 import org.openrefine.wikibase.schema.exceptions.QAWarningException;
 import org.openrefine.wikibase.schema.validation.ValidationState;
 import org.openrefine.wikibase.testing.JacksonSerializationTest;

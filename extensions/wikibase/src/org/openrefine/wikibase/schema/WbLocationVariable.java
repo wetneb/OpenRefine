@@ -29,8 +29,7 @@ import java.text.ParseException;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import org.wikidata.wdtk.datamodel.interfaces.GlobeCoordinatesValue;
 
-import com.google.refine.model.Cell;
-
+import org.openrefine.model.Cell;
 import org.openrefine.wikibase.qa.QAWarning;
 import org.openrefine.wikibase.schema.exceptions.SkipSchemaExpressionException;
 

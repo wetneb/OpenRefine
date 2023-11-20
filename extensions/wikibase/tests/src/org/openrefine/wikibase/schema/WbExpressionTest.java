@@ -39,14 +39,13 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 
-import com.google.refine.model.Cell;
-import com.google.refine.model.Column;
-import com.google.refine.model.ColumnModel;
-import com.google.refine.model.ModelException;
-import com.google.refine.model.Project;
-import com.google.refine.model.Recon;
-import com.google.refine.model.Row;
-
+import org.openrefine.model.Cell;
+import org.openrefine.model.Column;
+import org.openrefine.model.ColumnModel;
+import org.openrefine.model.ModelException;
+import org.openrefine.model.Project;
+import org.openrefine.model.Recon;
+import org.openrefine.model.Row;
 import org.openrefine.wikibase.qa.QAWarning;
 import org.openrefine.wikibase.qa.QAWarningStore;
 import org.openrefine.wikibase.schema.exceptions.QAWarningException;

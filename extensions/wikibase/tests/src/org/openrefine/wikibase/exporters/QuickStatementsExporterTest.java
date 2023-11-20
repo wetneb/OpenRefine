@@ -43,9 +43,8 @@ import org.wikidata.wdtk.datamodel.interfaces.SnakGroup;
 import org.wikidata.wdtk.datamodel.interfaces.Statement;
 import org.wikidata.wdtk.datamodel.interfaces.StatementRank;
 
-import com.google.refine.browsing.Engine;
-import com.google.refine.model.Project;
-
+import org.openrefine.browsing.Engine;
+import org.openrefine.model.Project;
 import org.openrefine.wikibase.schema.WikibaseSchema;
 import org.openrefine.wikibase.schema.strategies.StatementEditingMode;
 import org.openrefine.wikibase.schema.strategies.StatementMerger;

@@ -15,14 +15,14 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import org.testng.annotations.BeforeMethod;
 
-import com.google.refine.ProjectManager;
-import com.google.refine.ProjectManagerStub;
-import com.google.refine.ProjectMetadata;
-import com.google.refine.RefineServlet;
-import com.google.refine.importers.SeparatorBasedImporter;
-import com.google.refine.importing.ImportingJob;
-import com.google.refine.importing.ImportingManager;
-import com.google.refine.model.Project;
+import org.openrefine.ProjectManager;
+import org.openrefine.ProjectManagerStub;
+import org.openrefine.ProjectMetadata;
+import org.openrefine.RefineServlet;
+import org.openrefine.importers.SeparatorBasedImporter;
+import org.openrefine.importing.ImportingJob;
+import org.openrefine.importing.ImportingManager;
+import org.openrefine.model.Project;
 
 public class WikidataRefineTest {
 

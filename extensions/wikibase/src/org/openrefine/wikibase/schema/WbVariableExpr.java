@@ -28,8 +28,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import com.google.refine.model.Cell;
-
+import org.openrefine.model.Cell;
 import org.openrefine.wikibase.schema.exceptions.QAWarningException;
 import org.openrefine.wikibase.schema.exceptions.SkipSchemaExpressionException;
 import org.openrefine.wikibase.schema.exceptions.SpecialValueNoValueException;

@@ -42,8 +42,8 @@ import org.wikidata.wdtk.wikibaseapi.LoginFailedException;
 import org.wikidata.wdtk.wikibaseapi.OAuthApiConnection;
 import org.wikidata.wdtk.wikibaseapi.apierrors.MediaWikiApiErrorException;
 
-import com.google.refine.ProjectManager;
-import com.google.refine.preference.PreferenceStore;
+import org.openrefine.ProjectManager;
+import org.openrefine.preference.PreferenceStore;
 
 /**
  * Manages a connection to the current Wikibase instance.

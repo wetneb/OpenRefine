@@ -35,8 +35,7 @@ import org.testng.annotations.Test;
 import org.wikidata.wdtk.datamodel.helpers.Datamodel;
 import org.wikidata.wdtk.datamodel.interfaces.EntityIdValue;
 
-import com.google.refine.model.Recon;
-
+import org.openrefine.model.Recon;
 import org.openrefine.wikibase.testing.TestingData;
 
 public class ReconEntityIdValueTest {

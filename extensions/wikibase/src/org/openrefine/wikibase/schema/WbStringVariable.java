@@ -28,8 +28,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import org.wikidata.wdtk.datamodel.helpers.Datamodel;
 import org.wikidata.wdtk.datamodel.interfaces.StringValue;
 
-import com.google.refine.model.Cell;
-
+import org.openrefine.model.Cell;
 import org.openrefine.wikibase.schema.exceptions.SkipSchemaExpressionException;
 
 /**

@@ -31,9 +31,8 @@ import org.wikidata.wdtk.datamodel.interfaces.ItemIdValue;
 import org.wikidata.wdtk.datamodel.interfaces.MediaInfoIdValue;
 import org.wikidata.wdtk.datamodel.interfaces.PropertyIdValue;
 
-import com.google.refine.model.Cell;
-import com.google.refine.model.Recon.Judgment;
-
+import org.openrefine.model.Cell;
+import org.openrefine.model.Recon.Judgment;
 import org.openrefine.wikibase.qa.QAWarning;
 import org.openrefine.wikibase.qa.QAWarning.Severity;
 import org.openrefine.wikibase.schema.entityvalues.ReconItemIdValue;

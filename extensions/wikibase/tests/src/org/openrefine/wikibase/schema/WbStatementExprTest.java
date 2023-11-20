@@ -46,11 +46,10 @@ import org.wikidata.wdtk.datamodel.interfaces.Statement;
 import org.wikidata.wdtk.datamodel.interfaces.StatementRank;
 import org.wikidata.wdtk.datamodel.interfaces.TimeValue;
 
-import com.google.refine.model.Column;
-import com.google.refine.model.ColumnModel;
-import com.google.refine.model.ModelException;
-import com.google.refine.util.ParsingUtilities;
-
+import org.openrefine.model.Column;
+import org.openrefine.model.ColumnModel;
+import org.openrefine.model.ModelException;
+import org.openrefine.util.ParsingUtilities;
 import org.openrefine.wikibase.schema.exceptions.QAWarningException;
 import org.openrefine.wikibase.schema.exceptions.SkipSchemaExpressionException;
 import org.openrefine.wikibase.schema.strategies.PropertyOnlyStatementMerger;

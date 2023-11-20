@@ -39,11 +39,10 @@ import org.wikidata.wdtk.datamodel.interfaces.Statement;
 import org.wikidata.wdtk.datamodel.interfaces.StatementRank;
 import org.wikidata.wdtk.datamodel.interfaces.Value;
 
-import com.google.refine.model.Cell;
-import com.google.refine.model.Project;
-import com.google.refine.model.Recon;
-import com.google.refine.model.ReconCandidate;
-
+import org.openrefine.model.Cell;
+import org.openrefine.model.Project;
+import org.openrefine.model.Recon;
+import org.openrefine.model.ReconCandidate;
 import org.openrefine.wikibase.schema.WbLanguageConstant;
 import org.openrefine.wikibase.schema.WbMonolingualExpr;
 import org.openrefine.wikibase.schema.WbStringConstant;

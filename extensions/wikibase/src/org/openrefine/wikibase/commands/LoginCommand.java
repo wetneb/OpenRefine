@@ -47,7 +47,7 @@ import javax.servlet.http.HttpServletResponse;
 import org.wikidata.wdtk.wikibaseapi.ApiConnection;
 import org.wikidata.wdtk.wikibaseapi.BasicApiConnection;
 
-import com.google.refine.commands.Command;
+import org.openrefine.commands.Command;
 
 /**
  * Handles login.

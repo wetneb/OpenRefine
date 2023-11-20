@@ -10,16 +10,15 @@ import java.util.stream.Collectors;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 
-import com.google.refine.ProjectManager;
-import com.google.refine.expr.EvalError;
-import com.google.refine.expr.WrappedRow;
-import com.google.refine.grel.ControlFunctionRegistry;
-import com.google.refine.grel.Function;
-import com.google.refine.model.ColumnModel;
-import com.google.refine.model.OverlayModel;
-import com.google.refine.model.Project;
-import com.google.refine.model.Row;
-
+import org.openrefine.ProjectManager;
+import org.openrefine.expr.EvalError;
+import org.openrefine.expr.WrappedRow;
+import org.openrefine.grel.ControlFunctionRegistry;
+import org.openrefine.grel.Function;
+import org.openrefine.model.ColumnModel;
+import org.openrefine.model.OverlayModel;
+import org.openrefine.model.Project;
+import org.openrefine.model.Row;
 import org.openrefine.wikibase.manifests.Manifest;
 import org.openrefine.wikibase.manifests.ManifestException;
 import org.openrefine.wikibase.manifests.ManifestParser;
