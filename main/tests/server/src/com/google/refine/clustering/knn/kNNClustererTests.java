@@ -1,17 +1,17 @@
 /*******************************************************************************
  * Copyright (C) 2018, OpenRefine contributors
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice,
  *    this list of conditions and the following disclaimer.
- * 
+ *
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
  *    and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -30,13 +30,17 @@ package com.google.refine.clustering.knn;
 import static org.testng.Assert.assertTrue;
 
 import java.io.IOException;
+import java.io.Serializable;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
+import edu.mit.simile.vicino.distances.PPMDistance;
+import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 import com.google.refine.RefineTest;
 import com.google.refine.browsing.Engine;
+import com.google.refine.clustering.ClustererConfigFactory;
 import com.google.refine.clustering.knn.kNNClusterer.kNNClustererConfig;
 import com.google.refine.model.Project;
 import com.google.refine.util.ParsingUtilities;
@@ -54,6 +58,12 @@ public class kNNClustererTests extends RefineTest {
             + "   [{\"v\":\"ab\",\"c\":1},{\"v\":\"abc\",\"c\":1}]"
             + "]";
 
+    @BeforeTest
+    public void registerClusterer() {
+        ClustererConfigFactory.register("knn", kNNClustererConfig.class);
+        DistanceFactory.put("ppm", new VicinoDistance(new PPMDistance()));
+    }
+
     @Test
     public void serializekNNClustererConfig() throws JsonParseException, JsonMappingException, IOException {
         kNNClustererConfig config = ParsingUtilities.mapper.readValue(configJson, kNNClustererConfig.class);
@@ -62,11 +72,12 @@ public class kNNClustererTests extends RefineTest {
 
     @Test
     public void serializekNNClusterer() throws JsonParseException, JsonMappingException, IOException {
-        Project project = createCSVProject("column\n"
-                + "ab\n"
-                + "abc\n"
-                + "c\n"
-                + "ĉ\n");
+        Project project = createProject(new String[] { "column" },
+                new Serializable[] {
+                        "ab",
+                        "abc",
+                        "c",
+                        "ĉ" });
 
         kNNClustererConfig config = ParsingUtilities.mapper.readValue(configJson, kNNClustererConfig.class);
         kNNClusterer clusterer = config.apply(project);
@@ -77,9 +88,10 @@ public class kNNClustererTests extends RefineTest {
 
     @Test
     public void testNoLonelyclusters() throws JsonParseException, JsonMappingException, IOException {
-        Project project = createCSVProject("column\n"
-                + "foo\n"
-                + "bar\n");
+        Project project = createProject(new String[] { "column" },
+                new Serializable[] {
+                        "foo",
+                        "bar" });
         kNNClustererConfig config = ParsingUtilities.mapper.readValue(configJson, kNNClustererConfig.class);
         kNNClusterer clusterer = config.apply(project);
         clusterer.computeClusters(new Engine(project));

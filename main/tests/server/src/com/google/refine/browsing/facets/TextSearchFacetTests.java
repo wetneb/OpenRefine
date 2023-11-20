@@ -34,6 +34,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package com.google.refine.browsing.facets;
 
 import java.io.IOException;
+import java.io.Serializable;
 
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -82,12 +83,13 @@ public class TextSearchFacetTests extends RefineTest {
     @BeforeMethod
     public void setUp() throws IOException, ModelException {
         FacetConfigResolver.registerFacetConfig("core", "text", TextSearchFacetConfig.class);
-        project = createCSVProject("TextSearchFacet",
-                "Value\n"
-                        + "a\n"
-                        + "b\n"
-                        + "ab\n"
-                        + "Abc\n");
+        project = createProject("TextSearchFacet",
+                new String[] { "Value" },
+                new Serializable[] {
+                        "a",
+                        "b",
+                        "ab",
+                        "Abc" });
     }
 
     private void configureFilter(String filter) throws JsonParseException, JsonMappingException, IOException {

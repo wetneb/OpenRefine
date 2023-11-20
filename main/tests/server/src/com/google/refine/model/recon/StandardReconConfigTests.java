@@ -1,17 +1,17 @@
 /*******************************************************************************
  * Copyright (C) 2018, OpenRefine contributors
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice,
  *    this list of conditions and the following disclaimer.
- * 
+ *
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
  *    and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -33,6 +33,7 @@ import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertTrue;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
@@ -71,8 +72,8 @@ public class StandardReconConfigTests extends RefineTest {
 
     @BeforeMethod
     public void registerOperation() {
-        OperationRegistry.registerOperation(getCoreModule().getName(), "recon", ReconOperation.class);
-        ReconConfig.registerReconConfig(getCoreModule().getName(), "standard-service", StandardReconConfig.class);
+        OperationRegistry.registerOperation("core", "recon", ReconOperation.class);
+        ReconConfig.registerReconConfig("core", "standard-service", StandardReconConfig.class);
     }
 
     @Override
@@ -203,8 +204,10 @@ public class StandardReconConfigTests extends RefineTest {
 
     @Test
     public void formulateQueryTest() throws IOException {
-        Project project = createCSVProject("title,director\n"
-                + "mulholland drive,david lynch");
+        Project project = createProject(
+                new String[] { "title", "director" },
+                new Serializable[] {
+                        "mulholland drive", "david lynch" });
 
         String config = " {\n" +
                 "        \"mode\": \"standard-service\",\n" +
@@ -237,8 +240,9 @@ public class StandardReconConfigTests extends RefineTest {
 
     @Test
     public void reconNonJsonTest() throws Exception {
-        Project project = createCSVProject("title,director\n"
-                + "mulholland drive,david lynch");
+        Project project = createProject(new String[] { "title", "director" },
+                new Serializable[] {
+                        "mulholland drive", "david lynch" });
 
         String nonJsonResponse = "<!DOCTYPE html>\n" +
                 "<html lang=\"en\">\n" +
@@ -304,8 +308,9 @@ public class StandardReconConfigTests extends RefineTest {
 
     @Test
     public void reconTest() throws Exception {
-        Project project = createCSVProject("title,director\n"
-                + "mulholland drive,david lynch");
+        Project project = createProject(new String[] { "title", "director" },
+                new Serializable[] {
+                        "mulholland drive", "david lynch" });
 
         String reconResponse = "{\n" +
                 "q0: {\n" +

@@ -40,7 +40,7 @@ public class ColumnRenameOperationTests extends RefineTest {
 
     @BeforeSuite
     public void setUp() {
-        OperationRegistry.registerOperation(getCoreModule().getName(), "column-rename", ColumnRenameOperation.class);
+        OperationRegistry.registerOperation("core", "column-rename", ColumnRenameOperation.class);
     }
 
     @Test

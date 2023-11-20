@@ -50,27 +50,18 @@ import javax.servlet.http.HttpServletResponse;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Test;
 
 import com.google.refine.ProjectManager;
 import com.google.refine.ProjectMetadata;
-import com.google.refine.RefineTest;
 import com.google.refine.commands.Command;
 import com.google.refine.model.Project;
 import com.google.refine.util.ParsingUtilities;
 
-public class SetProjectMetadataCommandTests extends RefineTest {
-
-    @Override
-    @BeforeTest
-    public void init() {
-        logger = LoggerFactory.getLogger(this.getClass());
-    }
+public class SetProjectMetadataCommandTests {
 
     // System Under Test
     SetProjectMetadataCommand SUT = null;

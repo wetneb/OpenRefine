@@ -57,6 +57,8 @@ import com.google.refine.RefineTest;
 import com.google.refine.browsing.EngineConfig;
 import com.google.refine.expr.EvalError;
 import com.google.refine.expr.ExpressionUtils;
+import com.google.refine.expr.MetaParser;
+import com.google.refine.grel.Parser;
 import com.google.refine.model.AbstractOperation;
 import com.google.refine.model.Cell;
 import com.google.refine.model.ModelException;
@@ -105,8 +107,8 @@ public class ColumnAdditionByFetchingURLsOperationTests extends RefineTest {
     @BeforeTest
     public void initOperationTest() {
         logger = LoggerFactory.getLogger(this.getClass());
-        OperationRegistry.registerOperation(getCoreModule().getName(), "column-addition-by-fetching-urls",
-                ColumnAdditionByFetchingURLsOperation.class);
+        OperationRegistry.registerOperation("core", "column-addition-by-fetching-urls", ColumnAdditionByFetchingURLsOperation.class);
+        MetaParser.registerLanguageParser("grel", "GREL", Parser.grelParser, "value");
     }
 
     // dependencies
@@ -117,6 +119,7 @@ public class ColumnAdditionByFetchingURLsOperationTests extends RefineTest {
     @BeforeMethod
     public void SetUp() throws IOException, ModelException {
         project = createProjectWithColumns("UrlFetchingTests", "fruits");
+        MetaParser.registerLanguageParser("grel", "GREL", Parser.grelParser, "value");
     }
 
     private void runAndWait(EngineDependentOperation op, int timeout) throws Exception {

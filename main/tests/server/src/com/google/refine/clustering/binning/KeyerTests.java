@@ -153,7 +153,7 @@ public class KeyerTests extends RefineTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testInvalidParams() {
-        keyer.key("test", (Object[]) new String[] { "foo" });
+        keyer.key(null);
     }
 
     @Test

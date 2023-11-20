@@ -39,7 +39,7 @@ public class RowStarOperationTests extends RefineTest {
 
     @BeforeSuite
     public void registerOperation() {
-        OperationRegistry.registerOperation(getCoreModule().getName(), "row-star", RowStarOperation.class);
+        OperationRegistry.registerOperation("core", "row-star", RowStarOperation.class);
     }
 
     @Test

@@ -1,17 +1,17 @@
 /*******************************************************************************
  * Copyright (C) 2018, OpenRefine contributors
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- * 
+ *
  * 1. Redistributions of source code must retain the above copyright notice,
  *    this list of conditions and the following disclaimer.
- * 
+ *
  * 2. Redistributions in binary form must reproduce the above copyright notice,
  *    this list of conditions and the following disclaimer in the documentation
  *    and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -27,6 +27,7 @@
 
 package com.google.refine.operations.row;
 
+import java.io.Serializable;
 import java.util.Properties;
 
 import org.testng.Assert;
@@ -53,19 +54,20 @@ public class RowReorderOperationTests extends RefineTest {
 
     @BeforeSuite
     public void registerOperation() {
-        OperationRegistry.registerOperation(getCoreModule().getName(), "row-reorder", RowReorderOperation.class);
+        OperationRegistry.registerOperation("core", "row-reorder", RowReorderOperation.class);
     }
 
     @BeforeMethod
     public void setUp() {
-        project = createCSVProject(
-                "key,first\n" +
-                        "8,b\n" +
-                        ",d\n" +
-                        "2,f\n" +
-                        "1,h\n" +
-                        "9,F\n" +
-                        "10,f\n");
+        project = createProject(
+                new String[] { "key", "first" },
+                new Serializable[] {
+                        "8", "b",
+                        null, "d",
+                        "2", "f",
+                        "1", "h",
+                        "9", "F",
+                        "10", "f" });
     }
 
     @AfterMethod

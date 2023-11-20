@@ -23,8 +23,8 @@ LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
 A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
 OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
 SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,           
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY           
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
 THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
@@ -33,6 +33,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package com.google.refine.operations.cell;
 
+import java.io.Serializable;
 import java.util.Properties;
 
 import org.slf4j.LoggerFactory;
@@ -57,14 +58,15 @@ public class SplitMultiValuedCellsTests extends RefineTest {
     @BeforeTest
     public void init() {
         logger = LoggerFactory.getLogger(this.getClass());
-        OperationRegistry.registerOperation(getCoreModule().getName(), "multivalued-cell-split", MultiValuedCellSplitOperation.class);
+        OperationRegistry.registerOperation("core", "multivalued-cell-split", MultiValuedCellSplitOperation.class);
     }
 
     @BeforeMethod
     public void createProject() {
-        project = createCSVProject(
-                "Key,Value\n"
-                        + "Record_1,one:two;three four;fiveSix SevèËight;niné91011twelve thirteen 14Àifteen\n");
+        project = createProject(
+                new String[] { "Key", "Value" },
+                new Serializable[] {
+                        "Record_1", "one:two;three four;fiveSix SevèËight;niné91011twelve thirteen 14Àifteen" });
     }
 
     @Test

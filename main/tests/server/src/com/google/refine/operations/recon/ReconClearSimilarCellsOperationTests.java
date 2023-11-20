@@ -39,7 +39,7 @@ public class ReconClearSimilarCellsOperationTests extends RefineTest {
 
     @BeforeSuite
     public void registerOperation() {
-        OperationRegistry.registerOperation(getCoreModule().getName(), "recon-clear-similar-cells", ReconClearSimilarCellsOperation.class);
+        OperationRegistry.registerOperation("core", "recon-clear-similar-cells", ReconClearSimilarCellsOperation.class);
     }
 
     @Test

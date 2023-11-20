@@ -31,6 +31,11 @@ public class LogExpressionCommandTests extends CommandTestBase {
         when(ProjectManager.singleton.getPreferenceStore()).thenReturn(prefStore);
     }
 
+    @Override
+    protected void cleanupProjectsAndJobs() {
+        // do nothing, since ProjectManager.singleton was overriden by us
+    }
+
     @Test
     public void testCSRFProtection() throws ServletException, IOException {
         command.doPost(request, response);
