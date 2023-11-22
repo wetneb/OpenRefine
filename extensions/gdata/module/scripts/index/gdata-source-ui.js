@@ -45,16 +45,15 @@ Refine.GDataSourceUI.prototype.attachUI = function(body) {
   $('#gdata-import').html($.i18n('gdata-import/import-by-url'));
   $('#gdata-next').html($.i18n('gdata-import/next->'));
   $('#gdata-auth-doc').text($.i18n('gdata-import/auth-doc'));
-  $('#gdata-please').text($.i18n('gdata-import/please'));
+  $('#gdata-please-signin').text($.i18n('gdata-import/please-signin'));
   $('#gdata-signin-btn').text($.i18n('gdata-import/sign-in'));
-  $('#gdata-access-data').text($.i18n('gdata-import/access-data'));
   $('#gdata-retrieving').text($.i18n('gdata-import/retrieving'));
   $('#gdata-signout').text($.i18n('gdata-import/sign-out'));
-  $('#gdata-resignin').text($.i18n('gdata-import/re-sign-in'));
-  $('#gdata-another-account').text($.i18n('gdata-import/another-account'));
+  $('#gdata-resignin').text($.i18n('gdata-import/sign-in'));
+  $('#gdata-re-signin-another').text($.i18n('gdata-import/re-sign-in-another'));
   
   var self = this;
-  this._body.find('.gdata-signin.button').click(function() {
+  this._body.find('.gdata-signin.button').on('click',function() {
     GdataExtension.showAuthorizationDialog(
       function() {
         self._listDocuments();
@@ -65,31 +64,25 @@ Refine.GDataSourceUI.prototype.attachUI = function(body) {
       }
     );
   });
-  this._body.find('.gdata-signout.button').click(function() {
+  this._body.find('.gdata-signout.button').on('click',function() {
       $.get("command/gdata/deauthorize" );
       self._body.find('.gdata-page').hide();
       self._elmts.signinPage.show();
   });
   
-  this._elmts.urlNextButton.click(function(evt) {
-    var url = $.trim(self._elmts.urlInput[0].value);
+  this._elmts.urlNextButton.on('click',function(evt) {
+    var url = jQueryTrim(self._elmts.urlInput[0].value);
     if (url.length === 0) {
       window.alert($.i18n('gdata-source/alert-url'));
     } else {
       var doc = {};
       doc.docSelfLink = url;
-      if (doc.docSelfLink.contains('spreadsheet')) { // TODO: fragile?
+      if (doc.docSelfLink.includes('spreadsheet')) { // TODO: fragile?
         doc.type = 'spreadsheet';
       } else {
         doc.type = 'table';
       }
-      
-      if (GdataExtension.isAuthorized()) {
-          self._controller.startImportingDocument(doc);     
-      } else {
-          var fn = self._controller.startImportingDocument;
-          GdataExtension.showAuthorizationDialog(fn.bind(self._controller, doc));
-      }
+      self._controller.startImportingDocument(doc);
     }
   });
    
@@ -118,7 +111,7 @@ Refine.GDataSourceUI.prototype._listDocuments = function() {
         }),
         null,
         function(o) {
-        self._renderDocuments(o);
+          self._renderDocuments(o);
         },
         "json"
     );
@@ -142,57 +135,69 @@ Refine.GDataSourceUI.prototype._renderDocuments = function(o) {
   
   var renderDocument = function(doc) {
     var tr = table.insertRow(table.rows.length);
-    
-    var td = tr.insertCell(tr.cells.length);
-    if (doc.isStarred) {
-      $('<img>').attr('src', 'images/star.png').appendTo(td);
+
+    try {
+      var td = tr.insertCell(tr.cells.length);
+      if (doc.isStarred) {
+        $('<img>').attr('src', 'images/star.png').appendTo(td);
+      }
+
+      td = tr.insertCell(tr.cells.length);
+      $('<span>').text(doc.type).appendTo(td);
+
+      td = tr.insertCell(tr.cells.length);
+      $('<a>')
+          .addClass('gdata-doc-title')
+          .attr('href', 'javascript:{}')
+          .text(doc.title)
+          .appendTo(td)
+          .on('click', function (evt) {
+            self._controller.startImportingDocument(doc);
+          });
+
+      $('<a>')
+          .addClass('gdata-doc-preview')
+          .attr('href', doc.docLink)
+          .attr('target', '_blank')
+          .text('preview')
+          .appendTo(td);
+
+      td = tr.insertCell(tr.cells.length);
+      $('<span>')
+          .addClass('gdata-doc-authors')
+          .text((doc.authors) ? doc.authors.join(', ') : '<unknown>')
+          .appendTo(td);
+
+      td = tr.insertCell(tr.cells.length);
+      $('<span>')
+          .addClass('gdata-doc-date')
+          .text((doc.updated) ? formatRelativeDate(doc.updated) : '<unknown>')
+          .attr('title', (doc.updated) ? doc.updated : '<unknown>')
+          .appendTo(td);
+    } catch (e) {
+      console.log(e);
+      console.log('Error rendering Google Document "'+doc.title+'". Skipping...');
+      tr.remove();
     }
-    
-    td = tr.insertCell(tr.cells.length);
-    $('<span>').text(doc.type).appendTo(td);
-    
-    td = tr.insertCell(tr.cells.length);
-    $('<a>')
-    .addClass('gdata-doc-title')
-    .attr('href', 'javascript:{}')
-    .text(doc.title)
-    .appendTo(td)
-    .click(function(evt) {
-      self._controller.startImportingDocument(doc);
-    });
-    
-    $('<a>')
-    .addClass('gdata-doc-preview')
-    .attr('href', doc.docLink)
-    .attr('target', '_blank')
-    .text('preview')
-    .appendTo(td);
-    
-    td = tr.insertCell(tr.cells.length);
-    $('<span>')
-    .addClass('gdata-doc-authors')
-    .text((doc.authors) ? doc.authors.join(', ') : '<unknown>')
-    .appendTo(td);
-    
-    td = tr.insertCell(tr.cells.length);
-    $('<span>')
-    .addClass('gdata-doc-date')
-    .text((doc.updated) ? formatRelativeDate(doc.updated) : '<unknown>')
-    .attr('title', (doc.updated) ? doc.updated : '<unknown>')
-    .appendTo(td);
   };
   
-  var docs = o.documents;
-  $.each(docs, function() {
-    this.updatedDate = (this.updated) ? new Date(this.updated) : null;
-    this.updatedDateTime = (this.updatedDate) ? this.updatedDate.getTime() : 0;
-  });
-  docs.sort(function(a, b) { return b.updatedDateTime -  a.updatedDateTime; });
-  
-  for (var i = 0; i < docs.length; i++) {
-    renderDocument(docs[i]);
+  if (o.status === 'error') {
+    // We're probably not logged in, even though we thought we were. Show signin page
+    this._body.find('.gdata-page').hide();
+    this._elmts.signinPage.show();
+  } else {
+    var docs = o.documents;
+    $.each(docs, function() {
+      this.updatedDate = (this.updated) ? new Date(this.updated) : null;
+      this.updatedDateTime = (this.updatedDate) ? this.updatedDate.getTime() : 0;
+    });
+    docs.sort(function(a, b) { return b.updatedDateTime -  a.updatedDateTime; });
+
+    for (var i = 0; i < docs.length; i++) {
+      renderDocument(docs[i]);
+    }
+
+    this._body.find('.gdata-page').hide();
+    this._elmts.listingPage.show();
   }
-  
-  this._body.find('.gdata-page').hide();
-  this._elmts.listingPage.show();
 };

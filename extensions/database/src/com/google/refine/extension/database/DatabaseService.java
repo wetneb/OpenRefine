@@ -26,6 +26,7 @@
  * OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF 
  * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 package com.google.refine.extension.database;
 
 import java.sql.Connection;
@@ -42,21 +43,23 @@ import com.google.refine.extension.database.model.DatabaseInfo;
 import com.google.refine.extension.database.model.DatabaseRow;
 import com.google.refine.extension.database.mysql.MySQLDatabaseService;
 import com.google.refine.extension.database.pgsql.PgSQLDatabaseService;
+import com.google.refine.extension.database.sqlite.SQLiteDatabaseService;
 
 public abstract class DatabaseService {
 
     private static final Logger logger = LoggerFactory.getLogger("DatabaseService");
-    
-    
+
     public static class DBType {
+
         private static Map<String, DatabaseService> databaseServiceMap = new HashMap<String, DatabaseService>();
-        
+
         static {
             try {
 
                 DatabaseService.DBType.registerDatabase(MySQLDatabaseService.DB_NAME, MySQLDatabaseService.getInstance());
                 DatabaseService.DBType.registerDatabase(PgSQLDatabaseService.DB_NAME, PgSQLDatabaseService.getInstance());
                 DatabaseService.DBType.registerDatabase(MariaDBDatabaseService.DB_NAME, MariaDBDatabaseService.getInstance());
+                DatabaseService.DBType.registerDatabase(SQLiteDatabaseService.DB_NAME, SQLiteDatabaseService.getInstance());
 
             } catch (Exception e) {
                 logger.error("Exception occurred while trying to prepare databases!", e);
@@ -64,18 +67,18 @@ public abstract class DatabaseService {
         }
 
         public static void registerDatabase(String name, DatabaseService db) {
-              
+
             if (!databaseServiceMap.containsKey(name)) {
-                //throw new DatabaseServiceException(name + " cannot be registered. Database Type already exists");
+                // throw new DatabaseServiceException(name + " cannot be registered. Database Type already exists");
                 databaseServiceMap.put(name, db);
                 logger.info(String.format("Registered %s Database", name));
-            }else {
-                if(logger.isDebugEnabled()) {
+            } else {
+                if (logger.isDebugEnabled()) {
                     logger.debug(name + " Database Type already exists");
                 }
-               
+
             }
-       
+
         }
 
         public static DatabaseService getJdbcServiceFromType(String name) {
@@ -83,7 +86,7 @@ public abstract class DatabaseService {
         }
 
     }
-    
+
     protected String getDatabaseUrl(DatabaseConfiguration dbConfig) {
         int port = dbConfig.getDatabasePort();
         return "jdbc:" + dbConfig.getDatabaseType() + "://" + dbConfig.getDatabaseHost()
@@ -92,63 +95,62 @@ public abstract class DatabaseService {
 
     /**
      * get Database
+     * 
      * @param dbType
      * @return
      */
     public static DatabaseService get(String dbType) {
         logger.debug("get called on DatabaseService with, {}", dbType);
         DatabaseService databaseService = DatabaseService.DBType.getJdbcServiceFromType(dbType.toLowerCase());
-        
+
         logger.debug("DatabaseService found: {}", databaseService.getClass());
         return databaseService;
-       
+
     }
-    
-    
-    //Database Service APIs
+
+    // Database Service APIs
     public abstract Connection getConnection(DatabaseConfiguration dbConfig) throws DatabaseServiceException;
-    
+
     public abstract boolean testConnection(DatabaseConfiguration dbConfig) throws DatabaseServiceException;
 
-    public abstract DatabaseInfo connect(DatabaseConfiguration dbConfig) throws  DatabaseServiceException;
-    
+    public abstract DatabaseInfo connect(DatabaseConfiguration dbConfig) throws DatabaseServiceException;
+
     public abstract DatabaseInfo executeQuery(DatabaseConfiguration dbConfig, String query) throws DatabaseServiceException;
-    
+
     public abstract DatabaseInfo testQuery(DatabaseConfiguration dbConfig, String query) throws DatabaseServiceException;
 
     public String buildLimitQuery(Integer limit, Integer offset, String query) {
-    	if(logger.isDebugEnabled()) {
-            logger.info( "<<< original input query::{} >>>" , query );
+        if (logger.isDebugEnabled()) {
+            logger.info("<<< original input query::{} >>>", query);
         }
-       
+
         final int len = query.length();
-        String parsedQuery = len > 0 && query.endsWith(";") ?  query.substring(0, len - 1) : query;
-               
-        
+        String parsedQuery = len > 0 && query.endsWith(";") ? query.substring(0, len - 1) : query;
+
         StringBuilder sb = new StringBuilder();
         sb.append("SELECT * FROM (");
         sb.append(parsedQuery);
         sb.append(") data");
-        
-        if(limit != null) {
+
+        if (limit != null) {
             sb.append(" LIMIT" + " " + limit);
         }
-        
-        if(offset != null) {
+
+        if (offset != null) {
             sb.append(" OFFSET" + " " + offset);
         }
         sb.append(";");
         String parsedQueryOut = sb.toString();
-        
-        if(logger.isDebugEnabled()) {
-            logger.info( "<<<Final input query::{} >>>" , parsedQueryOut );
+
+        if (logger.isDebugEnabled()) {
+            logger.info("<<<Final input query::{} >>>", parsedQueryOut);
         }
-        
+
         return parsedQueryOut;
     }
-    
+
     public abstract List<DatabaseColumn> getColumns(DatabaseConfiguration dbConfig, String query) throws DatabaseServiceException;
-    
+
     public abstract List<DatabaseRow> getRows(DatabaseConfiguration dbConfig, String query) throws DatabaseServiceException;
 
 }

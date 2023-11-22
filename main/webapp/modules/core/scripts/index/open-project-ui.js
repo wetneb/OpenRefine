@@ -39,26 +39,8 @@ Refine.OpenProjectUI = function(elmt) {
   this._elmt = elmt;
   this._elmts = DOM.bind(elmt);
 
-  $("#project-file-input").change(function() {
-    if ($("#project-name-input")[0].value.length === 0) {
-      var fileName = this.files[0].fileName;
-      if (fileName) {
-        $("#project-name-input")[0].value = fileName.replace(/\.\w+/, "").replace(/[_\-]/g, " ");
-      }
-      $("#project-name-input").focus().select();
-    }
-  }).keypress(function(evt) {
-    if (evt.keyCode == 13) {
-      return self._onClickUploadFileButton(evt);
-    }
-  });
-
-  $("#upload-file-button").click(function(evt) {
-    return self._onClickUploadFileButton(evt);
-  });
-
   $('#projects-workspace-open').text($.i18n('core-index-open/browse'));
-  $('#projects-workspace-open').click(function() {
+  $('#projects-workspace-open').on('click',function() {
     Refine.postCSRF(
       "command/core/open-workspace-dir",
       {},
@@ -72,19 +54,6 @@ Refine.OpenProjectUI = function(elmt) {
   });
   Refine.TagsManager.allProjectTags = [];
   this._buildTagsAndFetchProjects();
-};
-
-Refine.OpenProjectUI.prototype.resize = function() {
-  var height = this._elmt.height();
-  var width = this._elmt.width();
-  var controlsHeight = this._elmts.workspaceControls.outerHeight();
-
-  this._elmts.projectsContainer
-  .css("height", (height - controlsHeight - DOM.getVPaddings(this._elmts.projectsContainer)) + "px");
-
-  this._elmts.workspaceControls
-  .css("bottom", "0px")
-  .css("width", (width - DOM.getHPaddings(this._elmts.workspaceControls)) + "px");
 };
 
 Refine.OpenProjectUI.prototype._fetchProjects = function() {
@@ -101,36 +70,55 @@ Refine.OpenProjectUI.prototype._fetchProjects = function() {
 };
 
 Refine.OpenProjectUI.prototype._buildTagsAndFetchProjects = function() {
-    this._buildTagsListPanel();
+    Refine.OpenProjectUI.refreshTagsListPanel();
     this._fetchProjects();
+    var tag = new URLSearchParams(window.location.search).get('tag');
+    if (!tag) tag = '';
+    Refine.OpenProjectUI._filterTags(tag);
 };
 
-Refine.OpenProjectUI.prototype._buildTagsListPanel = function() {
-    var self = this;
-    self._allTags = Refine.TagsManager._getAllProjectTags();
+Refine.OpenProjectUI.refreshTagsListPanel = function() {
+    var allTags = Refine.TagsManager._getAllProjectTags();
 
-    var container = self._elmts.projectTags.empty();
-    var ul = $("<ul/>").attr('id', 'tagsUl').appendTo(container);
+    var ul = $("#tagsUl").empty();
 
     // Add 'all' menu item
-    var li = $('<li/>').addClass("active").appendTo(ul);
-    $('<a/>').attr('href', '#all').addClass("current").text('All').appendTo(li);
-
-    $.each(self._allTags, function(i) {
-            var li = $('<li/>').appendTo(ul);
-            $('<a/>').attr('href', '#' + self._allTags[i]).text(self._allTags[i])
-                            .appendTo(li);
+    var li = $('<li/>').appendTo(ul);
+    var a = $('<a/>').attr('href', '?tag=#open-project').text('All').appendTo(li);
+    a.on('click', function(e) {
+      e.preventDefault();
+      Refine.OpenProjectUI._filterTags('');
     });
 
-    self._addTagsListAnimation();
-};
-
-Refine.OpenProjectUI.prototype._addTagsListAnimation = function() {
-    $("#tagsUl").lavalamp({
-            setOnClick : true,
-            duration : 300
+    $.each(allTags, function(i) {
+      var li = $('<li/>').appendTo(ul);
+      var a = $('<a/>').attr('href', '?tag=' + allTags[i] + '#open-project').text(allTags[i])
+                      .appendTo(li);
+      a.on('click', function(elm) {
+        elm.preventDefault();
+        Refine.OpenProjectUI._filterTags(allTags[i]);
+      });
     });
 };
+
+Refine.OpenProjectUI._filterTags = function(tag) {
+  // this function can run even if the open project UI is not visible to the user, so only update the URL if it is
+  if (window.hash === "#open-project") window.history.pushState("", "", "?tag=" + tag + "#open-project");
+
+  $('#tagsUl').children().each(function() {
+    $(this).removeClass('current');
+  });
+  $('#tagsUl').find('a[href="?tag=' + tag + '#open-project"]').parent().addClass('current');
+
+  $("#tableBody").children().each(function() {
+    if ($(this).hasClass(tag) || tag === "") {
+      $(this).show();
+    } else {
+      $(this).hide();
+    }
+  });
+};
+
 
 Refine.OpenProjectUI.prototype._fetchProjects = function() {
     var self = this;
@@ -140,7 +128,6 @@ Refine.OpenProjectUI.prototype._fetchProjects = function() {
             dataType : 'json',
             success : function(data) {
                     self._renderProjects(data);
-                    self.resize();
             },
             data : {},
             async : false
@@ -153,7 +140,15 @@ Refine.OpenProjectUI.prototype._renderProjects = function(data) {
   for (var n in data.projects) {
     if (data.projects.hasOwnProperty(n)) {
       var project = data.projects[n];
+      if (project == null) {
+          console.log('Project '+n+' is null. skipping...');
+          continue;
+      }
       project.id = n;
+      if (!project.name) {
+         console.log('Project '+project.id+' name is not set. skipping...');
+         continue;
+      }
       project.date = moment(project.modified).format('YYYY-MM-DD HH:mm A');
       
       if (typeof project.userMetadata !== "undefined")  {
@@ -182,8 +177,6 @@ Refine.OpenProjectUI.prototype._renderProjects = function(data) {
   if (!projects.length) {
     $("#no-project-message").clone().show().appendTo(container);
   } else {
-    Refine.selectActionArea('open-project');
-    
     var projectsUl = $("<ul/>").attr('id', 'projectsUl').appendTo(container);
 
     var table = $(
@@ -219,8 +212,8 @@ Refine.OpenProjectUI.prototype._renderProjects = function(data) {
       .attr("title",$.i18n('core-index-open/del-title'))
       .attr("href","")
       .html("<img src='images/close.png' />")
-      .click(function() {
-        if (window.confirm($.i18n('core-index-open/del-body') + project.name + "\"?")) {
+      .on('click',function() {
+        if (window.confirm($.i18n('core-index-open/del-body', project.name))) {
           Refine.postCSRF(
             "command/core/delete-project",
             { "project" : project.id },
@@ -242,7 +235,7 @@ Refine.OpenProjectUI.prototype._renderProjects = function(data) {
       .text($.i18n('core-index-open/edit-meta-data'))
       .addClass("secondary")
       .attr("href", "javascript:{}")
-      .click(function() {
+      .on('click',function() {
           new EditMetadataDialog(project, $(this).parent().parent());
       })
       .appendTo(
@@ -265,8 +258,8 @@ Refine.OpenProjectUI.prototype._renderProjects = function(data) {
     tags.map(function(tag){
         $("<span/>")
         .addClass("project-tag")
+        .attr("data-tag-name", tag)
         .text(tag)
-        .attr("title", $.i18n('core-index-open/edit-tags'))
         .appendTo(tagsCell);
         $(tr).addClass(tag);
     });
@@ -312,37 +305,10 @@ Refine.OpenProjectUI.prototype._renderProjects = function(data) {
 };
 
 Refine.OpenProjectUI.prototype._addTagFilter = function() {
-    $("#tableBody").filterList();
-};
-
-Refine.OpenProjectUI.prototype._onClickUploadFileButton = function(evt) {
-  var projectName = $("#project-name-input")[0].value;
-  var dataURL = $.trim($("#project-url-input")[0].value);
-  if (! $.trim(projectName).length) {
-    window.alert($.i18n('core-index-open/warning-proj-name'));
-
-  } else if ($("#project-file-input")[0].files.length === 0 && ! dataURL.length) {
-    window.alert($.i18n('core-index-open/warning-data-file'));
-
-  } else {
-    $("#file-upload-form").attr("action",
-        "command/core/create-project-from-upload?" + [
-          "url=" +                encodeURIComponent(dataURL),
-          "split-into-columns=" + $("#split-into-columns-input")[0].checked,
-          "separator=" +          $("#separator-input")[0].value,
-          "ignore=" +             $("#ignore-input")[0].value,
-          "header-lines=" +       $("#header-lines-input")[0].value,
-          "skip=" +               $("#skip-input")[0].value,
-          "limit=" +              $("#limit-input")[0].value,
-          "guess-value-type=" +   $("#guess-value-type-input")[0].checked,
-          "ignore-quotes=" +      $("#ignore-quotes-input")[0].checked
-        ].join("&"));
-
-    return true;
+  if (window.location.hash === 'open-project') {
+    var tag = new URLSearchParams(window.location.search).get("tag", "");
+    Refine.OpenProjectUI._filterTags(tag);
   }
-
-  evt.preventDefault();
-  return false;
 };
 
 Refine.OpenProjectUI.refreshProject = function(tr, metaData, project) {
@@ -363,8 +329,8 @@ Refine.OpenProjectUI.refreshProject = function(tr, metaData, project) {
             data.map(function(tag){
                 var tagsCell = $("<span/>")
                 .addClass("project-tag")
+                .attr("data-tag-name", tag)
                 .text(tag)
-                .attr("title", $.i18n('core-index-open/edit-tags'))
                 .appendTo(tagCol);
                 tagCol.parent().addClass(tag);
             });
@@ -373,8 +339,8 @@ Refine.OpenProjectUI.refreshProject = function(tr, metaData, project) {
             data.split(",").map(function(tag){
                 var tagsCell = $("<span/>")
                 .addClass("project-tag")
+                .attr("data-tag-name", tag)
                 .text(tag)
-                .attr("title", $.i18n('core-index-open/edit-tags'))
                 .appendTo(tagCol);
                 tagCol.parent().addClass(tag);
             });
@@ -413,21 +379,8 @@ Refine.OpenProjectUI.refreshProject = function(tr, metaData, project) {
              refreshMetaField(data[i].value,index); index++; 
          }
     }
-    
-    Refine.TagsManager.allProjectTags = [];
-    var self = this;
-    var list = $("#tagsUl").empty();
-    self._allTags = Refine.TagsManager._getAllProjectTags();
-     
-      var li = $('<li/>').addClass("active").appendTo(list);
-      $('<a/>').attr('href',
-      '#all').addClass("current").text('All').appendTo(li);
-     
-      $.each(self._allTags, function(i) {
-      var li = $('<li/>').appendTo(list);
-      $('<a/>').attr('href', '#' + self._allTags[i]).text(self._allTags[i])
-      .appendTo(li);
-      });
+
+    Refine.OpenProjectUI.refreshTagsListPanel();
 };
 
 Refine.actionAreas.push({

@@ -42,7 +42,7 @@ function ReconStandardServicePanel(column, service, container) {
 
 ReconStandardServicePanel.prototype._guessTypes = function(f) {
   var self = this;
-  var dismissBusy = DialogSystem.showBusy();
+  var dismissBusy = self.showBusyReconciling();
 
   Refine.postCSRF(
     "command/core/guess-types-of-column?" + $.param({
@@ -52,24 +52,28 @@ ReconStandardServicePanel.prototype._guessTypes = function(f) {
     }),
     null, 
     function(data) {
-      self._types = data.types;
+      if (data.code && data.code === 'ok') {
+        self._types = data.types;
 
-      if (self._types.length === 0 && "defaultTypes" in self._service) {
-        var defaultTypes = {};
-        $.each(self._service.defaultTypes, function() {
-          defaultTypes[this.id] = this.name;
-        });
-        $.each(self._types, function() {
-          delete defaultTypes[typeof this == "string" ? this : this.id];
-        });
-        for (var id in defaultTypes) {
-          if (defaultTypes.hasOwnProperty(id)) {
-            self._types.push({
-              id: id,
-              name: defaultTypes[id].name
-            });
+        if (self._types.length === 0 || "defaultTypes" in self._service) {
+          var defaultTypes = {};
+          $.each(self._service.defaultTypes, function() {
+            defaultTypes[this.id] = this.name;
+          });
+          $.each(self._types, function() {
+            delete defaultTypes[typeof this == "string" ? this : this.id];
+          });
+          for (var id in defaultTypes) {
+            if (defaultTypes.hasOwnProperty(id)) {
+              self._types.push({
+                id: id,
+                name: defaultTypes[id]
+              });
+            }
           }
         }
+      } else {
+        alert('Guess Types query failed ' + data.code + ' : ' + data.message);
       }
 
       dismissBusy();
@@ -83,21 +87,45 @@ ReconStandardServicePanel.prototype._constructUI = function() {
   var self = this;
   this._panel = $(DOM.loadHTML("core", "scripts/reconciliation/standard-service-panel.html")).appendTo(this._container);
   this._elmts = DOM.bind(this._panel);
-  
-  this._elmts.or_proc_access.html("&raquo; "+$.i18n('core-recon/access'));
-  this._elmts.rawServiceLink.html($.i18n('core-recon/service-api'));
-  this._elmts.or_proc_cellType.html($.i18n('core-recon/cell-type')+":");
-  this._elmts.or_proc_colDetail.html($.i18n('core-recon/col-detail')+":");
-  this._elmts.or_proc_againstType.html($.i18n('core-recon/against-type')+":");
+  this._elmts.or_proc_accessDocumentation.html($.i18n('core-recon/service-documentation'));
+  this._elmts.automatchCheck[0].checked=JSON.parse(Refine.getPreference("ui.reconciliation.automatch", true));
+  this._elmts.or_proc_access.html($.i18n('core-recon/access-service'));
+  this._elmts.or_proc_cellType.html($.i18n('core-recon/cell-type'));
+  this._elmts.or_proc_colDetail.html($.i18n('core-recon/col-detail'));
+  this._elmts.or_proc_againstType.html($.i18n('core-recon/against-type'));
   this._elmts.or_proc_noType.html($.i18n('core-recon/no-type'));
   this._elmts.or_proc_autoMatch.html($.i18n('core-recon/auto-match'));
   this._elmts.or_proc_max_candidates.html($.i18n('core-recon/max-candidates'));
+  this._elmts.typeInput.attr('aria-label',$.i18n('core-recon/type'))
 
   this._elmts.rawServiceLink.attr("href", this._service.url);
+  this._elmts.documentationLink.css("display", "none");
+  if(this._service.documentation) {
+    this._elmts.documentationLink.attr("href", this._service.documentation);
+    // Show the documentation link if documentation is available
+    this._elmts.documentationLink.css("display", "block");
+  } 
+  
+  this._elmts.againstType.on('change', function() {
+    self._elmts.typeInput.trigger('focus').trigger('select');
+  });
 
-  this._guessTypes(function() {
+  this._elmts.noType.on('click', function () {
+    self._rewirePropertySuggests(null) // Clear any selected type
+  });
+  self._populateProperties();
+  this._guessTypes(function () {
     self._populatePanel();
     self._wireEvents();
+    self._elmts.editMappedType.on('click', function() {
+          $input = self._elmts.typeInput;
+          $mappedValue = $(this).parent();
+          $input.removeData('data.suggest');
+          $label = $mappedValue.parent().find('.mapped-value > a:not(.edit-mapped-value)');
+          $input.val($label.text()).prop('disabled',false);
+          $mappedValue.toggle();
+          $input.trigger('focus');
+        })
   });
 };
 
@@ -141,15 +169,15 @@ ReconStandardServicePanel.prototype._populatePanel = function() {
 
       td0.width = "1%";
       var radio = $('<input type="radio" name="type-choice">')
-      .attr("value", typeID)
+      .val(typeID)
       .attr("typeName", typeName)
       .appendTo(td0)
-      .click(function() {
+      .on('click',function() {
         self._rewirePropertySuggests(this.value);
       });
 
       if (check) {
-        radio.attr("checked", "true");
+        radio.prop('checked', true);
       }
 
       if (typeName == typeID) {
@@ -172,11 +200,12 @@ ReconStandardServicePanel.prototype._populatePanel = function() {
 
     this._panel
     .find('input[name="type-choice"][value=""]')
-    .attr("checked", "true");
+    .prop('checked', true);
 
-    this._elmts.typeInput.focus();
+    this._elmts.typeInput.trigger('focus');
   }
-
+}
+  ReconStandardServicePanel.prototype._populateProperties = function () {
   /*
    *  Populate properties
    */
@@ -186,7 +215,7 @@ ReconStandardServicePanel.prototype._populatePanel = function() {
 
   var detailTable = $(
       '<table>' +
-      '<tr><th>'+$.i18n('core-recon/column')+'</th><th>'+$.i18n('core-recon/include')+'?</th><th>'+$.i18n('core-recon/as-property')+'</th></tr>' +
+      '<tr><th>'+$.i18n('core-recon/column')+'</th><th>'+$.i18n('core-recon/as-property')+'</th></tr>' +
       '</table>'
   ).appendTo(detailTableContainer)[0];
 
@@ -194,15 +223,31 @@ ReconStandardServicePanel.prototype._populatePanel = function() {
     var tr = detailTable.insertRow(detailTable.rows.length);
     var td0 = tr.insertCell(0);
     var td1 = tr.insertCell(1);
-    var td2 = tr.insertCell(2);
+    $(td0).attr("columnName", column.name).html(column.name);
+    $(td1).data('id','property').css('position','relative');
 
-    $(td0).html(column.name);
-    $('<input type="checkbox" />')
-    .attr("columnName", column.name)
-    .appendTo(td1);
-    $('<input size="25" name="property" />')
-    .attr("columnName", column.name)
-    .appendTo(td2);
+    let mappedColumn = $("<span>").addClass("mapped-value");
+
+    mappedColumn.append($("<a>").text(""))
+        .append($("<span>").addClass("type-id").text("()"))
+        .append($("<a>").addClass("edit-mapped-value").text("edit")
+            .on('click', function() {
+              $input = $(this).parent().siblings('input[name="property"]');
+              $input.removeData('data.suggest');
+              $label = $(this).parent().parent().find('.mapped-value > a:not(.edit-mapped-value)');
+              $input.val($label.text()).prop('disabled',false);
+              mappedColumn.toggle();
+              $input.trigger('focus');
+            }));
+
+    $(td1).append(mappedColumn)
+        .append(
+            $("<input>")
+                .attr("size", "25")
+                .attr("name", "property")
+                .attr("spellcheck", "false")
+                .data('columnName',column.name)
+        );
   }
   var columns = theProject.columnModel.columns;
   for (var i = 0; i < columns.length; i++) {
@@ -215,7 +260,7 @@ ReconStandardServicePanel.prototype._populatePanel = function() {
 
 ReconStandardServicePanel.prototype._wireEvents = function() {
   var self = this;
-  var input = this._elmts.typeInput.unbind();
+  var input = this._elmts.typeInput.off();
 
   if ("suggest" in this._service && "type" in this._service.suggest && this._service.suggest.type.service_url) {
     // Old style suggest API
@@ -226,13 +271,21 @@ ReconStandardServicePanel.prototype._wireEvents = function() {
     if (this._service.ui && this._service.ui.access) {
       suggestOptions.access = this._service.ui.access;
     }
-    input.suggestT(suggestOptions);
+    input.suggestT(sanitizeSuggestOptions(suggestOptions)).on("fb-select", function(e, data) {
+      let $input = $(e.currentTarget);
+      let $td = $input.parent();
+      let mapping = $input.data('data.suggest');
+      $td.children('.mapped-value').css('display', 'inline-flex');
+      $input.val('').prop('disabled', true);
+      $td.find('.mapped-value > a:not(.edit-mapped-value)').text(mapping.name);
+      $td.find('.mapped-value > .type-id').text("(" + mapping.id + ")");
+    });
   }
 
-  input.bind("fb-select", function(e, data) {
+  input.on("bind fb-select", function(e, data) {
     self._panel
     .find('input[name="type-choice"][value=""]')
-    .attr("checked", "true");
+    .prop('checked', true);
 
     self._rewirePropertySuggests(data.id);
   });
@@ -243,8 +296,7 @@ ReconStandardServicePanel.prototype._wireEvents = function() {
 ReconStandardServicePanel.prototype._rewirePropertySuggests = function(type) {
   var inputs = this._panel
   .find('input[name="property"]')
-  .unbind();
-
+  .off();
   if ("suggest" in this._service && "property" in this._service.suggest && this._service.suggest.property.service_url) {
     // Old style suggest API
     var suggestOptions = $.extend({}, this._service.suggest.property);
@@ -257,24 +309,36 @@ ReconStandardServicePanel.prototype._rewirePropertySuggests = function(type) {
     if (type) {
       suggestOptions.type = typeof type == "string" ? type : type.id;
     }
-    inputs.suggestP(suggestOptions);
-  }
+    inputs.suggestP(sanitizeSuggestOptions(suggestOptions)).on("fb-select", function(e, data) {
+      let $input = $(e.currentTarget);
+      let $td = $input.parent();
+      let mapping = $input.data('data.suggest');
+      $td.children('.mapped-value').css('display', 'inline-flex');
+      $td.children('input[name="property"]').val('').prop('disabled', true);
+      $td.find('.mapped-value > a:not(.edit-mapped-value)').text(mapping.name);
+      $td.find('.mapped-value > .type-id').text("(" + mapping.id + ")");
+    });
+    }
 };
 
 ReconStandardServicePanel.prototype.start = function() {
-  var self = this;
+  let self = this;
+  let invalidState = false;
 
-  var type = this._elmts.typeInput.data("data.suggest");
-  if (!(type)) {
-    type = {
-        id: this._elmts.typeInput[0].value,
-        name: this._elmts.typeInput[0].value
-    };
+  let type = this._elmts.typeInput.data("data.suggest");
+  let hasSuggest = type && type.id && type.name;
+  if (!hasSuggest) {
+    let value = jQueryTrim(this._elmts.typeInput.val());
+    let hasValue = value && value.length > 0;
+    if (hasValue) {
+      alert('Reconcile against type "'+value+'" is not mapped.');
+      invalidState = true;
+    }
   }
 
-  var choices = this._panel.find('input[name="type-choice"]:checked');
+  let choices = this._panel.find('input[name="type-choice"]:checked');
   if (choices !== null && choices.length > 0) {
-    if (choices[0].value == '-') {
+    if (choices[0].value == '-') { // TODO: This is the signal value for "no type", but don't think it's used anymore
       type = null;
     } else if (choices[0].value != "") {
       type = {
@@ -284,33 +348,35 @@ ReconStandardServicePanel.prototype.start = function() {
     }
   }
 
-  var columnDetails = [];
+  let columnDetails = [];
+
   $.each(
     this._panel.find('input[name="property"]'),
-    function() {
-      var property = $(this).data("data.suggest");
-      if (property && property.id) {
+    function(index) {
+      let property = $(this).data("data.suggest");
+      let hasSuggest = property && property.id && property.name;
+      if (hasSuggest) {
         columnDetails.push({
-          column: this.getAttribute("columnName"),
+          column: $(this).data("columnName"),
           property: {
             id: property.id,
             name: property.name
           }
         });
       } else {
-        var property = $.trim(this.value);
-        if (property) {
-          columnDetails.push({
-            column: this.getAttribute("columnName"),
-            property: {
-              id: property,
-              name: property
-            }
-          });
+        let value = jQueryTrim(this.value);
+        let hasValue = value && value.length > 0;
+        if (hasValue) {
+          alert('Column '+$(this).data("columnName")+' is not mapped.');
+          invalidState = true;
         }
       }
     }
-  );
+  )
+
+  if (invalidState) {
+    return false;
+  }
 
   Refine.postCoreProcess(
     "reconcile",
@@ -324,11 +390,24 @@ ReconStandardServicePanel.prototype.start = function() {
         schemaSpace: this._service.schemaSpace,
         type: (type) ? { id: type.id, name: type.name } : null,
         autoMatch: this._elmts.automatchCheck[0].checked,
+        batchSize: (Number.isInteger(this._service.batchSize) && this._service.batchSize > 0) ? this._service.batchSize : 10,
         columnDetails: columnDetails,
         limit: parseInt(this._elmts.maxCandidates[0].value) || 0
       })
     },
     { cellsChanged: true, columnStatsChanged: true }
   );
+
+  return true;
 };
 
+ReconStandardServicePanel.prototype.showBusyReconciling = function(message) {
+  var frame = document.getElementsByClassName("type-container")[0];
+
+  var body = $('<div>').attr('id', 'loading-message').appendTo(frame);
+  $('<img>').attr("src", "images/large-spinner.gif").appendTo(body);
+
+  return function() {
+    $(body).remove()
+  };
+};

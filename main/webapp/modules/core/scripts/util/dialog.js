@@ -35,6 +35,13 @@ DialogSystem = {
     _layers: []
 };
 
+var escapeKey = function(event) {
+  var level = DialogSystem._layers.length;
+  if (event.key == "Escape") {
+      DialogSystem.dismissUntil(level - 1);
+  }
+}
+
 DialogSystem.showDialog = function(elmt, onCancel) {
   var overlay = $('<div>&nbsp;</div>')
   .addClass("dialog-overlay")
@@ -47,10 +54,16 @@ DialogSystem.showDialog = function(elmt, onCancel) {
   .appendTo(document.body);
 
   elmt.css("visibility", "hidden").appendTo(container);
-  container.css("top", Math.round((overlay.height() - elmt.height()) / 2) + "px");
+// Dialogs should be in the upper half of the window
+// Offset by 10% of window height to separate from browser bar
+// Unless dialog is as big or bigger than the window, then set top to 0 + 5px;
+  var top1 = overlay.height()/10;
+  var top2 = Math.round((overlay.height() - elmt.height()) / 2);
+  var top = (top1 < top2) ? top1 : top2;
+  container.css("top", Math.round((top < 0 ) ? 5 : top) + "px");
   elmt.css("visibility", "visible");
 
-  container.draggable({ handle: '.dialog-header', cursor: 'move' });
+  container.draggable({ handle: '.dialog-header', containment: [ -32768, 0, 32768, 32768 ], cursor: 'move' });
 
   var layer = {
     overlay: overlay,
@@ -61,23 +74,45 @@ DialogSystem.showDialog = function(elmt, onCancel) {
 
   var level = DialogSystem._layers.length;
 
+  DialogSystem.setupEscapeKeyHandling();
+
+  elmt.attr("aria-role", "dialog");
+  var dialogHeader = elmt.find(".dialog-header");
+  if (dialogHeader.length && dialogHeader[0].id) {
+    elmt.attr("aria-labeledby", dialogHeader[0].id);
+  }
+
+  elmt.attr("tabindex", -1);
+  elmt.trigger('focus');
+
   return level;
 };
+
+
+DialogSystem.pauseEscapeKeyHandling = function() {
+  $(window).off('keydown',escapeKey);
+}
+
+DialogSystem.setupEscapeKeyHandling = function() {
+  $(window).on('keydown',escapeKey);
+}
 
 DialogSystem.dismissLevel = function(level) {
     var layer = DialogSystem._layers[level];
 
-    $(document).unbind("keydown", layer.keyHandler);
+    if (layer) {
+      $(document).off("keydown", layer.keyHandler);
 
-    layer.overlay.remove();
-    layer.container.remove();
-    layer.container.unbind();
+      layer.overlay.remove();
+      layer.container.remove();
+      layer.container.off();
 
-    if (layer.onCancel) {
-      try {
-        layer.onCancel();
-      } catch (e) {
-        Refine.reportException(e);
+      if (layer.onCancel) {
+        try {
+          layer.onCancel();
+        } catch (e) {
+          Refine.reportException(e);
+        }
       }
     }
 };
@@ -90,6 +125,7 @@ DialogSystem.dismissUntil = function(level) {
   for (var i = DialogSystem._layers.length - 1; i >= level; i--) {
 	  DialogSystem.dismissLevel(i);
   }
+  $(window).off('keydown', escapeKey);
   DialogSystem._layers = DialogSystem._layers.slice(0, level);
 };
 

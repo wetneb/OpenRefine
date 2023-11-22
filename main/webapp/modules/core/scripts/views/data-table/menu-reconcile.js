@@ -32,6 +32,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
+  var columnIndex = Refine.columnNameToColumnIndex(column.name);
   var doReconcile = function() {
     new ReconDialog(column);
   };
@@ -54,6 +55,76 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
     );
   };
 
+  function successCallBack(columnName,dismissDialog)
+  {
+      var serviceUrl = null;
+      var service = null;
+      if (column.reconConfig) {
+        serviceUrl = column.reconConfig.service;
+      }
+      if (serviceUrl) {
+        service = ReconciliationManager.getServiceFromUrl(serviceUrl);
+      }
+      if (service && service.view){
+        
+        Refine.postCoreProcess
+        (
+          "add-column",
+          {
+            baseColumnName: column.name,
+            newColumnName: columnName,
+            columnInsertIndex: columnIndex + 1,
+            onError: "set-to-blank"
+          },
+          { expression: 'if(cell.recon.match!=null,"' + service.view.url + '".replace("{{id}}",escape(cell.recon.match.id,"url")),null)' },
+          { modelsChanged: true },
+          { onDone: dismissDialog},
+        );
+      } else {
+        alert($.i18n('core-views/service-does-not-associate-URLs-to-the-entities-it-contains'));
+      }
+    }
+
+
+  var doAddColumnWithUrlOfMatchedEntities = function () {
+
+    promptForColumn(successCallBack,'core-views/add-entity-URL-col');
+
+  }
+
+
+  function promptForColumn(successCallBack,dialogName){
+    var frame = $(
+      DOM.loadHTML("core", "scripts/views/data-table/add-q-column-dialog.html"));
+
+    var elmts = DOM.bind(frame);
+    elmts.dialogHeader.text($.i18n(dialogName, column.name));
+    elmts.or_views_newCol.text($.i18n('core-views/new-col-name'));
+    elmts.okButton.html($.i18n('core-buttons/ok'));
+    elmts.cancelButton.text($.i18n('core-buttons/cancel'));
+
+    var level = DialogSystem.showDialog(frame);
+    var dismiss = function() { DialogSystem.dismissUntil(level - 1); };
+
+    var o = DataTableView.sampleVisibleRows(column);
+
+    elmts.cancelButton.on('click',dismiss);
+
+    elmts.form.on('submit',function(event) {
+      event.preventDefault();
+      var columnName = jQueryTrim(elmts.columnNameInput[0].value);
+      if (!columnName.length) {
+        alert($.i18n('core-views/warning-col-name'));
+        return;
+      }
+      var dismissDialog=function(o) {
+        dismiss();
+      };
+      successCallBack(columnName,dismissDialog);
+
+    });
+  }
+
   var doReconMatchBestCandidates = function() {
     Refine.postCoreProcess(
       "recon-match-best-candidates",
@@ -64,14 +135,35 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
   };
 
   var doReconMarkNewTopics = function(shareNewTopics) {
-    Refine.postCoreProcess(
-      "recon-mark-new-topics",
-      { columnName: column.name, shareNewTopics: shareNewTopics },
-      null,
-      { cellsChanged: true, columnStatsChanged: true }
-    );
-  };
+    var headerText = $.i18n(shareNewTopics ? 'core-views/one-topic/header' : 'core-views/new-topic/header');
+    var explanationText = $.i18n('core-views/recon-mark-new-warning');
+    var onSelect = function(service, identifierSpace, schemaSpace) {
+      Refine.postCoreProcess(
+        "recon-mark-new-topics",
+        {
+          columnName: column.name,
+          shareNewTopics: shareNewTopics,
+          service: service,
+          identifierSpace: identifierSpace,
+          schemaSpace: schemaSpace
+        },
+        null,
+        { cellsChanged: true, columnStatsChanged: true }
+      );
+    };
 
+    // if this column is already partly reconciled,
+    // we do not need to prompt the user for a reconciliation service,
+    // as we can use the existing one.
+    if (column.reconConfig != null && column.reconConfig.service != null) {
+      // we do not pass the service, identifierSpace and schemaSpace to the operation
+      // so that the existing ReconConfig is kept by the operation
+      onSelect(null, null, null);
+    } else {
+      createReconServiceSelectionDialog(headerText, explanationText, onSelect);
+    }
+  };
+  
   var doSearchToMatch = function() {
     var serviceUrl = null;
     var service = null;
@@ -95,7 +187,7 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
           suggestOptions.formatter_url = service.view.url;
        }
     }
-
+    
     var frame = DialogSystem.createDialog();
     frame.width("400px");
 
@@ -106,10 +198,10 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
     $('<p></p>').text($.i18n('core-views/search-fb-topic')).appendTo(body);
 
     var input = $('<input />').appendTo($('<p></p>').appendTo(body));
-
-    input.suggest(suggestOptions).bind("fb-select", function(e, data) {
+    
+    input.suggest(sanitizeSuggestOptions(suggestOptions)).on("fb-select", function(e, data) {
         var types = data.notable ? data.notable : [];
-
+      
         Refine.postCoreProcess(
         "recon-match-specific-topic-to-cells",
         {
@@ -127,65 +219,117 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
         DialogSystem.dismissUntil(level - 1);
     });
 
-    $('<button class="button"></button>').text($.i18n('core-buttons/cancel')).click(function() {
+    $('<button class="button"></button>').text($.i18n('core-buttons/cancel')).on('click',function() {
       DialogSystem.dismissUntil(level - 1);
     }).appendTo(footer);
 
     var level = DialogSystem.showDialog(frame);
-    input.focus().data("suggest").textchange();
+    input.trigger('focus').data("suggest").textchange();
   };
 
-  var doUseValuesAsIdentifiers = function() {
+  var createReconServiceSelectionDialog = function(headerText, explanationText, onSelect) {
     var frame = DialogSystem.createDialog();
     frame.width("400px");
+    frame.addClass('recon-service-selection-dialog');
 
-    var header = $('<div></div>').addClass("dialog-header").text($.i18n('core-views/use-values-as-identifiers')).appendTo(frame);
-    var body = $('<div></div>').addClass("dialog-body").appendTo(frame);
-    var footer = $('<div></div>').addClass("dialog-footer").appendTo(frame);
-
-    $('<p></p>').text($.i18n('core-views/choose-reconciliation-service')).appendTo(body);
-    var select = $('<select></select>').appendTo(body);
+    var header = $('<div></div>').addClass("dialog-header").text(headerText).appendTo(frame);
+    var form = $('<form></form>').appendTo(frame);
+    var body = $('<div></div>').addClass("dialog-body").appendTo(form);
+    var footer = $('<div></div>').addClass("dialog-footer").appendTo(form);
+    
+    $('<p></p>')
+      .text(explanationText)
+      .appendTo(body);
+    $('<label></label>')
+      .attr('for', 'dialog-recon-service-select')
+      .text($.i18n('core-views/choose-reconciliation-service')).appendTo(body);
+    var select = $('<select></select>')
+      .attr('id', 'dialog-recon-service-select')
+      .attr('name', 'dialog-recon-service-select')
+      .appendTo(body);
     var services = ReconciliationManager.getAllServices();
     for (var i = 0; i < services.length; i++) {
         var service = services[i];
-        $('<option></option>').attr('value', service.url)
+        $('<option></option>').val(service.url)
            .text(service.name)
            .appendTo(select);
     }
 
-    $('<button class="button"></button>').text($.i18n('core-buttons/cancel')).click(function() {
-      DialogSystem.dismissUntil(level - 1);
-    }).appendTo(footer);
-    $('<button class="button"></button>').html($.i18n('core-buttons/ok')).click(function() {
-        
-        var service = select.val();
-        var identifierSpace = null;
-        var schemaSpace = null;
-        for(var i = 0; i < services.length; i++) {
-           if(services[i].url === service) {
-              identifierSpace = services[i].identifierSpace;
-              schemaSpace = services[i].schemaSpace;
-           }
-        }
-        if (identifierSpace === null) {
-            alert($.i18n('core-views/choose-reconciliation-service-alert'));
-        } else {
-          Refine.postCoreProcess(
-            "recon-use-values-as-identifiers",
-            {
-              columnName: column.name,
-              service: service,
-              identifierSpace: identifierSpace,
-              schemaSpace: schemaSpace
-            },
-            null,
-            { cellsChanged: true, columnStatsChanged: true }
-         );
-       }
-       DialogSystem.dismissUntil(level - 1);
-    }).appendTo(footer);
+    $('<button class="button"></button>')
+      .text($.i18n('core-buttons/cancel'))
+      .on('click',function() {
+         DialogSystem.dismissUntil(level - 1);
+      })
+      .appendTo(footer);
+
+    $('<button class="button"></button>')
+      .attr('type', 'submit')
+      .html($.i18n('core-buttons/ok'))
+      .appendTo(footer);
+
+    form.on('submit', function() {
+          var service = select.val();
+          var identifierSpace = null;
+          var schemaSpace = null;
+          for(var i = 0; i < services.length; i++) {
+            if(services[i].url === service) {
+                identifierSpace = services[i].identifierSpace;
+                schemaSpace = services[i].schemaSpace;
+            }
+          }
+          if (identifierSpace === null) {
+              alert($.i18n('core-views/choose-reconciliation-service-alert'));
+          } else {
+              onSelect(service, identifierSpace, schemaSpace);
+              DialogSystem.dismissUntil(level - 1);
+          }
+      });
 
     var level = DialogSystem.showDialog(frame);
+  };
+
+  var doUseValuesAsIdentifiers = function() {
+    var headerText = $.i18n('core-views/use-values-as-identifiers/header');
+    var explanationText = $.i18n('core-views/use-values-as-identifiers-note');
+    var onSelect = function(service, identifierSpace, schemaSpace) {
+      Refine.postCoreProcess(
+        "recon-use-values-as-identifiers",
+        {
+          columnName: column.name,
+          service: service,
+          identifierSpace: identifierSpace,
+          schemaSpace: schemaSpace
+        },
+        null,
+        { cellsChanged: true, columnStatsChanged: true }
+      );
+    };
+
+    createReconServiceSelectionDialog(headerText, explanationText, onSelect);
+  };
+
+
+  function successCallBackForAddingIdColumn(columnName,dismissDialog)
+  {
+    Refine.postCoreProcess(
+      "add-column", 
+      {
+        baseColumnName: column.name,  
+        newColumnName: columnName, 
+        columnInsertIndex: columnIndex + 1,
+        onError: "set-to-blank"
+      },
+      { expression: "cell.recon.match.id" },
+      { modelsChanged: true },
+      { onDone: dismissDialog },
+        );
+  }
+
+  var doAddIdcolumn = function() {
+    
+   promptForColumn(successCallBackForAddingIdColumn,'core-views/add-id-col');
+
+      
   };
 
 
@@ -207,15 +351,15 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
     for (var i = 0; i < columns.length; i++) {
       var column2 = columns[i];
       if (column !== column2) {
-        $('<option>').attr("value", column2.name).text(column2.name).appendTo(elmts.toColumnSelect);
+        $('<option>').val(column2.name).text(column2.name).appendTo(elmts.toColumnSelect);
       }
     }
 
     var level = DialogSystem.showDialog(frame);
     var dismiss = function() { DialogSystem.dismissUntil(level - 1); };
 
-    elmts.cancelButton.click(dismiss);
-    elmts.okButton.click(function() {
+    elmts.cancelButton.on('click',dismiss);
+    elmts.okButton.on('click',function() {
       var config = {
         fromColumnName: column.name,
         toColumnName: [],
@@ -254,7 +398,7 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
   MenuSystem.appendTo(menu, [ "core/reconcile" ], [
     {
       id: "core/reconcile",
-      label: $.i18n('core-views/start-recon')+'...',
+      label: $.i18n('core-views/start-recon'),
       tooltip: $.i18n('core-views/recon-text-fb'),
       click: doReconcile
     },
@@ -270,12 +414,12 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
             ui.browsingEngine.addFacet(
                 "list", 
                 {
-                  "name" : column.name + ": judgment",
+                  "name" : $.i18n("core-views/judgment", column.name),
                   "columnName" : column.name, 
                   "expression" : 'forNonBlank(cell.recon.judgment, v, v, if(isNonBlank(value), "(unreconciled)", "(blank)"))'
                 },
                 {
-                  "scroll" : false
+                  "scroll" : true
                 }
             );
           }
@@ -287,7 +431,7 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
             ui.browsingEngine.addFacet(
                 "list", 
                 {
-                  "name" : column.name + " "+$.i18n('core-views/judg-actions2'),
+                  "name" : $.i18n('core-views/judg-actions2', column.name),
                   "columnName" : column.name, 
                   "expression" : "cell.recon.judgmentAction"
                 }
@@ -301,7 +445,7 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
             ui.browsingEngine.addFacet(
                 "list", 
                 {
-                  "name" : column.name + " "+$.i18n('core-views/hist-entries'),
+                  "name" : $.i18n('core-views/hist-entries', column.name),
                   "columnName" : column.name, 
                   "expression" : "cell.recon.judgmentHistoryEntry"
                 }
@@ -316,7 +460,7 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
             ui.browsingEngine.addFacet(
                 "range", 
                 {
-                  "name" : column.name + ": "+$.i18n('core-views/best-cand-score'),
+                  "name" : $.i18n('core-views/best-cand-score', column.name),
                   "columnName" : column.name, 
                   "expression" : "cell.recon.best.score",
                   "mode" : "range"
@@ -333,12 +477,12 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
             ui.browsingEngine.addFacet(
                 "list", 
                 {
-                  "name" : column.name + ": "+$.i18n('core-views/best-cand-type-match'),
+                  "name" : $.i18n('core-views/best-cand-type-match', column.name),
                   "columnName" : column.name, 
                   "expression" : 'forNonBlank(cell.recon.features.typeMatch, v, v, if(isNonBlank(value), if(cell.recon != null, "(no type)", "(unreconciled)"), "(blank)"))'
                 },
                 {
-                  "scroll" : false
+                  "scroll" : true
                 }
             );
           }
@@ -350,12 +494,12 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
             ui.browsingEngine.addFacet(
                 "list", 
                 {
-                  "name" : column.name + ": "+ $.i18n('core-views/best-cand-name'),
+                  "name" : $.i18n('core-views/best-cand-name', column.name),
                   "columnName" : column.name, 
                   "expression" : 'forNonBlank(cell.recon.features.nameMatch, v, v, if(isNonBlank(value), "(unreconciled)", "(blank)"))'
                 },
                 {
-                  "scroll" : false
+                  "scroll" : true
                 }
             );
           }
@@ -368,7 +512,7 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
             ui.browsingEngine.addFacet(
                 "range", 
                 {
-                  "name" : column.name + ": "+$.i18n('core-views/best-cand-edit-dist'),
+                  "name" : $.i18n('core-views/best-cand-edit-dist', column.name),
                   "columnName" : column.name, 
                   "expression" : "cell.recon.features.nameLevenshtein",
                   "mode" : "range"
@@ -385,7 +529,7 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
             ui.browsingEngine.addFacet(
                 "range", 
                 {
-                  "name" : column.name + ": "+$.i18n('core-views/best-cand-word-sim'),
+                  "name" :  $.i18n('core-views/best-cand-word-sim', column.name),
                   "columnName" : column.name, 
                   "expression" : "cell.recon.features.nameWordDistance",
                   "mode" : "range"
@@ -403,7 +547,7 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
             ui.browsingEngine.addFacet(
                 "list", 
                 {
-                  "name" : column.name + ": best candidate's types",
+                  "name" : $.i18n("core-views/best-cand-types", column.name),
                   "columnName" : column.name,
                   "expression" : 'forNonBlank(cell.recon.best.type, v, v, if(isNonBlank(value), "(unreconciled)", "(blank)"))'
                 }
@@ -471,6 +615,19 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
       label: $.i18n('core-views/use-values-as-identifiers'),
       tooltip: $.i18n('core-views/use-values-as-identifiers2'),
       click: doUseValuesAsIdentifiers
+    },
+    {},
+    {
+      id: "core/Add-column-with-URLs-of-matched-entities",
+      label: $.i18n("core-views/add-column-with-URLs-of-matched-entities"),
+      tooltip: $.i18n("core-views/add-column-with-URLs-of-matched-entities-tooltip"),
+      click: doAddColumnWithUrlOfMatchedEntities
+    },
+    {
+      id: "core/add-id-column",
+      label: $.i18n('core-views/add-id-column'),
+      tooltip: $.i18n('core-views/add-id-column2'),
+      click: doAddIdcolumn
     }
   ]);
 });

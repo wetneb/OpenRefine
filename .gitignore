@@ -1,3 +1,8 @@
+.idea/
+# Leave .idea settings ignored and force users to use `git add -f` to update
+#!*/
+#!.idea/codeStyles/
+*.iml
 *.log
 logs
 *~
@@ -14,22 +19,21 @@ server/classes/
 main/webapp/WEB-INF/classes/
 main/tests/server/classes/
 main/test-output/
-appengine/classes/
 tools/
-broker/appengine/module/MOD-INF/classes/
-broker/core/module/MOD-INF/classes/
-broker/core/WEB-INF/lib/
-broker/core/data/
-broker/core/test-output/
 tmp/
 /test-output
 test-out/
 /bin
 open-refine.log
 .vscode
+.metadata # Eclipse plugins specific
+
+# Locally stored "Eclipse launch configurations"
+*.launch
 
 main/target/
 main/webapp/WEB-INF/lib/
+main/webapp/modules/core/3rdparty/
 server/target/
 extensions/*/target/
 extensions/*/module/MOD-INF/classes/
@@ -43,3 +47,36 @@ target/
 *.classpath
 *.project
 *.settings
+#.settings/
+#!/*
+#!.settings/org.eclipse.jdt.ui.prefs
+
+# Ignore Apache Maven default download path
+apache-maven-*/
+apache-maven-*-bin.tar.gz
+
+# Ignore refine-dev.ini
+refine-dev.ini
+
+# Java annotation processor (APT)
+.factorypath
+
+# Code Recommenders
+.recommenders/
+
+# STS (Spring Tool Suite)
+.springBeans
+
+# Ignore Node modules that might inadvertently install at current path instead of user or configured env var NODE_PATH 
+node_modules/
+
+# Ignore the node_modules folder as they are dependencies to be installed by end-user
+main/webapp/node_modules
+
+# Yarn internal files
+**/.yarn
+**/.yarnrc.yml
+
+# Ignore .gitignore among extensions as it can be used to ignore custom extensions
+
+extensions/.gitignore

@@ -23,8 +23,8 @@ LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
 A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
 OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
 SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,           
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY           
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
 THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
@@ -32,30 +32,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 var theProject;
+var thePreferences;
 var ui = {};
 
-var lang = (navigator.language|| navigator.userLanguage).split("-")[0];
-var dictionary = "";
-$.ajax({
-	url : "command/core/load-language?",
-	type : "POST",
-	async : false,
-	data : {
-	  module : "core",
-//		lang : lang
-	},
-	success : function(data) {
-		dictionary = data['dictionary'];
-        lang = data['lang'];
-	}
-});
-$.i18n().load(dictionary, lang);
-$.i18n({ locale: lang });
-// End internationalization
+var Refine = {};
 
-var Refine = {
-  refineHelperService: "http://openrefine-helper.freebaseapps.com"
-};
+I18NUtil.init("core");
+
+Refine.wrapCSRF = CSRFUtil.wrapCSRF;
+Refine.postCSRF = CSRFUtil.postCSRF;
 
 Refine.reportException = function(e) {
   if (window.console) {
@@ -64,10 +49,16 @@ Refine.reportException = function(e) {
 };
 
 function resize() {
-  var leftPanelWidth = 300;
+  var leftPanelWidth = JSON.parse(Refine.getPreference("ui.browsing.facetsHistoryPanelWidth", 300));
+  if(typeof leftPanelWidth != "number" || leftPanelWidth < 200 || leftPanelWidth > 500) {
+    leftPanelWidth = 300;
+  }
+
   var width = $(window).width();
   var top = $("#header").outerHeight();
   var height = $(window).height() - top;
+
+  if (ui.leftPanelDiv.css('display') == "none") { leftPanelWidth = 0; }
 
   var leftPanelPaddings = ui.leftPanelDiv.outerHeight(true) - ui.leftPanelDiv.height();
   ui.leftPanelDiv
@@ -119,10 +110,8 @@ function resizeAll() {
 function initializeUI(uiState) {
   $("#loading-message").hide();
   $("#notification-container").hide();
-  $("#project-title").show();
-  $("#project-controls").show();
   $("#body").show();
-  
+
   $("#or-proj-open").text($.i18n('core-project/open')+"...");
   $("#project-permalink-button").text($.i18n('core-project/permalink'));
   $("#project-name-button").attr("title",$.i18n('core-project/proj-name'));
@@ -131,12 +120,14 @@ function initializeUI(uiState) {
   $("#or-proj-starting").text($.i18n('core-project/starting')+"...");
   $("#or-proj-facFil").text($.i18n('core-project/facet-filter'));
   $("#or-proj-undoRedo").text($.i18n('core-project/undo-redo'));
-  $("#or-proj-ext").text($.i18n('core-project/extensions')+":");
+  $("#or-proj-ext").text($.i18n('core-project/extensions'));
 
-  $('#project-name-button').click(Refine._renameProject);
-  $('#project-permalink-button').mouseenter(function() {
+  $('#project-name-button').on('click',Refine._renameProject);
+  $('#project-permalink-button').on('focus',function() {
     this.href = Refine.getPermanentLink();
   });
+
+  $('#app-home-button').attr('title', $.i18n('core-index/navigate-home'));
 
   Refine.setTitle();
 
@@ -145,9 +136,21 @@ function initializeUI(uiState) {
   ui.extensionBar = new ExtensionBar(ui.extensionBarDiv); // construct the menu first so we can resize everything else
   ui.exporterManager = new ExporterManager($("#export-button"));
 
-  ui.leftPanelTabs.tabs({ selected: 0 });
+  ui.leftPanelTabs.tabs();
   resize();
   resizeTabs();
+
+  $('<button>').attr("id", "hide-left-panel-button")
+    .addClass("visibility-panel-button")
+    .attr("aria-label", $.i18n('core-index/hide-panel'))
+    .on('click',function() { Refine._showHideLeftPanel(); })
+    .prependTo(ui.leftPanelTabs);
+
+  $('<button>').attr("id", "show-left-panel-button")
+    .addClass("visibility-panel-button")
+    .attr("aria-label", $.i18n('core-index/show-panel'))
+    .on('click',function() { Refine._showHideLeftPanel(); })
+    .prependTo(ui.toolPanelDiv);
 
   ui.summaryBar = new SummaryBar(ui.summaryBarDiv);
   ui.browsingEngine = new BrowsingEngine(ui.facetPanelDiv, uiState.facets || []);
@@ -155,16 +158,27 @@ function initializeUI(uiState) {
   ui.historyPanel = new HistoryPanel(ui.historyPanelDiv, ui.historyTabHeader);
   ui.dataTableView = new DataTableView(ui.viewPanelDiv);
 
-  ui.leftPanelTabs.bind('tabsactivate', function(event, tabs) {
-    tabs.newPanel.resize();
+  ui.leftPanelTabs.on('tabsactivate', function(event, tabs) {
+    tabs.newPanel.trigger('resize');
   });
 
-  $(window).bind("resize", resizeAll);
+  $(window).on("resize", resizeAll);
 
   if (uiState.facets) {
     Refine.update({ engineChanged: true });
   }
 }
+
+Refine._showHideLeftPanel = function() {
+  $('div#body').toggleClass("hide-left-panel");
+  resizeAll();
+};
+
+Refine.showLeftPanel = function() {
+  $('div#body').removeClass("hide-left-panel");
+  if(ui.browsingEngine == undefined || ui.browsingEngine.resize == undefined) return;
+  resizeAll();
+};
 
 Refine.setTitle = function(status) {
   var title = theProject.metadata.name + " - OpenRefine";
@@ -177,33 +191,70 @@ Refine.setTitle = function(status) {
 };
 
 Refine.reinitializeProjectData = function(f, fError) {
-  $.getJSON(
-    "command/core/get-project-metadata?" + $.param({ project: theProject.id }), null,
-    function(data) {
-      if (data.status == "error") {
-        alert(data.message);
-        if (fError) {
-          fError();
-        }
-      } else {
-        theProject.metadata = data;
-        $.getJSON(
-          "command/core/get-models?" + $.param({ project: theProject.id }), null,
-          function(data) {
-            for (var n in data) {
-              if (data.hasOwnProperty(n)) {
-                theProject[n] = data[n];
-              }
-            }
-            f();
-          },
-          'json'
-        );
+  function handleError(status, message, fError) {
+    if (status === "error") {
+      alert(message);
+      if (fError) {
+        fError();
       }
-    },
-    'json'
-  );
+      return true;
+    }
+    return false;
+  }
+
+  $.when(
+    $.getJSON("command/core/get-project-metadata?" + $.param({ project: theProject.id }), null),
+    $.getJSON("command/core/get-models?" + $.param({ project: theProject.id }), null),
+    $.getJSON("command/core/get-all-preferences", null),
+  ).done(function(metadata, models, preferences) {
+    metadata = metadata[0], models = models[0], preferences = preferences[0];
+    if (
+      handleError(metadata.status, metadata.message, fError) ||
+      handleError(models.status, models.message, fError) ||
+      handleError(preferences.status, preferences.message, fError)
+    ) {
+      return;
+    }
+
+    theProject.metadata = metadata;
+
+    for (var n in models) {
+      if (models.hasOwnProperty(n)) {
+        theProject[n] = models[n];
+      }
+    }
+
+    if (preferences) {
+      thePreferences = preferences;
+    }
+
+    f();
+  });
 };
+
+Refine.getPreference = function(key, defaultValue) {
+  if(!thePreferences.hasOwnProperty(key)) { return defaultValue; }
+
+  return thePreferences[key];
+}
+
+Refine.setPreference = function(key, newValue) {
+  thePreferences[key] = newValue;
+
+  Refine.wrapCSRF(function(token) {
+    $.ajax({
+      async: false,
+      type: "POST",
+      url: "command/core/set-preference?" + $.param({ name: key }),
+      data: {
+        "value" : JSON.stringify(newValue),
+        csrf_token: token
+      },
+      success: function(data) { },
+      dataType: "json"
+    });
+  });
+}
 
 Refine._renameProject = function() {
   var name = window.prompt($.i18n('core-index/new-proj-name'), theProject.metadata.name);
@@ -211,7 +262,7 @@ Refine._renameProject = function() {
     return;
   }
 
-  name = $.trim(name);
+  name = jQueryTrim(name);
   if (theProject.metadata.name == name || name.length === 0) {
     return;
   }
@@ -278,7 +329,7 @@ Refine.createUpdateFunction = function(options, onFinallyDone) {
 /*
  * Registers a callback function to be called after each update.
  * This is provided for extensions which need to run some code when
- * the project is updated. This was introduced for the Wikidata 
+ * the project is updated. This was introduced for the Wikidata
  * extension as a means to avoid monkey-patching Refine's core
  * methods (which was the solution adopted for GOKb, as they had
  * no way to change Refine's code directly).
@@ -401,34 +452,6 @@ Refine.postProcess = function(moduleName, command, params, body, updateOptions, 
   }, 500);
 };
 
-// Requests a CSRF token and calls the supplied callback
-// with the token
-Refine.wrapCSRF = function(onCSRF) {
-   $.get(
-      "command/core/get-csrf-token",
-      {},
-      function(response) {
-         onCSRF(response['token']);
-      },
-      "json"
-   );
-};
-
-// Performs a POST request where an additional CSRF token
-// is supplied in the POST data. The arguments match those
-// of $.post().
-Refine.postCSRF = function(url, data, success, dataType) {
-   Refine.wrapCSRF(function(token) {
-      var fullData = data || {};
-      if (typeof fullData == 'string') {
-         fullData = fullData + "&" + $.param({csrf_token: token});
-      } else {
-         fullData['csrf_token'] = token;
-      }
-      $.post(url, fullData, success, dataType);
-   });
-};
-
 Refine.setAjaxInProgress = function() {
   $(document.body).attr("ajax_in_progress", "true");
 };
@@ -523,7 +546,7 @@ Refine.getPermanentLink = function() {
  */
 
 function onLoad() {
-  var params = URL.getParameters();
+  var params = URLUtil.getParameters();
   if ("project" in params) {
     var uiState = {};
     if ("ui" in params) {

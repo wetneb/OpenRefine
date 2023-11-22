@@ -5,8 +5,17 @@ function EditMetadataDialog(metaData, targetRowElem) {
   this._metaData = metaData;
   
   this._MetadataUI = function(tr, key, value, project) {
-      var self = this;
-      
+      var isCode = false;
+
+      if (typeof value === 'string') {
+          value = value.replace(/\"/g, "");  
+      } else {
+          value = JSON.stringify(value, null, 2);
+          isCode = true;
+      }
+
+      value = (value !== null) ? value : "";
+
       if (key === "date") {
           return;
       }
@@ -17,12 +26,16 @@ function EditMetadataDialog(metaData, targetRowElem) {
       $(td0).text(keyLable);
 
       var td1 = tr.insertCell(1);
-      $(td1).text((value !== null) ? value : "");
+      if (!isCode || key === 'tags') {
+        $(td1).text(value);
+      } else {
+        $('<pre>').append($('<code>').text(value)).appendTo(td1);
+      }
 
       var td2 = tr.insertCell(2);
       
       if(key==="tags"){
-          $('<button class="button">').text($.i18n('core-index/edit')).appendTo(td2).click(function() {
+          $('<button class="button">').text($.i18n('core-index/edit')).appendTo(td2).on('click',function() {
               var oldTags = $(td1).text().replace("[","").replace("]","");
               oldTags = replaceAll(oldTags,"\"","");
               var newTags = window.prompt($.i18n('core-index/change-metadata-value')+" " + key, $(td1).text());
@@ -53,7 +66,7 @@ function EditMetadataDialog(metaData, targetRowElem) {
               key !== "importOptionMetadata" && 
               key !== "id" &&
               key !== "tags")  {
-          $('<button class="button">').text($.i18n('core-index/edit')).appendTo(td2).click(function() {
+          $('<button class="button">').text($.i18n('core-index/edit')).appendTo(td2).on('click',function() {
             var newValue = window.prompt($.i18n('core-index/change-metadata-value')+" " + key, value);
             if (newValue !== null) {
               $(td1).text(newValue);
@@ -90,17 +103,19 @@ EditMetadataDialog.prototype._createDialog = function() {
 
   this._level = DialogSystem.showDialog(frame);
   this._elmts.closeButton.html($.i18n('core-buttons/close'));
-  this._elmts.closeButton.click(function() { self._dismiss();Refine.OpenProjectUI.prototype._addTagFilter()});
+  this._elmts.closeButton.on('click',function() { self._dismiss();Refine.OpenProjectUI.prototype._addTagFilter()});
   
   var body = $("#metadata-body");
     
   $('<h1>').text($.i18n('core-index/metaDatas')).appendTo(body);
 
+  var scrollabelDiv = $("<div>").addClass("scrollable-table").appendTo(body);
+
   var metadataTable = $("<table>")
   .addClass("list-table")
   .addClass("preferences")
   .html('<tr><th>'+$.i18n('core-index/key')+'</th><th>'+$.i18n('core-index/value')+'</th><th></th></tr>')
-  .appendTo(body)[0];
+  .appendTo(scrollabelDiv)[0];
 
     var flattenObject = function(ob, key) {
         var toReturn = {};
@@ -118,20 +133,11 @@ EditMetadataDialog.prototype._createDialog = function() {
     
   var flatMetadata = flattenObject(this._metaData, "userMetadata");
       
-  for (var k in flatMetadata) {
+  for (var metadataKey in flatMetadata) {
     var tr = metadataTable.insertRow(metadataTable.rows.length);
-    var v;
-    
-    if (typeof flatMetadata[k] === 'string') {
-        v = flatMetadata[k].replace(/\"/g, "");  
-    } else {
-        v = JSON.stringify(flatMetadata[k]);
-    }
-    
-    this._metaDataUIs.push(new this._MetadataUI(tr, k, v, flatMetadata.id));
+
+    this._metaDataUIs.push(new this._MetadataUI(tr, metadataKey, flatMetadata[metadataKey], flatMetadata.id));
   }
-  
-  $(".dialog-container").css("top", Math.round(($(".dialog-overlay").height() - $(frame).height()) / 2) + "px");
 };
 
 EditMetadataDialog.prototype._dismiss = function() {

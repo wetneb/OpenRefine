@@ -43,10 +43,10 @@ ScatterplotDialog.prototype._createDialog = function() {
     var dialog = $(DOM.loadHTML("core", "scripts/dialogs/scatterplot-dialog.html"));
     this._elmts = DOM.bind(dialog);
     this._elmts.dialogHeader.text(
-    		$.i18n('core-dialogs/scatterplot-matrix') + 
-            ((typeof this._column == "undefined") ? "" : " ("+$.i18n('core-dialogs/focusing-on')+" '" + this._column + "')"));
+            $.i18n('core-dialogs/scatterplot-matrix') + 
+            ((typeof this._column == "undefined") ? "" : $.i18n('core-dialogs/focusing-on-column', this._column)));
 
-    this._elmts.closeButton.click(function() { self._dismiss(); });
+    this._elmts.closeButton.on('click',function() { self._dismiss(); });
     this._elmts.or_dialog_linplot.attr("title", $.i18n('core-dialogs/linear-plot'));
     this._elmts.or_dialog_logplot.attr("title", $.i18n('core-dialogs/logarithmic-plot'));
     this._elmts.or_dialog_counter.attr("title", $.i18n('core-dialogs/rotated-counter-clock'));
@@ -57,17 +57,17 @@ ScatterplotDialog.prototype._createDialog = function() {
     this._elmts.or_dialog_bigDot.attr("title", $.i18n('core-dialogs/big-dot'));
     this._elmts.closeButton.text($.i18n('core-buttons/close'));
     
-    this._elmts.plotSelector.buttonset().change(function() {
+    this._elmts.plotSelector.buttonset().on('change',function() {
         self._plot_method = $(this).find("input:checked").val();
         self._renderMatrix();
     });
 
-    this._elmts.rotationSelector.buttonset().change(function() {
+    this._elmts.rotationSelector.buttonset().on('change',function() {
         self._rotation = $(this).find("input:checked").val();
         self._renderMatrix();
     });
     
-    this._elmts.dotSelector.buttonset().change(function() {
+    this._elmts.dotSelector.buttonset().on('change',function() {
         var dot_size = $(this).find("input:checked").val();
         if (dot_size == "small") {
             self._dot_size = 0.4;
@@ -81,6 +81,11 @@ ScatterplotDialog.prototype._createDialog = function() {
     
     this._level = DialogSystem.showDialog(dialog);
     this._renderMatrix();
+    //the function buttonset() groups the input buttons into one but in doing so it creates icon on the input button
+    //the icon is created using checkboxradio() 
+    //to get rid of the icon a class "no-icon" is directly applied to input button and checkboxradio() is called again with option :- icon=false  
+    $(".no-icon").checkboxradio("option", "icon", false);
+    //this function only works after initialisation
 };
 
 ScatterplotDialog.prototype._renderMatrix = function() {
@@ -164,7 +169,7 @@ ScatterplotDialog.prototype._renderMatrix = function() {
             var width = container.width();
             container.empty().css("width", width + "px").html(table);
             
-            container.find("a").click(function() {
+            container.find("a").on('click',function() {
                 var options = {
                     "name" : $(this).attr("title"),
                     "cx" : $(this).attr("cx"), 
@@ -192,12 +197,12 @@ ScatterplotDialog.prototype._renderMatrix = function() {
             };
             
             var load_image = function(data) {
-                var img = $(data.images[data.index]);                
+                var img = $(data.images[data.index]);
                 var src2 = img.attr("src2");
                 if (src2) {
                     img.attr("src", src2);
                     img.removeAttr("src2");
-                    img.load(function() {
+                    img.on("load", function() {
                         data.batch++;
                         if (data.batch == data.batch_size) {
                             load_images(data);

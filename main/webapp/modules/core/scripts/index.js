@@ -23,8 +23,8 @@ LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
 A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
 OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
 SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,           
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY           
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
 THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
@@ -37,55 +37,10 @@ var Refine = {
   actionAreas: []
 };
 
-// Requests a CSRF token and calls the supplied callback
-// with the token
-Refine.wrapCSRF = function(onCSRF) {
-   $.get(
-      "command/core/get-csrf-token",
-      {},
-      function(response) {
-         onCSRF(response['token']);
-      },
-      "json"
-   );
-};
+I18NUtil.init("core");
 
-// Performs a POST request where an additional CSRF token
-// is supplied in the POST data. The arguments match those
-// of $.post().
-Refine.postCSRF = function(url, data, success, dataType, failCallback) {
-   return Refine.wrapCSRF(function(token) {
-      var fullData = data || {};
-      if (typeof fullData == 'string') {
-         fullData = fullData + "&" + $.param({csrf_token: token});
-      } else {
-         fullData['csrf_token'] = token;
-      }
-      var req = $.post(url, fullData, success, dataType);
-      if (failCallback !== undefined) {
-         req.fail(failCallback);
-      }
-   });
-};
-
-var lang = (navigator.language|| navigator.userLanguage).split("-")[0];
-var dictionary = "";
-$.ajax({
-	url : "command/core/load-language?",
-	type : "POST",
-	async : false,
-	data : {
-	  module : "core",
-//		lang : lang
-	},
-	success : function(data) {
-		dictionary = data['dictionary'];
-        lang = data['lang'];
-	}
-});
-$.i18n().load(dictionary, lang);
-$.i18n({ locale: lang });
-// End internationalization
+Refine.wrapCSRF = CSRFUtil.wrapCSRF;
+Refine.postCSRF = CSRFUtil.postCSRF;
 
 Refine.selectActionArea = function(id) {
   $('.action-area-tab').removeClass('selected');
@@ -96,6 +51,7 @@ Refine.selectActionArea = function(id) {
     if (id == actionArea.id) {
       actionArea.tabElmt.addClass('selected');
       actionArea.bodyElmt.css('visibility', 'visible').css('z-index', '55');
+      window.location.hash = id;
     }
   }
 };
@@ -133,85 +89,46 @@ $(function() {
         function(data) {
           OpenRefineVersion = data;
 
-          $("#openrefine-version").text($.i18n('core-index/version')+" " + OpenRefineVersion.full_version);
-          
-
+          $("#openrefine-version").text($.i18n('core-index/refine-version', OpenRefineVersion.full_version));
+          $("#java-runtime-version").text(OpenRefineVersion.java_runtime_name + " " + OpenRefineVersion.java_runtime_version);
+          if (OpenRefineVersion.display_new_version_notice === "true") {
             $.getJSON("https://api.github.com/repos/openrefine/openrefine/releases/latest",
-             function( data ) {
-              var latestVersion = data.tag_name;
-              var latestVersionName = data.name;
-              var latestVersionUrl = data.html_url;
-              var thisVersion = OpenRefineVersion.version;
+                function (data) {
+                  var latestVersion = data.tag_name;
+                  var latestVersionName = data.name;
+                  var latestVersionUrl = data.html_url;
+                  var thisVersion = OpenRefineVersion.version;
 
-              if(latestVersion.startsWith("v")) {
-                latestVersion = latestVersion.substr(1);
-              }
+                  if (latestVersion.startsWith("v")) {
+                    latestVersion = latestVersion.substring(1);
+                  }
 
-              if (isThereNewRelease(thisVersion,latestVersion)) {
-                var container = $('<div id="notification-container">')
-                .appendTo(document.body);
-                var notification = $('<div id="notification">')
-                .text($.i18n('core-index/new-version')+' ')
-                .appendTo(container);
-                $('<a>')
-                .addClass('notification-action')
-                .attr("href", latestVersionUrl)
-                .attr("target", "_blank")
-                .text($.i18n('core-index/download')+' ' + latestVersionName + ' '+$.i18n('core-index/now')+'.')
-                .appendTo(notification);
-              }
-            });
+                  if (isThereNewRelease(thisVersion, latestVersion)) {
+                    var container = $('<div id="notification-container">')
+                        .appendTo(document.body);
+                    var notification = $('<div id="notification">')
+                        .text($.i18n('core-index/new-version') + ' ')
+                        .appendTo(container);
+                    $('<a>')
+                        .addClass('notification-action')
+                        .attr("href", latestVersionUrl)
+                        .attr("target", "_blank")
+                        .text($.i18n('core-index/download-now', latestVersionName))
+                        .appendTo(notification);
+                  }
+                });
+          }
         }
     );
   };
 
   var resize = function() {
-    var leftPanelWidth = 150;
-    // px
-    var width = $(window).width();
-    var height = $(window).height();
-    var headerHeight = $('#header').outerHeight();
-    var panelHeight = height - headerHeight;
-
-    $('.main-layout-panel')
-    .css("top", headerHeight + "px")
-    .css("bottom", "0px")
-    .css("height", panelHeight + "px")
-    .css("visibility", "visible");
-
-    $('#left-panel')
-    .css("left", "0px")
-    .css("width", leftPanelWidth + "px");
-    var leftPanelBodyHPaddings = 10;
-    // px
-    var leftPanelBodyVPaddings = 0;
-    // px
-    $('#left-panel-body')
-    .css("margin-left", leftPanelBodyHPaddings + "px")
-    .css("margin-top", leftPanelBodyVPaddings + "px")
-    .css("width", ($('#left-panel').width() - leftPanelBodyHPaddings) + "px")
-    .css("height", ($('#left-panel').height() - leftPanelBodyVPaddings) + "px");
-
-    $('#right-panel')
-    .css("left", leftPanelWidth + "px")
-    .css("width", (width - leftPanelWidth) + "px");
-
-    var rightPanelBodyHPaddings = 5;
-    // px
-    var rightPanelBodyVPaddings = 5;
-    // px
-    $('#right-panel-body')
-    .css("margin-left", rightPanelBodyHPaddings + "px")
-    .css("margin-top", rightPanelBodyVPaddings + "px")
-    .css("width", ($('#right-panel').width() - rightPanelBodyHPaddings) + "px")
-    .css("height", ($('#right-panel').height() - rightPanelBodyVPaddings) + "px");
-    
     for (var i = 0; i < Refine.actionAreas.length; i++) {
-      Refine.actionAreas[i].ui.resize();
+      if (Refine.actionAreas[i].ui.resize) {
+        Refine.actionAreas[i].ui.resize();
+      }
     }
   };
-  $(window).bind("resize", resize);
-  window.setTimeout(resize, 100); // for Chrome, give the window some time to layout first
 
   var renderActionArea = function(actionArea) {
     actionArea.bodyElmt = $('<div>')
@@ -220,11 +137,19 @@ $(function() {
 
     actionArea.tabElmt = $('<li>')
     .addClass('action-area-tab')
-    .text(actionArea.label)
-    .appendTo($('#action-area-tabs'))
-    .click(function() {
-      Refine.selectActionArea(actionArea.id);
-    });
+    .append(
+      $('<a>')
+      .attr('href', '#' + actionArea.id)
+      .text(actionArea.label)
+      .on('click', function() {
+        Refine.selectActionArea(actionArea.id);
+        // clear action area specific query parameters
+        var url = new URL(location.href);
+        url.search = '';
+        window.history.replaceState('', '', url);
+      })
+    )
+    .appendTo($('#action-area-tabs'));
 
     actionArea.ui = new actionArea.uiClass(actionArea.bodyElmt);
   };
@@ -232,8 +157,21 @@ $(function() {
   for (var i = 0; i < Refine.actionAreas.length; i++) {
     renderActionArea(Refine.actionAreas[i]);
   }
-  Refine.selectActionArea('create-project');
-  
+
+  // check for url hash and select the appropriate action area
+  var hash = window.location.hash;
+  if (hash.length > 0) {
+    hash = hash.substring(1);
+    for (var i = 0; i < Refine.actionAreas.length; i++) {
+      if (Refine.actionAreas[i].id === hash) {
+        Refine.selectActionArea(hash);
+        break;
+      }
+    }
+  } else {
+    Refine.selectActionArea('create-project');
+  }
+
   $("#slogan").text($.i18n('core-index/slogan')+".");
   $("#or-index-pref").text($.i18n('core-index/preferences'));
   $("#or-index-help").text($.i18n('core-index/help'));
@@ -243,4 +181,7 @@ $(function() {
   $("#or-index-sample").text($.i18n('core-index/sample-data'));
 
   showVersion();
+
+  $(window).on("resize", resize);
+  resize();
 });

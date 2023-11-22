@@ -46,7 +46,7 @@ function ProcessPanel(div) {
   this._elmts.undoLink.html($.i18n('core-project/undo'));
   
   var self = this;
-  $(window).keypress(function(evt) {
+  $(window).on('keypress',function(evt) {
     if (evt.charCode == 26 || (evt.charCode == 122 && (evt.ctrlKey || evt.metaKey))) { // ctrl-z or meta-z
       var t = evt.target;
       if (t) {
@@ -103,7 +103,7 @@ ProcessPanel.prototype.showUndo = function(historyEntry) {
   this._elmts.progressDiv.hide();
   this._elmts.undoDiv.show();
   this._elmts.undoDescription.text( truncDescription );
-  this._elmts.undoLink.unbind().click(function() { self.undo(); });
+  this._elmts.undoLink.off().on('click',function() { self.undo(); });
   
   this._div
     .fadeIn(200)
@@ -153,9 +153,9 @@ ProcessPanel.prototype._render = function(newData) {
       var process = processes[i];
       if (process.status != "pending") {
         // TODO: We should be using formatting, not string concatenation here
-        Refine.setTitle(process.progress + "% "+$.i18n('core-project/complete'));
+        Refine.setTitle($.i18n('core-project/percent-complete', process.progress));
         this._elmts.progressDescription.text(process.description);
-        this._elmts.progressSpan.text(process.progress  + '% '+$.i18n('core-project/complete'));
+        this._elmts.progressSpan.text($.i18n('core-project/percent-complete', process.progress));
       }
       if ("onDone" in process) {
         newProcessMap[process.id] = process;
@@ -164,16 +164,16 @@ ProcessPanel.prototype._render = function(newData) {
     
     if (processes.length > 1) {
       var pending = processes.length - 1;
-      this._elmts.countSpan.text('(' + pending + (pending > 1 ? ' '+$.i18n('core-project/other-processes')+')' : ' '+$.i18n('core-project/other-process')+')'));
+      this._elmts.countSpan.text($.i18n('core-project/other-processes', pending));
     } else {
       this._elmts.countSpan.empty();
     }
     this._elmts.cancelLink
-      .unbind()
-      .text(processes.length > 1 ? $.i18n('core-project/cancel-all') : $.i18n('core-project/cancel'))
-      .click(function() {
+      .off()
+      .text($.i18n('core-project/cancel-all', processes.length))
+      .on('click',function() {
         self._cancelAll();
-        $(this).text($.i18n('core-project/canceling')).unbind();
+        $(this).text($.i18n('core-project/canceling')).off();
       });
     
     this._div.fadeIn(200);
@@ -196,10 +196,10 @@ ProcessPanel.prototype._render = function(newData) {
     }).join('\n');
     
     if (this._data.processes.length == 0) {
-      window.alert($.i18n('core-project/last-op-er')+':\n' + messages);
+      window.alert($.i18n('core-project/last-op-er')+'\n' + messages);
     } else {
-      if (window.confirm($.i18n('core-project/last-op-er')+':\n' + messages +
-            '\n\n'+$.i18n('core-project/continue-remaining')+'?')) {
+      if (window.confirm($.i18n('core-project/last-op-er')+'\n' + messages +
+            '\n\n'+$.i18n('core-project/continue-remaining'))) {
         Refine.postCSRF(
           "command/core/apply-operations?" + $.param({ project: theProject.id }), 
           { operations: '[]' },

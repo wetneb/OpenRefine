@@ -63,6 +63,15 @@ ReconciliationManager.registerService = function(service) {
 };
 
 ReconciliationManager.registerStandardService = function(url, f, silent) {
+
+  if (ReconciliationManager._urlMap.hasOwnProperty(url)) {
+    if (!silent) {
+      alert($.i18n('core-recon/url-already-registered'));
+    }
+    if (f) { f(url); }
+    return;
+  }
+
   var dismissBusy = function() {};
   if (!silent) {
     dismissBusy =  DialogSystem.showBusy($.i18n('core-recon/contact-service')+"...");
@@ -76,7 +85,7 @@ ReconciliationManager.registerStandardService = function(url, f, silent) {
     };
 
     index = ReconciliationManager.customServices.length + 
-    ReconciliationManager.standardServices.length;
+      ReconciliationManager.standardServices.length;
 
     ReconciliationManager.standardServices.push(data);
     ReconciliationManager._rebuildMap();
@@ -97,10 +106,10 @@ ReconciliationManager.registerStandardService = function(url, f, silent) {
     "timeout":5000
      }
   )
-  .success(function(data, textStatus, jqXHR) {
+  .done(function(data, textStatus, jqXHR) {
     registerService(data, "json");
   })
-  .error(function(jqXHR, textStatus, errorThrown) {
+  .fail(function(jqXHR, textStatus, errorThrown) {
     // If it fails, try with JSONP
     $.ajax(
         url,
@@ -108,10 +117,10 @@ ReconciliationManager.registerStandardService = function(url, f, silent) {
            "timeout": 5000
         }
     )
-    .success(function(data, textStatus, jqXHR) {
+    .done(function(data, textStatus, jqXHR) {
       registerService(data, "jsonp");
     })
-    .error(function(jqXHR, textStatus, errorThrown) {
+    .fail(function(jqXHR, textStatus, errorThrown) {
         if (!silent) {
           dismissBusy(); 
           alert($.i18n('core-recon/error-contact')+': ' + textStatus + ' : ' + errorThrown + ' - ' + url);
@@ -172,7 +181,7 @@ ReconciliationManager.getOrRegisterServiceFromUrl = function(url, f, silent) {
 
 ReconciliationManager.ensureDefaultServicePresent = function() {
    var lang = $.i18n('core-recon/wd-recon-lang');
-   var url = "https://tools.wmflabs.org/openrefine-wikidata/"+lang+"/api";
+   var url = "https://wikidata.reconci.link/"+lang+"/api";
    ReconciliationManager.getOrRegisterServiceFromUrl(url, function(service) { }, true);
    return url;
 };

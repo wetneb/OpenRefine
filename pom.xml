@@ -1,47 +1,164 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>org.openrefine</groupId>
   <artifactId>openrefine</artifactId>
   <packaging>pom</packaging>
-  <version>3.4-SNAPSHOT</version>
+  <version>3.8-SNAPSHOT</version>
 
   <name>OpenRefine</name>
   <description>OpenRefine is a free, open source power tool for working with messy data and improving it</description>
   <url>http://openrefine.org/</url>
+  <inceptionYear>2010</inceptionYear>
+  <organization>
+    <name>Code for Science &amp; Society Inc.</name>
+    <url>https://codeforscience.org/</url>
+  </organization>
+  <licenses>
+    <license>
+      <name>BSD-3-Clause</name>
+      <url>https://raw.githubusercontent.com/OpenRefine/OpenRefine/master/LICENSE.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+  <mailingLists>
+    <mailingList>
+      <name>Dev</name>
+        <post>openrefine+dev@discoursemail.com</post>
+        <archive>https://forum.openrefine.org/c/8</archive>
+     </mailingList>
+     <mailingList>
+       <name>Users</name>
+       <post>openrefine+support@discoursemail.com</post>
+       <archive>https://forum.openrefine.org/c/support/12</archive>
+     </mailingList>
+  </mailingLists>
+  <scm>
+      <connection>scm:git:git://github.com//OpenRefine/OpenRefine.git</connection>
+      <developerConnection>scm:git:https://github.com/OpenRefine/OpenRefine</developerConnection>
+      <url>https://github.com/OpenRefine/OpenRefine.git</url>
+      <tag>HEAD</tag>
+  </scm>
+  <issueManagement>
+    <system>GitHub Issues</system>
+    <url>https://github.com/openrefine/openrefine/issues</url>
+  </issueManagement>
+
+  <developers>
+    <developer>
+      <id>dfhuynh</id>
+      <name>David F. Huynh</name>
+      <url>https://github.com/dfhuynh</url>
+    </developer>
+  </developers>
 
   <modules>
+        <module>or-model</module>
+        <module>or-grel</module>
+        <module>or-util</module>
+        <module>or-testing</module>
         <module>main</module>
         <module>server</module>
         <module>extensions</module>
         <module>packaging</module>
+        <module>benchmark</module>
   </modules>
 
+
   <properties>
+    <java.minversion>11</java.minversion>
+    <java.maxversion>21</java.maxversion>
     <jee.path>/</jee.path>
     <jee.port>3333</jee.port>
     <refine.data>/tmp/refine</refine.data>
-    <surefire.version>2.22.2</surefire.version>
-    <surefireArgs></surefireArgs>
+    <surefireArgs/>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <jackson.version>2.9.10</jackson.version>
+
+    <!-- dependency versions -->
+    <jackson.version>2.13.4</jackson.version>
+    <servlet-api.version>4.0.1</servlet-api.version>
+    <butterfly.version>1.2.4</butterfly.version>
+    <slf4j.version>2.0.9</slf4j.version>
+    <log4j.version>2.21.1</log4j.version>
+    <jetty.version>10.0.16</jetty.version>
+    <okhttp.version>4.10.0</okhttp.version>
+    <jena.version>4.10.0</jena.version>
+    <poi.version>5.2.4</poi.version>
+    <commons-lang3.version>3.13.0</commons-lang3.version>
+    <commons-fileupload.version>1.5</commons-fileupload.version>
+    <commons-collections.version>3.2.2</commons-collections.version>
+    <commons-text.version>1.11.0</commons-text.version>
+    <commons-validator.version>1.7</commons-validator.version>
+    <org-jvnet-localizer.version>1.31</org-jvnet-localizer.version>
+    <!-- v1.15 of commons-codec is needed for Jena 3.14+ - copied from org.apache.jena:jena:pom -->
+    <commons-codec.version>1.16.0</commons-codec.version>
+    <commons-compress.version>1.25.0</commons-compress.version>
+    <velocity.version>1.5</velocity.version>
+    <marc4j.version>2.9.5</marc4j.version>
+    <jsoup.version>1.15.3</jsoup.version>
+    <odfdom-java.version>0.9.0</odfdom-java.version> <!-- do not update to 0.10.0, see issue #4397 -->
+    <vicino.version>1.2</vicino.version>
+    <clojure.version>1.11.1</clojure.version>
+    <httpclient5.version>5.2.1</httpclient5.version>
+    <httpcore.version>4.4.16</httpcore.version>
+    <univocity-csv.version>2.9.1</univocity-csv.version>
+    <swc-parser-lazy.version>3.1.9</swc-parser-lazy.version>
+    <commons-io.version>2.15.0</commons-io.version>
+    <guava.version>31.1-jre</guava.version>
+    <jaxb-api.version>2.3.1</jaxb-api.version>
+    <juniversalchardet.version>2.4.0</juniversalchardet.version>
+    <testng.version>7.7.1</testng.version>
+    <httpmime.version>4.5.14</httpmime.version>
+    <owasp-encoder.version>1.2.3</owasp-encoder.version>
+    <jasypt.version>1.9.3</jasypt.version>
+    <mockito.version>5.7.0</mockito.version>
+    <powermock.version>2.0.2</powermock.version>
+
+    <!-- plugin versions -->
+    <build-helper-maven-plugin.version>3.3.0</build-helper-maven-plugin.version>
+    <maven-compiler-plugin.version>3.10.1</maven-compiler-plugin.version>
+    <maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>
+    <exec-maven-plugin.version>3.1.0</exec-maven-plugin.version>
+    <maven-dependency-plugin.version>3.6.1</maven-dependency-plugin.version>
+    <jacoco-maven-plugin.version>0.8.10</jacoco-maven-plugin.version>
+    <coveralls-maven-plugin.version>4.3.0</coveralls-maven-plugin.version>
+    <surefire.version>3.2.2</surefire.version>
+    <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
+    <maven-clean-plugin.version>3.3.2</maven-clean-plugin.version>
+    <git-commit-id-plugin.version>4.9.10</git-commit-id-plugin.version>
+    <maven-deploy-plugin.version>3.1.1</maven-deploy-plugin.version>
+    <license-plugin.version>2.0.0</license-plugin.version>
+    <org-jvnet-localizer-plugin.version>1.31</org-jvnet-localizer-plugin.version>
   </properties>
 
-  <scm>
-    <connection>scm:git:http://github.com/OpenRefine/OpenRefine</connection>
-    <url>http://github.com/OpenRefine/OpenRefine</url>
-  </scm>
 
   <build>
-    <finalName>openrefine</finalName>
-    <resources>
-    </resources>
+    <!-- It is nice for "mvn" with no arguments to do a reasonable default. -->
+    <defaultGoal>install</defaultGoal>
     <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>${maven-compiler-plugin.version}</version>
+        <configuration>
+          <release>${java.minversion}</release>
+          <encoding>UTF-8</encoding>
+          <showDeprecation>false</showDeprecation>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
+	<version>${maven-resources-plugin.version}</version>
+        <configuration>
+          <encoding>UTF-8</encoding>
+        </configuration>
+      </plugin>
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>build-helper-maven-plugin</artifactId>
-        <version>1.8</version>
+	<version>${build-helper-maven-plugin.version}</version>
         <executions>
           <execution>
             <phase>generate-sources</phase>
@@ -50,35 +167,16 @@
             </goals>
             <configuration>
               <sources>
-                <source>server/src</source>
+                <source>${project.build.directory}/generated-sources/</source>
               </sources>
             </configuration>
           </execution>
         </executions>
       </plugin>
       <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.1</version>
-        <configuration>
-          <source>1.8</source>
-          <target>1.8</target>
-          <encoding>UTF-8</encoding>
-          <showDeprecation>false</showDeprecation>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-resources-plugin</artifactId>
-        <version>2.6</version>
-        <configuration>
-          <encoding>UTF-8</encoding>
-        </configuration>
-      </plugin>
-      <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
-        <version>1.3</version>
+	<version>${exec-maven-plugin.version}</version>
         <configuration>
           <skip>true</skip>
           <mainClass>none</mainClass>
@@ -87,23 +185,28 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-dependency-plugin</artifactId>
-        <version>3.1.1</version>
+	<version>${maven-dependency-plugin.version}</version>
       </plugin>
-      <plugin>
+      <!-- <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <version>${surefire.version}</version>
         <configuration>
-          <argLine>${surefireArgs}</argLine>
+          <argLine>@{surefireArgs} -Dfile.encoding=cp1252</argLine>
           <suiteXmlFiles>
             <suiteXmlFile>main/tests/server/conf/tests.xml</suiteXmlFile>
           </suiteXmlFiles>
         </configuration>
-      </plugin>
+      </plugin> -->
       <plugin>
         <groupId>org.jacoco</groupId>
         <artifactId>jacoco-maven-plugin</artifactId>
-        <version>0.8.2</version>
+	<version>${jacoco-maven-plugin.version}</version>
+        <configuration>
+          <excludes>
+            <exclude>org/openrefine/messages/**/*</exclude>
+          </excludes>
+        </configuration>
         <executions>
             <execution>
                 <id>prepare-agent</id>
@@ -112,7 +215,7 @@
                 </goals>
                 <phase>process-test-resources</phase>
                 <configuration>
-                    <destFile>${project.build.directory}/report/jacoco.exec</destFile>
+                    <destFile>${project.build.directory}/report/${project.name}.exec</destFile>
                     <propertyName>surefireArgs</propertyName>
                 </configuration>
             </execution>
@@ -122,7 +225,7 @@
                     <goal>report</goal>
                 </goals>
                 <configuration>
-                    <dataFile>${project.build.directory}/jacoco.exec</dataFile>
+                    <dataFile>${project.build.directory}/report/${project.name}.exec</dataFile>
                     <outputDirectory>${project.reporting.outputDirectory}/jacoco</outputDirectory>
                 </configuration>
             </execution>
@@ -131,15 +234,14 @@
                 <goals>
                      <goal>merge</goal>
                 </goals>
-                <phase>prepare-package</phase>
+                <phase>test</phase>
                <configuration>
                      <destFile>${project.build.directory}/report/jacoco-merged.exec</destFile>
                      <fileSets>
                         <fileSet>
-                            <directory>${project.build.directory}/report</directory>
+                            <directory>main/target/report</directory>
                             <includes>
-                                <include>jacoco.exec</include>
-                                <include>jacoco-merged.exec</include>
+                                <include>*.exec</include>
                             </includes>
                         </fileSet>
                         <fileSet>
@@ -148,7 +250,7 @@
                                 <include>*.exec</include>
                             </includes>
                         </fileSet>
-                     </fileSets> 
+                     </fileSets>
                 </configuration>
              </execution>
         </executions>
@@ -156,94 +258,184 @@
       <plugin>
         <groupId>org.eluder.coveralls</groupId>
         <artifactId>coveralls-maven-plugin</artifactId>
-        <version>4.3.0</version>
+	<version>${coveralls-maven-plugin.version}</version>
         <dependencies>
           <dependency>
             <groupId>javax.xml.bind</groupId>
             <artifactId>jaxb-api</artifactId>
-            <version>2.2.3</version>
+            <version>2.3.1</version>
           </dependency>
         </dependencies>
         <configuration>
           <sourceDirectories>
              <sourceDirectory>main/src</sourceDirectory>
+             <sourceDirectory>main/target/generated-sources</sourceDirectory>
              <sourceDirectory>extensions/jython/src</sourceDirectory>
              <sourceDirectory>extensions/wikidata/src</sourceDirectory>
              <sourceDirectory>extensions/database/src</sourceDirectory>
              <sourceDirectory>extensions/phonetic/src</sourceDirectory>
+             <sourceDirectory>extensions/gdata/src</sourceDirectory>
           </sourceDirectories>
         </configuration>
-       </plugin>
-        <!--This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself.-->
+      </plugin>
+      <plugin>
+        <!-- Pluging to generate release source -->
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>3.2.1</version>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <goals>
+              <goal>jar-no-fork</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <!-- Plugin for creating Javadocs; goal for preparing docs for upload to github: javadoc:aggregate -->
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <version>3.6.2</version>
+        <configuration>
+            <bottom>
+                    <![CDATA[Copyright &#169; {inceptionYear}&#x2013;{currentYear} {organizationName}. Generated from source code published under the BSD Clause-3 license. For more information, see the <a href="https://openrefine.org">OpenRefine website</a>]]></bottom>
+            <source>11</source>
+        </configuration>
+        <executions>
+          <execution>
+            <id>attach-javadocs</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>net.revelc.code.formatter</groupId>
+        <artifactId>formatter-maven-plugin</artifactId>
+        <version>2.17.1</version>
+        <configuration>
+          <configFile>${maven.multiModuleProjectDirectory}/IDEs/eclipse/Refine.style.xml</configFile>
+          <excludes> <!-- file should not be linted because it was copied from a dependency (sigh) -->
+            <exclude>**/Metaphone3.java</exclude>
+          </excludes>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>net.revelc.code</groupId>
+        <artifactId>impsort-maven-plugin</artifactId>
+        <version>1.9.0</version>
+        <configuration>
+          <groups>java.,javax.,*,com.google.refine,org.openrefine</groups>
+          <staticGroups>java,*</staticGroups>
+          <removeUnused>true</removeUnused>
+        </configuration>
+        <executions>
+          <execution>
+            <id>sort-imports</id>
+            <goals>
+              <goal>sort</goal><!-- runs at process-sources phase by default -->
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-eclipse-plugin</artifactId>
+        <version>2.10</version>
+        <configuration>
+          <workspaceCodeStylesURL>${maven.multiModuleProjectDirectory}/IDEs/eclipse/Refine.style.xml</workspaceCodeStylesURL>
+        </configuration>
+      </plugin>
+      <plugin>
+        <!-- Signature -->
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-gpg-plugin</artifactId>
+        <version>3.1.0</version>
+        <executions>
+            <execution>
+                <id>sign-artifacts</id>
+                <phase>deploy</phase>
+                <goals>
+                    <goal>sign</goal>
+                </goals>
+            </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <!-- Staging plugin -->
+        <groupId>org.sonatype.plugins</groupId>
+        <artifactId>nexus-staging-maven-plugin</artifactId>
+        <version>1.6.13</version>
+        <extensions>true</extensions>
+        <configuration>
+          <serverId>ossrh</serverId>
+          <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+          <autoReleaseAfterClose>true</autoReleaseAfterClose>
+        </configuration>
+      </plugin>
         <plugin>
-        	<groupId>org.eclipse.m2e</groupId>
-        	<artifactId>lifecycle-mapping</artifactId>
-        	<version>1.0.0</version>
-        	<configuration>
-        		<lifecycleMappingMetadata>
-        			<pluginExecutions>
-        				<pluginExecution>
-        					<pluginExecutionFilter>
-        						<groupId>
-        							org.apache.maven.plugins
-        						</groupId>
-        						<artifactId>
-        							maven-install-plugin
-        						</artifactId>
-        						<versionRange>[2.5.2,)</versionRange>
-        						<goals>
-        							<goal>install-file</goal>
-        						</goals>
-        					</pluginExecutionFilter>
-        					<action>
-        						<ignore></ignore>
-        					</action>
-        				</pluginExecution>
-        			</pluginExecutions>
-        		</lifecycleMappingMetadata>
-        	</configuration>
+            <groupId>org.jvnet.localizer</groupId>
+            <artifactId>localizer-maven-plugin</artifactId>
+            <version>${org-jvnet-localizer-plugin.version}</version>
+            <executions>
+                <execution>
+                    <goals>
+                        <goal>generate</goal>
+                    </goals>
+                </execution>
+            </executions>
         </plugin>
-
     </plugins>
-    <pluginManagement>
-      <plugins>
-      <!--This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself.-->
-      	<plugin>
-      	<groupId>org.eclipse.m2e</groupId>
-      	<artifactId>lifecycle-mapping</artifactId>
-      	<version>1.0.0</version>
-      	<configuration>
-      		<lifecycleMappingMetadata>
-      			<pluginExecutions>
-      				<pluginExecution>
-      					<pluginExecutionFilter>
-      						<groupId>
-      							org.apache.maven.plugins
-      						</groupId>
-      						<artifactId>
-      							maven-install-plugin
-      						</artifactId>
-      						<versionRange>[2.5.2,)</versionRange>
-      						<goals>
-      							<goal>install-file</goal>
-      						</goals>
-      					</pluginExecutionFilter>
-      					<action>
-      						<ignore></ignore>
-      					</action>
-      				</pluginExecution>
-      			</pluginExecutions>
-      		</lifecycleMappingMetadata>
-      	</configuration>
-      	</plugin>
-      </plugins>
-    </pluginManagement>
   </build>
 
   <dependencies>
-     <!-- dependencies are stored in the relevant submodules:
+    <!-- dependencies are stored in the relevant submodules:
           see main/pom.xml, server/pom.xml and each extension.
-       -->
+    -->
+      <dependency>
+          <groupId>org.jvnet.localizer</groupId>
+          <artifactId>localizer</artifactId>
+          <version>${org-jvnet-localizer.version}</version>
+      </dependency>
   </dependencies>
-</project>
 
+  <!-- enabled to access our snapshots of Wikidata-Toolkit -->
+  <repositories>
+    <repository>
+      <id>snapshots</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+    </repository>
+      <repository>
+          <id>jenkins-repo</id>
+          <url>https://repo.jenkins-ci.org/releases/</url>
+      </repository>
+  </repositories>
+
+    <pluginRepositories>
+        <pluginRepository>
+            <id>jenkins-repo</id>
+            <url>https://repo.jenkins-ci.org/releases/</url>
+        </pluginRepository>
+    </pluginRepositories>
+
+  <!-- Locations of the artifacts published -->
+  <distributionManagement>
+     <snapshotRepository>
+       <id>ossrh</id>
+       <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+     </snapshotRepository>
+     <repository>
+       <id>ossrh</id>
+       <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+     </repository>
+  </distributionManagement>
+
+</project>

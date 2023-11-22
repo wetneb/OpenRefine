@@ -1,0 +1,42 @@
+# Documentation for all configuration options:
+# https://help.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
+
+version: 2
+updates:
+# For openrefine java deps
+- package-ecosystem: maven
+  directory: "/"
+  schedule:
+    interval: daily
+  open-pull-requests-limit: 15
+  ignore:
+  - dependency-name: com.thoughtworks.xstream:xstream
+    versions:
+    - "> 1.4.12"
+    - "< 2"
+  - dependency-name: "org.eclipse.jetty:jetty-*"
+    versions:
+      - ">= 10.0.0"
+  - dependency-name: "formatter-maven-plugin"
+  target-branch: "master"
+    
+# For main webapp
+- package-ecosystem: "npm"
+  directory: "main/webapp"
+  schedule:
+    interval: "daily"
+# For documentation website
+- package-ecosystem: "npm" # For Yarn
+  directory: "docs/"
+  schedule:
+    interval: "monthly"
+# For github actions
+- package-ecosystem: "github-actions"
+  directory: "/"
+  schedule:
+    interval: "monthly"
+# For cypress test_suite
+- package-ecosystem: "npm"
+  directory: "main/tests/cypress"
+  schedule:
+    interval: "daily"

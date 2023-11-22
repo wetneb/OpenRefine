@@ -1,5 +1,3 @@
-package com.google.util.threads;
-
 //========================================================================
 //$$Id: ThreadPoolExecutorAdapter.java,v 1.3 2007/11/02 12:39:41 ludovic_orban Exp $$
 //
@@ -15,17 +13,19 @@ package com.google.util.threads;
 //limitations under the License.
 //========================================================================
 
+package com.google.util.threads;
+
+import java.util.EventListener;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import org.mortbay.component.LifeCycle;
-import org.mortbay.log.Log;
-import org.mortbay.thread.ThreadPool;
+import org.eclipse.jetty.util.component.LifeCycle;
+import org.eclipse.jetty.util.thread.ThreadPool;
+import org.slf4j.LoggerFactory;
 
 /**
- * Jetty {@link ThreadPool} that bridges requests to a
- * {@link ThreadPoolExecutor}.
+ * Jetty {@link ThreadPool} that bridges requests to a {@link ThreadPoolExecutor}.
  */
 public class ThreadPoolExecutorAdapter implements ThreadPool, LifeCycle {
 
@@ -36,13 +36,11 @@ public class ThreadPoolExecutorAdapter implements ThreadPool, LifeCycle {
     }
 
     @Override
-    public boolean dispatch(Runnable job) {
+    public void execute(Runnable job) {
         try {
             executor.execute(job);
-            return true;
         } catch (RejectedExecutionException e) {
-            Log.warn(e);
-            return false;
+            LoggerFactory.getLogger(this.toString()).warn("Execute failed", e);
         }
     }
 
@@ -113,12 +111,12 @@ public class ThreadPoolExecutorAdapter implements ThreadPool, LifeCycle {
     }
 
     @Override
-    public void addLifeCycleListener(Listener listener) {
-        System.err.println("we should implement this!");
+    public boolean addEventListener(EventListener eventListener) {
+        return false;
     }
 
     @Override
-    public void removeLifeCycleListener(Listener listener) {
-        System.err.println("we should implement this!");
+    public boolean removeEventListener(EventListener eventListener) {
+        return false;
     }
 }

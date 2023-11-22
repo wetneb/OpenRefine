@@ -66,7 +66,7 @@ DataTableColumnHeaderUI.prototype._render = function() {
   var elmts = DOM.bind(td);
 
   elmts.nameContainer.text(this._column.name);
-  elmts.dropdownMenu.click(function() {
+  elmts.dropdownMenu.on('click',function() {
     self._createMenuForColumnHeader(this);
   });
 
@@ -76,7 +76,7 @@ DataTableColumnHeaderUI.prototype._render = function() {
       var newPercent = Math.ceil(100 * stats.newTopics / stats.nonBlanks);
       var matchPercent = Math.ceil(100 * stats.matchedTopics / stats.nonBlanks);
       var unreconciledPercent = Math.ceil(100 * (stats.nonBlanks - stats.matchedTopics - stats.newTopics) / stats.nonBlanks);
-      var title = matchPercent + "% "+$.i18n('core-views/matched')+", " + newPercent + "% "+$.i18n('core-views/new')+", " + unreconciledPercent + "% "+$.i18n('core-views/to-be-recon');
+      var title = $.i18n('core-views/recon-stats', matchPercent, newPercent, unreconciledPercent);
 
       var whole = $('<div>')
       .addClass("column-header-recon-stats-bar")
@@ -127,7 +127,7 @@ DataTableColumnHeaderUI.prototype._createMenuForColumnHeader = function(elmt) {
       this._dataTableView._getSortingCriterionForColumn(this._column.name) === null ?
         {
           id: "core/sort",
-          "label": $.i18n('core-views/sort')+"...",
+          "label": $.i18n('core-views/sort'),
           "click": function() {
             self._showSortingCriterion(null, self._dataTableView._getSortingCriteriaCount() > 0);
           }
@@ -180,6 +180,45 @@ DataTableColumnHeaderUI.prototype._createMenuForColumnHeader = function(elmt) {
             }
             self._dataTableView.render();
           }
+        },
+        {
+          label: $.i18n('core-views/expand-all'),
+          /**
+           * This function expands all the columns in the project
+           */
+          // CS427 Issue Link: https://github.com/OpenRefine/OpenRefine/issues/4067
+          click: function() {
+            self._dataTableView._collapsedColumnNames = [];
+            self._dataTableView.render();
+          }
+        },
+        {
+          label: $.i18n('core-views/expand-left'),
+          /**
+           * This function expands the columns to the left of the selected column
+           */
+          // CS427 Issue Link: https://github.com/OpenRefine/OpenRefine/issues/4067
+          click: function() {
+            //by deleting these entries from collapsedColumnNames, they won't render on the dataTableView
+            for (var i = 0; i < self._columnIndex; i++) {
+              delete self._dataTableView._collapsedColumnNames[theProject.columnModel.columns[i].name];
+            }
+            self._dataTableView.render();
+          }
+        },
+        {
+          label: $.i18n('core-views/expand-right'),
+          /**
+           * This function expands the columns to the right of the selected column
+           */
+          // CS427 Issue Link: https://github.com/OpenRefine/OpenRefine/issues/4067
+          click: function() {
+            //by deleting these entries from collapsedColumnNames, they won't render on the dataTableView
+            for (var i = self._columnIndex + 1; i < theProject.columnModel.columns.length; i++) {
+              delete self._dataTableView._collapsedColumnNames[theProject.columnModel.columns[i].name];
+            }
+            self._dataTableView.render();
+          }
         }
       ]
     },
@@ -208,7 +247,7 @@ DataTableColumnHeaderUI.prototype.createSortingMenu = function() {
 
   var items = [
     {
-      "label": $.i18n('core-views/sort')+"...",
+      "label": $.i18n('core-views/sort'),
       "click": function() {
         self._showSortingCriterion(criterion, hasOtherCriteria);
       }
@@ -266,7 +305,7 @@ DataTableColumnHeaderUI.prototype._showSortingCriterion = function(criterion, ha
 
   elmts.valueTypeOptions
   .find("input[type='radio'][value='" + criterion.valueType + "']")
-  .attr("checked", "checked");
+  .prop('checked', true);
 
   var setValueType = function(valueType) {
     var forward = elmts.directionForwardLabel;
@@ -287,17 +326,17 @@ DataTableColumnHeaderUI.prototype._showSortingCriterion = function(criterion, ha
   };
   elmts.valueTypeOptions
   .find("input[type='radio']")
-  .change(function() {
+  .on('change',function() {
     setValueType(this.value);
   });
 
   if (criterion.valueType == "string" && criterion.caseSensitive) {
-    elmts.caseSensitiveCheckbox.attr("checked", "checked");
+    elmts.caseSensitiveCheckbox.prop('checked', true);
   }
 
   elmts.directionOptions
   .find("input[type='radio'][value='" + (criterion.reverse ? "reverse" : "forward") + "']")
-  .attr("checked", "checked");
+  .prop('checked', true);
 
   if (hasOtherCriteria) {
     elmts.sortAloneContainer.show();
@@ -331,8 +370,8 @@ DataTableColumnHeaderUI.prototype._showSortingCriterion = function(criterion, ha
 
   setValueType(criterion.valueType); 
 
-  elmts.cancelButton.click(dismiss);
-  elmts.okButton.click(function() {
+  elmts.cancelButton.on('click',dismiss);
+  elmts.okButton.on('click',function() {
     var criterion2 = {
         column: self._column.name,
         valueType: elmts.valueTypeOptions.find("input[type='radio']:checked")[0].value,

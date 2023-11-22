@@ -40,11 +40,31 @@ Refine.ImportProjectUI = function(elmt) {
   
   this._elmt = elmt;
   this._elmts = DOM.bind(elmt);
-  
+  let fileInput = document.getElementById("project-tar-file-input")
+  this._elmts.projectTarDelete.on('click', function () {
+    fileInput.value = ""
+  })
+
+  this._elmts.projectButton.on('click', function (e) {
+    let urlInput = document.getElementById("project-url-input")
+
+    if (fileInput.value === "" && urlInput.value === "") {
+      alert($.i18n('core-index-import/warning-import-input'));
+    } else if (fileInput.value.length > 0 && urlInput.value.length > 0) {
+      alert($.i18n('core-index-import/warning-import-two-input'));
+    } else if (urlInput.value !== "" && !URLUtil.looksLikeUrl(urlInput.value)) {
+      alert($.i18n('core-index-import/warning-import-url'));
+    } else {
+      document.getElementById("import-project-button").type = "submit";
+    }
+  });
+
   $('#or-import-locate').text($.i18n('core-index-import/locate'));
   $('#or-import-file').text($.i18n('core-index-import/file'));
+  $('#project-tar-file-delete').val($.i18n('core-index-import/delete-import-file'));
+  $('#or-import-url').text($.i18n('core-index-import/or'));
   $('#or-import-rename').text($.i18n('core-index-import/rename'));
-  $('#import-project-button').attr("value",$.i18n('core-buttons/import-proj'));
+  $('#import-project-button').val($.i18n('core-buttons/import-proj'));
 };
 
 Refine.actionAreas.push({
@@ -52,7 +72,3 @@ Refine.actionAreas.push({
   label: $.i18n('core-index-import/import-proj'),
   uiClass: Refine.ImportProjectUI
 });
-
-Refine.ImportProjectUI.prototype.resize = function() {
-  
-};

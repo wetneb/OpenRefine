@@ -46,11 +46,11 @@ Refine.DefaultImportingController.prototype._showParsingPanel = function(hasFile
   }
   
   this._prepareParsingPanel();
-  this._parsingPanelElmts.nextButton.click(function() {
+  this._parsingPanelElmts.nextButton.on('click',function() {
     self._createProject();
   });
   if (hasFileSelection) {
-    this._parsingPanelElmts.previousButton.click(function() {
+    this._parsingPanelElmts.previousButton.on('click',function() {
       self._createProjectUI.showCustomPanel(self._fileSelectionPanel);
     });
   } else {
@@ -60,7 +60,11 @@ Refine.DefaultImportingController.prototype._showParsingPanel = function(hasFile
   if (!(this._projectName) && this._job.config.fileSelection.length > 0) {
     var index = this._job.config.fileSelection[0];
     var record = this._job.config.retrievalRecord.files[index];
-    this._projectName = $.trim(record.fileName.replace(/\W/g, ' ').replace(/\s+/g, ' '));
+    if (record.fileName == '(clipboard)') {
+      this._projectName = $.i18n('core-index-import/clipboard');
+    } else {
+      this._projectName = jQueryTrim(record.fileName.replace(/[\._-]/g, ' ').replace(/\s+/g, ' '));
+    }
   }
   if (this._projectName) {
     this._parsingPanelElmts.projectNameInput[0].value = this._projectName;
@@ -73,25 +77,26 @@ Refine.DefaultImportingController.prototype._disposeFileSelectionPanel = functio
   this._disposeParserUI();
 
   if (this._parsingPanelResizer) {
-    $(window).unbind("resize", this._parsingPanelResizer);
+    $(window).off("resize", this._parsingPanelResizer);
   }
 
-  this._parsingPanel.unbind().empty();
+  this._parsingPanel.off().empty();
   delete this._parsingPanelElmts;
 };
 
 Refine.DefaultImportingController.prototype._prepareParsingPanel = function() {
   var self = this;
 
-  this._parsingPanel.unbind().empty().html(
+  this._parsingPanel.off().empty().html(
       DOM.loadHTML("core", "scripts/index/default-importing-controller/parsing-panel.html"));
 
   this._parsingPanelElmts = DOM.bind(this._parsingPanel);
-  this._parsingPanelElmts.startOverButton.click(function() {
+  this._parsingPanelElmts.startOverButton.on('click',function() {
     self._startOver();
   });
   this._parsingPanelElmts.progressPanel.hide();
 
+  this._parsingPanelElmts.previousButton.html($.i18n('core-buttons/previous'));
   this._parsingPanelElmts.startOverButton.html($.i18n('core-buttons/startover'));
   this._parsingPanelElmts.nextButton.html($.i18n('core-buttons/create-project'));
   $('#or-import-parsopt').text($.i18n('core-index-import/parsing-options'));
@@ -99,49 +104,23 @@ Refine.DefaultImportingController.prototype._prepareParsingPanel = function() {
   $('#or-import-projtags').html($.i18n('core-index-import/project-tags'));
   $('#or-import-updating').text($.i18n('core-index-import/updating-preview'));
   $('#or-import-parseas').text($.i18n('core-index-import/parse-as'));
-  
+
   //tags dropdown
   $("#tagsInput").select2({
-          tags: Refine.TagsManager._getAllProjectTags() ,
-          tokenSeparators: [",", " "]
+    data: Refine.TagsManager._getAllProjectTags() ,
+    tags: true,
+    tokenSeparators: [",", " "]
   });
-  
-  this._parsingPanelResizer = function() {
-    var elmts = self._parsingPanelElmts;
-    var width = self._parsingPanel.width();
-    var height = self._parsingPanel.height();
-    var headerHeight = elmts.wizardHeader.outerHeight(true);
-    var controlPanelHeight = 300;
-
-    elmts.dataPanel
-    .css("left", "0px")
-    .css("top", headerHeight + "px")
-    .css("width", (width - DOM.getHPaddings(elmts.dataPanel)) + "px")
-    .css("height", (height - headerHeight - controlPanelHeight - DOM.getVPaddings(elmts.dataPanel)) + "px");
-    elmts.progressPanel
-    .css("left", "0px")
-    .css("top", headerHeight + "px")
-    .css("width", (width - DOM.getHPaddings(elmts.progressPanel)) + "px")
-    .css("height", (height - headerHeight - controlPanelHeight - DOM.getVPaddings(elmts.progressPanel)) + "px");
-
-    elmts.controlPanel
-    .css("left", "0px")
-    .css("top", (height - controlPanelHeight) + "px")
-    .css("width", (width - DOM.getHPaddings(elmts.controlPanel)) + "px")
-    .css("height", (controlPanelHeight - DOM.getVPaddings(elmts.controlPanel)) + "px");
-  };
-
-  $(window).resize(this._parsingPanelResizer);
-  this._parsingPanelResizer();
 
   var formats = this._job.config.rankedFormats;
   var createFormatTab = function(format) {
+    var formatLabelKey =Refine.importingConfig.formats[format].label;
     var tab = $('<div>')
-    .text(Refine.importingConfig.formats[format].label)
+    .text( $.i18n(formatLabelKey))
     .attr("format", format)
     .addClass("default-importing-parsing-control-panel-format")
     .appendTo(self._parsingPanelElmts.formatsContainer)
-    .click(function() {
+    .on('click',function() {
       self._selectFormat(format);
     });
 
@@ -161,9 +140,9 @@ Refine.DefaultImportingController.prototype._disposeParserUI = function() {
     delete this._formatParserUI;
   }
   if (this._parsingPanelElmts) {
-    this._parsingPanelElmts.optionsContainer.unbind().empty();
-    this._parsingPanelElmts.progressPanel.unbind();
-    this._parsingPanelElmts.dataPanel.unbind().empty();
+    this._parsingPanelElmts.optionsContainer.off().empty();
+    this._parsingPanelElmts.progressPanel.off();
+    this._parsingPanelElmts.dataPanel.off().empty();
   }
 };
 
