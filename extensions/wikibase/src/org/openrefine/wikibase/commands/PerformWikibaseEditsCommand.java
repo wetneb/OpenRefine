@@ -26,11 +26,10 @@ package org.openrefine.wikibase.commands;
 
 import javax.servlet.http.HttpServletRequest;
 
-import com.google.refine.browsing.EngineConfig;
-import com.google.refine.commands.EngineDependentCommand;
-import com.google.refine.model.AbstractOperation;
-import com.google.refine.model.Project;
-
+import org.openrefine.browsing.EngineConfig;
+import org.openrefine.commands.EngineDependentCommand;
+import org.openrefine.model.AbstractOperation;
+import org.openrefine.model.Project;
 import org.openrefine.wikibase.operations.PerformWikibaseEditsOperation;
 
 public class PerformWikibaseEditsCommand extends EngineDependentCommand {

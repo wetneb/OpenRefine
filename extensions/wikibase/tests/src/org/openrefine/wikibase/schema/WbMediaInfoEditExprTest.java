@@ -16,13 +16,12 @@ import org.wikidata.wdtk.datamodel.interfaces.Snak;
 import org.wikidata.wdtk.datamodel.interfaces.Statement;
 import org.wikidata.wdtk.datamodel.interfaces.StatementRank;
 
-import com.google.refine.model.Cell;
-import com.google.refine.model.Column;
-import com.google.refine.model.ColumnModel;
-import com.google.refine.model.ModelException;
-import com.google.refine.util.ParsingUtilities;
-import com.google.refine.util.TestUtils;
-
+import org.openrefine.model.Cell;
+import org.openrefine.model.Column;
+import org.openrefine.model.ColumnModel;
+import org.openrefine.model.ModelException;
+import org.openrefine.util.ParsingUtilities;
+import org.openrefine.util.TestUtils;
 import org.openrefine.wikibase.qa.QAWarning;
 import org.openrefine.wikibase.qa.QAWarning.Severity;
 import org.openrefine.wikibase.schema.entityvalues.ReconMediaInfoIdValue;

@@ -32,10 +32,9 @@ import java.io.LineNumberReader;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import com.google.refine.history.Change;
-import com.google.refine.model.AbstractOperation;
-import com.google.refine.util.ParsingUtilities;
-
+import org.openrefine.history.Change;
+import org.openrefine.model.AbstractOperation;
+import org.openrefine.util.ParsingUtilities;
 import org.openrefine.wikibase.schema.WikibaseSchema;
 import org.openrefine.wikibase.testing.TestingData;
 

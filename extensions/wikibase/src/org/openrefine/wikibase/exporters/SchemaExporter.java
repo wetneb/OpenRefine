@@ -5,11 +5,10 @@ import java.io.IOException;
 import java.io.Writer;
 import java.util.Properties;
 
-import com.google.refine.browsing.Engine;
-import com.google.refine.exporters.WriterExporter;
-import com.google.refine.model.Project;
-import com.google.refine.util.ParsingUtilities;
-
+import org.openrefine.browsing.Engine;
+import org.openrefine.exporters.WriterExporter;
+import org.openrefine.model.Project;
+import org.openrefine.util.ParsingUtilities;
 import org.openrefine.wikibase.schema.WikibaseSchema;
 
 public class SchemaExporter implements WriterExporter {

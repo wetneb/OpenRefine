@@ -28,9 +28,8 @@ import org.wikidata.wdtk.datamodel.interfaces.StatementRank;
 import org.wikidata.wdtk.wikibaseapi.WikibaseDataEditor;
 import org.wikidata.wdtk.wikibaseapi.apierrors.MediaWikiApiErrorException;
 
-import com.google.refine.util.ParsingUtilities;
-import com.google.refine.util.TestUtils;
-
+import org.openrefine.util.ParsingUtilities;
+import org.openrefine.util.TestUtils;
 import org.openrefine.wikibase.editing.MediaFileUtils;
 import org.openrefine.wikibase.editing.MediaFileUtils.MediaUploadResponse;
 import org.openrefine.wikibase.schema.strategies.PropertyOnlyStatementMerger;

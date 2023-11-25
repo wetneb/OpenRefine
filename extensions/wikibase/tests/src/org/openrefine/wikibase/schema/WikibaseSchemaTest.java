@@ -48,15 +48,14 @@ import org.wikidata.wdtk.datamodel.interfaces.StringValue;
 import org.wikidata.wdtk.datamodel.interfaces.TimeValue;
 import org.wikidata.wdtk.wikibaseapi.ApiConnection;
 
-import com.google.refine.browsing.Engine;
-import com.google.refine.browsing.EngineConfig;
-import com.google.refine.browsing.facets.FacetConfigResolver;
-import com.google.refine.browsing.facets.TextSearchFacet.TextSearchFacetConfig;
-import com.google.refine.model.ColumnModel;
-import com.google.refine.model.Project;
-import com.google.refine.util.ParsingUtilities;
-import com.google.refine.util.TestUtils;
-
+import org.openrefine.browsing.Engine;
+import org.openrefine.browsing.EngineConfig;
+import org.openrefine.browsing.facets.FacetConfigResolver;
+import org.openrefine.browsing.facets.TextSearchFacet.TextSearchFacetConfig;
+import org.openrefine.model.ColumnModel;
+import org.openrefine.model.Project;
+import org.openrefine.util.ParsingUtilities;
+import org.openrefine.util.TestUtils;
 import org.openrefine.wikibase.schema.strategies.StatementEditingMode;
 import org.openrefine.wikibase.schema.strategies.StatementMerger;
 import org.openrefine.wikibase.schema.validation.PathElement;

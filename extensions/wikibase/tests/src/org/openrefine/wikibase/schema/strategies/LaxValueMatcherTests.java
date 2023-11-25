@@ -18,8 +18,8 @@ import org.wikidata.wdtk.datamodel.interfaces.QuantityValue;
 import org.wikidata.wdtk.datamodel.interfaces.StringValue;
 import org.wikidata.wdtk.datamodel.interfaces.TimeValue;
 
-import com.google.refine.util.ParsingUtilities;
-import com.google.refine.util.TestUtils;
+import org.openrefine.util.ParsingUtilities;
+import org.openrefine.util.TestUtils;
 
 public class LaxValueMatcherTests {
 

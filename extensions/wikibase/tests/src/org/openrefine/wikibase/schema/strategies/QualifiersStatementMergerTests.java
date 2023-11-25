@@ -19,8 +19,8 @@ import org.wikidata.wdtk.datamodel.interfaces.SnakGroup;
 import org.wikidata.wdtk.datamodel.interfaces.Statement;
 import org.wikidata.wdtk.datamodel.interfaces.StatementRank;
 
-import com.google.refine.util.ParsingUtilities;
-import com.google.refine.util.TestUtils;
+import org.openrefine.util.ParsingUtilities;
+import org.openrefine.util.TestUtils;
 
 public class QualifiersStatementMergerTests {
 

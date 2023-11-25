@@ -12,14 +12,13 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import com.google.refine.ProjectManager;
-import com.google.refine.expr.EvalError;
-import com.google.refine.expr.ExpressionUtils;
-import com.google.refine.grel.ControlFunctionRegistry;
-import com.google.refine.model.Project;
-import com.google.refine.model.Row;
-import com.google.refine.util.ParsingUtilities;
-
+import org.openrefine.ProjectManager;
+import org.openrefine.expr.EvalError;
+import org.openrefine.expr.ExpressionUtils;
+import org.openrefine.grel.ControlFunctionRegistry;
+import org.openrefine.model.Project;
+import org.openrefine.model.Row;
+import org.openrefine.util.ParsingUtilities;
 import org.openrefine.wikibase.manifests.Manifest;
 import org.openrefine.wikibase.manifests.ManifestException;
 import org.openrefine.wikibase.manifests.ManifestParser;

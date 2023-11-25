@@ -31,8 +31,7 @@ import org.wikidata.wdtk.wikibaseapi.apierrors.MaxlagErrorException;
 import org.wikidata.wdtk.wikibaseapi.apierrors.MediaWikiApiErrorException;
 import org.wikidata.wdtk.wikibaseapi.apierrors.TokenErrorException;
 
-import com.google.refine.util.ParsingUtilities;
-
+import org.openrefine.util.ParsingUtilities;
 import org.openrefine.wikibase.editing.MediaFileUtils.MediaUploadResponse;
 
 public class MediaFileUtilsTest {

@@ -37,9 +37,8 @@ import javax.servlet.http.HttpServletResponse;
 import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 
-import com.google.refine.commands.Command;
-import com.google.refine.model.Project;
-
+import org.openrefine.commands.Command;
+import org.openrefine.model.Project;
 import org.openrefine.wikibase.testing.TestingData;
 import org.openrefine.wikibase.testing.WikidataRefineTest;
 

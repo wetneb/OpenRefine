@@ -37,14 +37,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wikidata.wdtk.wikibaseapi.ApiConnection;
 
-import com.google.refine.browsing.Engine;
-import com.google.refine.browsing.FilteredRows;
-import com.google.refine.browsing.RowVisitor;
-import com.google.refine.model.OverlayModel;
-import com.google.refine.model.Project;
-import com.google.refine.model.Row;
-import com.google.refine.util.ParsingUtilities;
-
+import org.openrefine.browsing.Engine;
+import org.openrefine.browsing.FilteredRows;
+import org.openrefine.browsing.RowVisitor;
+import org.openrefine.model.OverlayModel;
+import org.openrefine.model.Project;
+import org.openrefine.model.Row;
+import org.openrefine.util.ParsingUtilities;
 import org.openrefine.wikibase.qa.QAWarningStore;
 import org.openrefine.wikibase.schema.exceptions.QAWarningException;
 import org.openrefine.wikibase.schema.exceptions.SkipSchemaExpressionException;

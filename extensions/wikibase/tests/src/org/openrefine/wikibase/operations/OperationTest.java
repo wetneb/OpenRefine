@@ -33,14 +33,13 @@ import java.util.Properties;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import com.google.refine.history.Change;
-import com.google.refine.model.AbstractOperation;
-import com.google.refine.model.Project;
-import com.google.refine.operations.OperationRegistry;
-import com.google.refine.util.ParsingUtilities;
-import com.google.refine.util.Pool;
-import com.google.refine.util.TestUtils;
-
+import org.openrefine.history.Change;
+import org.openrefine.model.AbstractOperation;
+import org.openrefine.model.Project;
+import org.openrefine.operations.OperationRegistry;
+import org.openrefine.util.ParsingUtilities;
+import org.openrefine.util.Pool;
+import org.openrefine.util.TestUtils;
 import org.openrefine.wikibase.testing.WikidataRefineTest;
 
 public abstract class OperationTest extends WikidataRefineTest {

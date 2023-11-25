@@ -12,8 +12,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.testng.annotations.Test;
 import org.wikidata.wdtk.wikibaseapi.apierrors.MediaWikiApiErrorException;
 
-import com.google.refine.util.ParsingUtilities;
-
+import org.openrefine.util.ParsingUtilities;
 import org.openrefine.wikibase.testing.TestingData;
 import org.openrefine.wikibase.updates.MediaInfoEdit;
 import org.openrefine.wikibase.updates.MediaInfoEditBuilder;

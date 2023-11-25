@@ -26,8 +26,7 @@ package org.openrefine.wikibase.schema;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 
-import com.google.refine.model.Cell;
-
+import org.openrefine.model.Cell;
 import org.openrefine.wikibase.qa.QAWarning;
 import org.openrefine.wikibase.schema.exceptions.SkipSchemaExpressionException;
 

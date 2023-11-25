@@ -29,9 +29,8 @@ import org.wikidata.wdtk.datamodel.implementation.EntityIdValueImpl;
 import org.wikidata.wdtk.datamodel.interfaces.EntityIdValue;
 import org.wikidata.wdtk.datamodel.interfaces.ItemIdValue;
 
-import com.google.refine.model.Cell;
-import com.google.refine.model.Recon.Judgment;
-
+import org.openrefine.model.Cell;
+import org.openrefine.model.Recon.Judgment;
 import org.openrefine.wikibase.qa.QAWarning;
 import org.openrefine.wikibase.qa.QAWarning.Severity;
 import org.openrefine.wikibase.schema.entityvalues.ReconItemIdValue;

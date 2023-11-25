@@ -28,8 +28,7 @@ import org.testng.annotations.Test;
 import org.wikidata.wdtk.datamodel.helpers.Datamodel;
 import org.wikidata.wdtk.datamodel.interfaces.TimeValue;
 
-import com.google.refine.model.Cell;
-
+import org.openrefine.model.Cell;
 import org.openrefine.wikibase.testing.JacksonSerializationTest;
 
 public class WbDateVariableTest extends WbVariableTest<TimeValue> {

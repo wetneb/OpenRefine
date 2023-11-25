@@ -24,7 +24,7 @@ import org.wikidata.wdtk.wikibaseapi.apierrors.MaxlagErrorException;
 import org.wikidata.wdtk.wikibaseapi.apierrors.MediaWikiApiErrorException;
 import org.wikidata.wdtk.wikibaseapi.apierrors.TokenErrorException;
 
-import com.google.refine.util.ParsingUtilities;
+import org.openrefine.util.ParsingUtilities;
 
 /**
  * Collection of wrappers around MediaWiki actions which are not supported by WDTK.

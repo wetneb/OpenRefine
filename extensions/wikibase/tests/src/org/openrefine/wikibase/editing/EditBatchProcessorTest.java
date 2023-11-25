@@ -58,8 +58,7 @@ import org.wikidata.wdtk.wikibaseapi.WikibaseDataEditor;
 import org.wikidata.wdtk.wikibaseapi.WikibaseDataFetcher;
 import org.wikidata.wdtk.wikibaseapi.apierrors.MediaWikiApiErrorException;
 
-import com.google.refine.util.ParsingUtilities;
-
+import org.openrefine.util.ParsingUtilities;
 import org.openrefine.wikibase.testing.TestingData;
 import org.openrefine.wikibase.testing.WikidataRefineTest;
 import org.openrefine.wikibase.updates.EntityEdit;

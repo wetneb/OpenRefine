@@ -4,7 +4,7 @@ package org.openrefine.wikibase.testing;
 import java.io.File;
 import java.io.IOException;
 
-import com.google.refine.RefineServlet;
+import org.openrefine.RefineServlet;
 
 public class RefineServletStub extends RefineServlet {
 

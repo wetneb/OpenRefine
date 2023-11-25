@@ -26,8 +26,7 @@ package org.openrefine.wikibase.schema;
 
 import org.testng.annotations.Test;
 
-import com.google.refine.model.Cell;
-
+import org.openrefine.model.Cell;
 import org.openrefine.wikibase.testing.JacksonSerializationTest;
 
 public class WbLanguageVariableTest extends WbVariableTest<String> {
