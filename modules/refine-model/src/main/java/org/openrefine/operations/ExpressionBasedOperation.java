@@ -28,7 +28,6 @@ import org.openrefine.model.changes.ChangeData;
 import org.openrefine.operations.exceptions.OperationException;
 import org.openrefine.overlay.OverlayModel;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.apache.commons.lang.Validate;
 
 /**
@@ -93,6 +92,16 @@ public abstract class ExpressionBasedOperation extends RowMapOperation {
             }
         }
         return _eval;
+    }
+    
+
+    @Override
+    public boolean persistResults() {
+        try {
+            return !getEvaluable().isLocal();
+        } catch (OperationException e) {
+            return false;
+        }
     }
 
     @Override
@@ -241,11 +250,6 @@ public abstract class ExpressionBasedOperation extends RowMapOperation {
                     newCell = Cell.NULL;
                 }
                 return newCell;
-            }
-
-            @Override
-            public boolean persistResults() {
-                return !eval.isLocal();
             }
 
             @Override

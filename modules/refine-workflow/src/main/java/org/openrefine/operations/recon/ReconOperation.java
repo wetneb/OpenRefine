@@ -112,6 +112,11 @@ public class ReconOperation extends RowMapOperation {
     }
 
     @Override
+    public boolean persistResults() {
+        return true;
+    }
+
+    @Override
     public List<ColumnInsertion> getColumnInsertions() {
         return Collections.singletonList(new ColumnInsertion(_columnName, _columnName, true, null, _reconConfig, true));
     }
@@ -253,11 +258,6 @@ public class ReconOperation extends RowMapOperation {
         @Override
         public boolean preservesRecordStructure() {
             return true; // blank cells are preserved
-        }
-
-        @Override
-        public boolean persistResults() {
-            return true;
         }
 
     }
