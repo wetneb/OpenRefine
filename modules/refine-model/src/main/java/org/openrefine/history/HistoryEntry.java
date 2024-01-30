@@ -23,8 +23,8 @@ LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
 A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
 OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
 SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,           
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY           
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
 THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
@@ -34,8 +34,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package org.openrefine.history;
 
 import java.io.IOException;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
+import java.time.Instant;
+import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -55,7 +55,7 @@ public class HistoryEntry {
 
     final static Logger logger = LoggerFactory.getLogger("HistoryEntry");
     private final long id;
-    private final OffsetDateTime time;
+    private final Instant time;
 
     // the operation applied at this step
     private final Operation operation;
@@ -74,14 +74,14 @@ public class HistoryEntry {
             @JsonProperty("gridPreservation") GridPreservation gridPreservation) {
         this(id,
                 operation,
-                OffsetDateTime.now(ZoneId.of("Z")),
+                Instant.now(),
                 gridPreservation);
     }
 
     protected HistoryEntry(
             long id,
             Operation operation,
-            OffsetDateTime time,
+            Instant time,
             GridPreservation gridPreservation) {
         this.id = id;
         Validate.notNull(operation);
@@ -105,7 +105,7 @@ public class HistoryEntry {
     }
 
     @JsonProperty("time")
-    public OffsetDateTime getTime() {
+    public Instant getTime() {
         return time;
     }
 
@@ -118,5 +118,29 @@ public class HistoryEntry {
     @JsonProperty("gridPreservation")
     public GridPreservation getGridPreservation() {
         return gridPreservation;
+    }
+
+    @Override
+    public String toString() {
+        return "HistoryEntry [id=" + id + ", time=" + time + ", operation=" + operation + ", gridPreservation="
+                + gridPreservation + "]";
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(gridPreservation, id, operation, time);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        HistoryEntry other = (HistoryEntry) obj;
+        return gridPreservation == other.gridPreservation && id == other.id
+                && Objects.equals(operation, other.operation) && Objects.equals(time, other.time);
     }
 }

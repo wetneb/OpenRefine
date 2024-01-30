@@ -23,8 +23,8 @@ LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
 A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
 OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
 SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,           
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY           
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
 THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
@@ -50,12 +50,16 @@ import org.apache.commons.lang.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.openrefine.browsing.Engine;
+import org.openrefine.model.ColumnId;
+import org.openrefine.model.ColumnModel;
 import org.openrefine.model.Grid;
 import org.openrefine.model.changes.ChangeContext;
 import org.openrefine.model.changes.ChangeDataStore;
 import org.openrefine.model.changes.GridCache;
 import org.openrefine.operations.ChangeResult;
 import org.openrefine.operations.Operation;
+import org.openrefine.operations.RowMapOperation;
 import org.openrefine.operations.exceptions.OperationException;
 import org.openrefine.util.NamingThreadFactory;
 
@@ -109,21 +113,28 @@ public class History {
     protected static class Step {
 
         protected Grid grid;
+        protected ChangeResult changeResult;
         // stores whether the grid at the same index is read directly from disk or not
         protected boolean cachedOnDisk;
         // stores whether the grid depends on change data being fetched, and is therefore worth refreshing regularly
         protected boolean inProgress;
+        // if in progress, this flag stores whether all the operations since the last step that is fully computed are
+        // row/record wise.
+        // If this is the case, then it is safe to iterate synchronously from this step to compute another long-running
+        // operation
+        protected boolean streamable;
 
-        protected Step(Grid grid, boolean cachedOnDisk, boolean inProgress) {
+        protected Step(Grid grid, boolean cachedOnDisk, boolean inProgress, boolean streamable) {
             this.grid = grid;
             this.cachedOnDisk = cachedOnDisk;
             this.inProgress = inProgress;
+            this.streamable = streamable;
         }
     }
 
     /**
      * Creates an empty on an initial grid.
-     * 
+     *
      * @param initialGrid
      *            the initial state of the project
      * @param dataStore
@@ -134,7 +145,7 @@ public class History {
     public History(Grid initialGrid, ChangeDataStore dataStore, GridCache gridStore, long projectId) {
         _entries = new ArrayList<>();
         _steps = new ArrayList<>();
-        _steps.add(new Step(initialGrid, false, false));
+        _steps.add(new Step(initialGrid, false, false, false));
         _position = 0;
         _dataStore = dataStore;
         _gridStore = gridStore;
@@ -145,7 +156,7 @@ public class History {
 
     /**
      * Constructs a history with an initial grid and a list of history entries.
-     * 
+     *
      * @param initialGrid
      *            the first grid of the project, at creation time
      * @param dataStore
@@ -166,6 +177,7 @@ public class History {
             long projectId) throws OperationException {
         this(initialGrid, dataStore, gridStore, projectId);
         Set<Long> availableCachedStates = gridStore.listCachedGridIds();
+        _position = 0;
         for (HistoryEntry entry : entries) {
             Grid grid = null;
             if (availableCachedStates.contains(entry.getId())) {
@@ -176,7 +188,7 @@ public class History {
                     e.printStackTrace();
                 }
             }
-            _steps.add(new Step(grid, grid != null, false));
+            _steps.add(new Step(grid, grid != null, false, false));
             _entries.add(entry);
         }
 
@@ -188,7 +200,7 @@ public class History {
 
     /**
      * Wait for any caching operation currently being executed asynchronously. Mostly for testing purposes.
-     * 
+     *
      * @throws ExecutionException
      * @throws InterruptedException
      */
@@ -243,7 +255,7 @@ public class History {
      * @param refresh
      *            whether the grid should be refreshed if it depends on change data being currently fetched
      */
-    protected synchronized Grid getGrid(int position, boolean refresh) throws OperationException {
+    public synchronized Grid getGrid(int position, boolean refresh) throws OperationException {
         Step step = _steps.get(position);
         Grid grid = step.grid;
         if (grid != null && !(refresh && step.inProgress)) {
@@ -255,14 +267,38 @@ public class History {
             // is always present
             Grid previous = getGrid(position - 1, refresh);
             HistoryEntry entry = _entries.get(position - 1);
-            ChangeContext context = ChangeContext.create(entry.getId(), _projectId, _dataStore, entry.getDescription());
+            ChangeContext context = ChangeContext.create(entry.getId(), _projectId, position - 1, this, _dataStore, entry.getDescription());
             Operation operation = entry.getOperation();
-            Grid newState;
-            newState = operation.apply(previous, context).getGrid();
-            step.grid = newState;
-            step.inProgress = _steps.get(position - 1).inProgress || _dataStore.needsRefreshing(entry.getId());
+            ChangeResult changeResult = operation.apply(previous, context);
+            if (changeResult.getGridPreservation() != entry.getGridPreservation()) {
+                _entries.set(position - 1, new HistoryEntry(
+                        entry.getId(), entry.getOperation(), entry.getTime(), changeResult.getGridPreservation()));
+            }
+            step.grid = markColumnsAsModified(changeResult, operation, entry.getId());
+            Step previousStep = _steps.get(position - 1);
+            step.changeResult = changeResult;
+            step.inProgress = previousStep.inProgress || _dataStore.needsRefreshing(entry.getId());
+            step.streamable = (previousStep.streamable || !previousStep.inProgress) && operation instanceof RowMapOperation;
             step.cachedOnDisk = false;
-            return newState;
+            return step.grid;
+        }
+    }
+
+    /**
+     * Updates the column model of a grid computed by an operation to make sure that the columns are all marked as
+     * modified unless the operation was able to precisely isolate the columns it modified.
+     *
+     * @param changeResult
+     *            the outcome of running the operation
+     * @return a copy of the grid with updated columns
+     */
+    protected static Grid markColumnsAsModified(ChangeResult changeResult, Operation operation, long historyEntryId) {
+        if (operation instanceof RowMapOperation) {
+            return changeResult.getGrid();
+        } else {
+            Grid grid = changeResult.getGrid();
+            ColumnModel columnModel = grid.getColumnModel();
+            return grid.withColumnModel(columnModel.markColumnsAsModified(historyEntryId));
         }
     }
 
@@ -311,7 +347,7 @@ public class History {
     /**
      * Applies an operation on top of the existing history. This will modify this instance. If the operation application
      * failed, the exception will be returned in {@link OperationApplicationResult#getException()}.
-     * 
+     *
      * @param operation
      *            the operation to apply.
      */
@@ -325,6 +361,28 @@ public class History {
      */
     public synchronized OperationApplicationResult addEntry(long id, Operation operation) {
         // Any new change will clear all future entries.
+        deleteFutureEntries();
+
+        HistoryEntry entry = new HistoryEntry(id, operation, null);
+        _entries.add(entry);
+        _steps.add(new Step(null, false, false, false));
+        try {
+            // compute the grid at the new position (this applies the operation properly speaking)
+            getGrid(_position + 1, false);
+            _position++;
+            updateCachedPosition();
+            updateModified();
+            return new OperationApplicationResult(entry, _steps.get(_position).changeResult);
+        } catch (OperationException e) {
+            return new OperationApplicationResult(e);
+        }
+
+    }
+
+    /**
+     * Permanently discards all history entries that are in the future.
+     */
+    public synchronized void deleteFutureEntries() {
         if (_position != _entries.size()) {
             logger.warn(String.format("Removing undone history entries from %d to %d", _position, _entries.size()));
             // stop the caching process if we are caching a grid in the future
@@ -352,23 +410,6 @@ public class History {
             _entries = _entries.subList(0, _position);
             _steps = _steps.subList(0, _position + 1);
         }
-
-        // TODO refactor this so that it does not duplicate the logic of getGrid
-        ChangeContext context = ChangeContext.create(id, _projectId, _dataStore, operation.getDescription());
-        ChangeResult changeResult = null;
-        try {
-            changeResult = operation.apply(getCurrentGrid(), context);
-        } catch (OperationException e) {
-            return new OperationApplicationResult(e);
-        }
-        Grid newState = changeResult.getGrid();
-        HistoryEntry entry = new HistoryEntry(id, operation, changeResult.getGridPreservation());
-        _steps.add(new Step(newState, false, _steps.get(_position).inProgress || _dataStore.needsRefreshing(entry.getId())));
-        _entries.add(entry);
-        _position++;
-        updateCachedPosition();
-        updateModified();
-        return new OperationApplicationResult(entry, changeResult);
     }
 
     protected void cacheGridOnDisk(int position) throws OperationException, IOException {
@@ -502,11 +543,110 @@ public class History {
         return !_dataStore.getChangeDataIds(historyEntryId).isEmpty();
     }
 
+    /**
+     * Locates the earliest step in the history from which a {@link org.openrefine.model.changes.ChangeData} can be
+     * computed. This requires the following conditions:
+     * <ul>
+     * <li>the step must be at or before the step provided as argument;</li>
+     * <li>the grid at this step must contain all column dependencies supplied as second argument;</li>
+     * <li>all of the transformations between the two steps must preserve row ids. If the change is computed in records
+     * mode, then they must also preserve record ids.</li>
+     * </ul>
+     *
+     * @param beforeStepIndex
+     *            upper bound on the index to return, which must contain the column dependencies supplied. This means
+     *            that the grid at this step must be present (while not necessarily complete).
+     * @param dependencies
+     *            list of column dependencies, or null if dependencies could not be isolated, in which case the supplied
+     *            upper bound will be returned
+     * @param engineMode
+     *            the mode of the engine, determining the type of grid preservation to require
+     * @return the index of the step
+     */
+    public int earliestStepContainingDependencies(int beforeStepIndex, List<ColumnId> dependencies, Engine.Mode engineMode) {
+        if (dependencies == null || beforeStepIndex == 0) {
+            return beforeStepIndex;
+        } else {
+            List<ColumnId> fullDependencies = dependencies;
+            if (engineMode == Engine.Mode.RecordBased) {
+                // check that the record key is listed as a dependency, and add it otherwise
+                Grid grid = _steps.get(beforeStepIndex).grid;
+                if (grid == null) {
+                    throw new IllegalStateException("The latest grid to apply the operation on is not computed yet");
+                }
+                ColumnModel originalColumnModel = grid.getColumnModel();
+                int keyColumnIndex = originalColumnModel.getKeyColumnIndex();
+                if (keyColumnIndex < 0 || keyColumnIndex >= originalColumnModel.getColumns().size()) {
+                    throw new IllegalStateException("Invalid key column index to run a record-based operation");
+                }
+                ColumnId keyColumnId = originalColumnModel.getColumnByIndex(keyColumnIndex).getColumnId();
+                if (!dependencies.contains(keyColumnId)) {
+                    fullDependencies = new ArrayList<>(dependencies.size() + 1);
+                    // add the key column in first position by convention
+                    fullDependencies.add(keyColumnId);
+                    fullDependencies.addAll(dependencies);
+                }
+            }
+            int currentIndex = beforeStepIndex - 1;
+            while (currentIndex >= 0 &&
+                    (_entries.get(currentIndex).getGridPreservation() != GridPreservation.NO_ROW_PRESERVATION) &&
+                    (engineMode == Engine.Mode.RowBased
+                            || _entries.get(currentIndex).getGridPreservation() == GridPreservation.PRESERVES_RECORDS)
+                    &&
+                    stepSatisfiesDependencies(currentIndex, fullDependencies)) {
+                currentIndex--;
+            }
+            return currentIndex + 1;
+        }
+    }
+
+    private boolean stepSatisfiesDependencies(int index, List<ColumnId> dependencies) {
+        Grid grid = _steps.get(index).grid;
+        if (grid == null) {
+            return false;
+        }
+        ColumnModel columnModel = grid.getColumnModel();
+        return dependencies.stream()
+                .allMatch(columnModel::hasColumnId);
+    }
+
+    /**
+     * Is the grid already fully computed at this step in the history?
+     *
+     * @param stepIndex
+     *            the 0-based index of the step of the request
+     */
+    public boolean isFullyComputedAtStep(int stepIndex) {
+        refreshGrid(stepIndex);
+        return !_steps.get(stepIndex).inProgress;
+    }
+
+    /**
+     * Is it possible to iterate from the grid synchronously at this step in the history? If the grid is already fully
+     * computed, then it is possible. Otherwise, it is only possible if all the operations leading to this step which
+     * have not been fully computed yet are row/record wise (instances of {@link RowMapOperation}).
+     *
+     * @param stepIndex
+     *            the 0-based index of the requested step
+     */
+    public boolean isStreamableAtStep(int stepIndex) {
+        refreshGrid(stepIndex);
+        return isFullyComputedAtStep(stepIndex) || _steps.get(stepIndex).streamable;
+    }
+
     public void refreshCurrentGrid() {
+        refreshGrid(_position);
+    }
+
+    /**
+     * Refresh a grid which can potentially need refreshing.
+     */
+    protected void refreshGrid(int position) {
+        Validate.isTrue(position < _steps.size() && _steps.get(position).grid != null);
         try {
-            getGrid(_position, true);
+            getGrid(position, true);
         } catch (OperationException e) {
-            throw new IllegalStateException("Recomputing the current grid failed", e);
+            throw new IllegalStateException("Recomputing an existing grid failed", e);
         }
     }
 

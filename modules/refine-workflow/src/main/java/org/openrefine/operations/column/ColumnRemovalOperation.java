@@ -23,8 +23,8 @@ LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
 A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
 OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
 SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,           
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY           
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
 THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
@@ -35,8 +35,9 @@ package org.openrefine.operations.column;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -44,14 +45,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import org.jsoup.helper.Validate;
 
 import org.openrefine.browsing.EngineConfig;
-import org.openrefine.model.ColumnModel;
-import org.openrefine.model.Grid;
-import org.openrefine.model.Record;
-import org.openrefine.model.Row;
-import org.openrefine.model.RowInRecordMapper;
-import org.openrefine.model.changes.ChangeContext;
+import org.openrefine.model.ColumnInsertion;
 import org.openrefine.operations.RowMapOperation;
-import org.openrefine.operations.exceptions.OperationException;
 
 public class ColumnRemovalOperation extends RowMapOperation {
 
@@ -94,49 +89,13 @@ public class ColumnRemovalOperation extends RowMapOperation {
     }
 
     @Override
-    public ColumnModel getNewColumnModel(Grid state, ChangeContext context) throws OperationException {
-        ColumnModel model = state.getColumnModel();
-        for (String columnName : _columnNames) {
-            int columnIndex = model.getRequiredColumnIndex(columnName);
-            model = model.removeColumn(columnIndex);
-        }
-        return model;
+    public List<ColumnInsertion> getColumnInsertions() {
+        return Collections.emptyList();
     }
 
     @Override
-    public RowInRecordMapper getPositiveRowMapper(Grid state, ChangeContext context) throws OperationException {
-        List<Integer> columnIndices = new ArrayList<>(_columnNames.size());
-        for (String columnName : _columnNames) {
-            int columnIndex = state.getColumnModel().getRequiredColumnIndex(columnName);
-            columnIndices.add(columnIndex);
-        }
-        columnIndices.sort(Comparator.<Integer> naturalOrder().reversed());
-        return mapper(columnIndices, state.getColumnModel().getKeyColumnIndex());
-    }
-
-    protected static RowInRecordMapper mapper(List<Integer> columnIndices, int keyColumnIndex) {
-        return new RowInRecordMapper() {
-
-            private static final long serialVersionUID = -120614551816915787L;
-
-            @Override
-            public Row call(Record record, long rowId, Row row) {
-                Row newRow = row;
-                // we know that the column indices are sorted in decreasing order,
-                // so it is fine to remove the cells in this way
-                for (int columnIndex : columnIndices) {
-                    newRow = newRow.removeCell(columnIndex);
-                }
-                return newRow;
-            }
-
-            @Override
-            public boolean preservesRecordStructure() {
-                // TODO adapt for arbitrary key column index
-                return columnIndices.get(columnIndices.size() - 1) > keyColumnIndex;
-            }
-
-        };
+    public Set<String> getColumnDeletions() {
+        return _columnNames.stream().collect(Collectors.toSet());
     }
 
     // engine config is never useful, so we remove it from the JSON serialization

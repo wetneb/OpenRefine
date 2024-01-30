@@ -71,9 +71,18 @@ public class PLLContext {
     /**
      * Loads a text file as a PLL.
      *
+     * @param path
+     *            the path to the directory or file to read
+     * @param encoding
+     *            the encoding in which the files should be read
+     * @param ignoreEarlyEOF
+     *            what to do if the end of the file is reached prematurely
+     * @param endMarker
+     *             a string which signals the end of a partition, or null if
+     *             the PLL was not serialized using such an end marker
      */
-    public TextFilePLL textFile(String path, Charset encoding, boolean ignoreEarlyEOF) throws IOException {
-        return new TextFilePLL(this, path, encoding, ignoreEarlyEOF);
+    public TextFilePLL textFile(String path, Charset encoding, boolean ignoreEarlyEOF, String endMarker) throws IOException {
+        return new TextFilePLL(this, path, encoding, ignoreEarlyEOF, endMarker);
     }
 
     /**

@@ -21,6 +21,9 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import org.openrefine.browsing.Engine.Mode;
+import org.openrefine.history.History;
+import org.openrefine.model.Grid;
 import org.openrefine.model.Runner;
 import org.openrefine.process.Process;
 import org.openrefine.process.ProgressingFuture;
@@ -29,6 +32,7 @@ import org.openrefine.util.TestUtils;
 public class FileChangeDataStoreTests {
 
     Runner runner;
+    Grid baseGrid;
     MyChangeData changeData;
     MyChangeData emptyChangeData;
     MySerializer serializer;
@@ -37,6 +41,7 @@ public class FileChangeDataStoreTests {
     File incompleteDir;
     FileChangeDataStore SUT;
     VoidFuture future;
+    History history;
 
     @BeforeClass
     public void setUpDir() throws IOException {
@@ -53,11 +58,13 @@ public class FileChangeDataStoreTests {
     @BeforeMethod
     public void setUp() throws IOException {
         runner = mock(Runner.class);
+        baseGrid = mock(Grid.class);
         changeData = mock(MyChangeData.class);
         emptyChangeData = mock(MyChangeData.class);
         serializer = mock(MySerializer.class);
+        history = mock(History.class);
 
-        when(runner.<String> emptyChangeData()).thenReturn(emptyChangeData);
+        when(baseGrid.<String> emptyChangeData()).thenReturn(emptyChangeData);
         future = mock(VoidFuture.class);
         when(changeData.saveToFileAsync(any(), eq(serializer))).thenReturn(future);
         SUT = new FileChangeDataStore(runner, changeDir, incompleteDir);
@@ -66,7 +73,8 @@ public class FileChangeDataStoreTests {
     @Test
     public void testStoreRetrieveAndDelete() throws IOException, InterruptedException {
         ChangeDataId changeDataId = new ChangeDataId(123, "data");
-        when(runner.loadChangeData(eq(new File(changeDir, "123" + File.separator + "data")), eq(serializer))).thenReturn(changeData);
+        when(runner.loadChangeData(eq(new File(changeDir, "123" + File.separator + "data")), eq(serializer), eq(false)))
+                .thenReturn(changeData);
         when(changeData.isComplete()).thenReturn(true);
 
         SUT.store(changeData, changeDataId, serializer, Optional.empty());
@@ -91,23 +99,27 @@ public class FileChangeDataStoreTests {
         // set up original change data to be recovered
         File originalChangeDataLocation = new File(changeDir, "198" + File.separator + "data");
         originalChangeDataLocation.mkdirs();
-        when(runner.loadChangeData(eq(originalChangeDataLocation), eq(serializer))).thenReturn(changeData);
+        when(runner.loadChangeData(eq(originalChangeDataLocation), eq(serializer), eq(false)))
+                .thenReturn(changeData);
         when(changeData.isComplete()).thenReturn(false);
 
         // set up new change data, moved to its temporary location
         File newChangeDataLocation = new File(incompleteDir, "198" + File.separator + "data");
         ChangeData<String> movedChangeData = mock(MyChangeData.class);
-        when(runner.loadChangeData(eq(newChangeDataLocation), eq(serializer))).thenReturn(movedChangeData);
+        when(runner.loadChangeData(eq(newChangeDataLocation), eq(serializer), eq(true)))
+                .thenReturn(movedChangeData);
         when(movedChangeData.isComplete()).thenReturn(false);
         when(movedChangeData.saveToFileAsync(any(), eq(serializer))).thenReturn(future);
 
         Function<Optional<ChangeData<String>>, ChangeData<String>> completionProcess = (oldChangeData -> oldChangeData.get());
 
-        ChangeData<String> returnedChangeData = SUT.retrieveOrCompute(changeDataId, serializer, completionProcess, "description");
+        ChangeData<String> returnedChangeData = SUT.retrieveOrCompute(changeDataId, serializer, baseGrid, completionProcess, "description",
+                history, 2, Mode.RowBased);
 
         Assert.assertTrue(SUT.needsRefreshing(198));
         Assert.assertTrue(newChangeDataLocation.exists());
-        Assert.assertEquals(returnedChangeData, emptyChangeData);
+        Assert.assertEquals(returnedChangeData, changeData);
+        verify(runner, times(2)).loadChangeData(eq(originalChangeDataLocation), eq(serializer), eq(false));
         Assert.assertEquals(SUT.getChangeDataIds(198L), Collections.singletonList(changeDataId));
     }
 
@@ -115,6 +127,7 @@ public class FileChangeDataStoreTests {
     public void testDiscardAll() {
         Process process = mock(Process.class);
         when(process.getChangeDataId()).thenReturn(new ChangeDataId(456, "data"));
+        when(process.getState()).thenReturn(Process.State.RUNNING);
         SUT.getProcessManager().queueProcess(process);
 
         SUT.discardAll(456);
@@ -130,13 +143,14 @@ public class FileChangeDataStoreTests {
 
     @Test
     public void testNeedsRefreshingRunningProcess() throws IOException {
-        when(runner.loadChangeData(eq(new File(changeDir, "456" + File.separator + "data")), eq(serializer))).thenReturn(changeData);
+        when(runner.loadChangeData(eq(new File(changeDir, "456" + File.separator + "data")), eq(serializer), eq(false)))
+                .thenReturn(changeData);
         when(changeData.isComplete()).thenReturn(false);
 
         ChangeDataId changeDataId = new ChangeDataId(456L, "data");
         Function<Optional<ChangeData<String>>, ChangeData<String>> completionProcess = (oldChangeData -> changeData);
 
-        SUT.retrieveOrCompute(changeDataId, serializer, completionProcess, "description");
+        SUT.retrieveOrCompute(changeDataId, serializer, baseGrid, completionProcess, "description", history, 2, Mode.RecordBased);
 
         // A history entry with a corresponding running process needs refreshing
         Assert.assertTrue(SUT.needsRefreshing(456L));
@@ -147,12 +161,13 @@ public class FileChangeDataStoreTests {
      */
     @Test(enabled = false)
     public void testNeedsRefreshingPausedProcess() throws IOException {
-        when(runner.loadChangeData(eq(new File(changeDir, "789" + File.separator + "data")), eq(serializer))).thenReturn(changeData);
+        when(runner.loadChangeData(eq(new File(changeDir, "789" + File.separator + "data")), eq(serializer), eq(false)))
+                .thenReturn(changeData);
         when(changeData.isComplete()).thenReturn(false);
         ChangeDataId changeDataId = new ChangeDataId(789L, "data");
         Function<Optional<ChangeData<String>>, ChangeData<String>> completionProcess = (oldChangeData -> changeData);
 
-        SUT.retrieveOrCompute(changeDataId, serializer, completionProcess, "description");
+        SUT.retrieveOrCompute(changeDataId, serializer, baseGrid, completionProcess, "description", history, 2, Mode.RecordBased);
         // artificially pause the process
         when(future.isPaused()).thenReturn(true);
 

@@ -28,9 +28,11 @@
 package org.openrefine.operations.column;
 
 import static org.mockito.Mockito.mock;
+import static org.testng.Assert.assertEquals;
 
 import java.io.Serializable;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.testng.Assert;
@@ -45,6 +47,7 @@ import org.openrefine.expr.ParsingException;
 import org.openrefine.grel.Parser;
 import org.openrefine.history.GridPreservation;
 import org.openrefine.model.Cell;
+import org.openrefine.model.ColumnInsertion;
 import org.openrefine.model.ColumnMetadata;
 import org.openrefine.model.Grid;
 import org.openrefine.model.IndexedRow;
@@ -82,9 +85,17 @@ public class ColumnRenameOperationTests extends RefineTest {
     @Test
     public void serializeColumnRenameOperation() throws Exception {
         String json = "{\"op\":\"core/column-rename\","
-                + "\"description\":\"Rename column old name to new name\","
-                + "\"oldColumnName\":\"old name\","
-                + "\"newColumnName\":\"new name\"}";
+                + "  \"description\":\"Rename column old name to new name\","
+                + "  \"oldColumnName\":\"old name\","
+                + "  \"newColumnName\":\"new name\","
+                + "  \"columnDependencies\" : [ ],"
+                + "  \"columnInsertions\" : [ {"
+                + "    \"copiedFrom\" : \"old name\","
+                + "    \"insertAt\" : \"old name\","
+                + "    \"name\" : \"new name\","
+                + "    \"replace\" : true"
+                + "  } ]"
+                + "}";
         Operation op = ParsingUtilities.mapper.readValue(json, Operation.class);
         TestUtils.isSerializedTo(op, json, ParsingUtilities.defaultWriter);
     }
@@ -97,7 +108,10 @@ public class ColumnRenameOperationTests extends RefineTest {
 
         List<IndexedRow> rows = changeResult.getGrid().collectRows();
         Assert.assertEquals(changeResult.getGrid().getColumnModel().getColumns(),
-                Arrays.asList(new ColumnMetadata("foo", "newfoo", null), new ColumnMetadata("bar"), new ColumnMetadata("hello")));
+                Arrays.asList(
+                        new ColumnMetadata("foo", "newfoo", 0L, null),
+                        new ColumnMetadata("bar"),
+                        new ColumnMetadata("hello")));
         Assert.assertEquals(rows.get(0).getRow().getCells(),
                 Arrays.asList(new Cell("v1", null), new Cell("a", null), new Cell("d", null)));
     }
@@ -106,5 +120,18 @@ public class ColumnRenameOperationTests extends RefineTest {
     public void testNameConflict() throws OperationException, ParsingException {
         Operation SUT = new ColumnRenameOperation("foo", "bar");
         SUT.apply(initialState, mock(ChangeContext.class));
+    }
+
+    @Test
+    public void testColumnarMetadata() {
+        ColumnRenameOperation SUT = new ColumnRenameOperation("foo", "newfoo");
+
+        assertEquals(SUT.getColumnDependencies(), Collections.emptyList());
+        assertEquals(SUT.getColumnInsertions(), Arrays.asList(ColumnInsertion.builder()
+                .withName("newfoo")
+                .withInsertAt("foo")
+                .withCopiedFrom("foo")
+                .withReplace(true)
+                .build()));
     }
 }

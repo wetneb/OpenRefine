@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 
 import com.google.common.io.CountingInputStream;
+import org.apache.commons.compress.compressors.zstandard.ZstdCompressorInputStream;
 import org.apache.commons.lang.Validate;
 import org.testng.Assert;
 
@@ -98,11 +99,11 @@ public class TestingRunner implements Runner {
         for (File partitionFile : files) {
             if (partitionFile.getName().startsWith("part")) {
                 LineNumberReader ln = null;
-                GZIPInputStream gis = null;
+                InputStream gis = null;
                 FileInputStream fis = null;
                 try {
                     fis = new FileInputStream(partitionFile);
-                    gis = new GZIPInputStream(fis);
+                    gis = partitionFile.getName().endsWith(".gz") ? new GZIPInputStream(fis) : new ZstdCompressorInputStream(fis);
                     ln = new LineNumberReader(new InputStreamReader(gis));
                     Iterator<String> iterator = ln.lines().iterator();
                     while (iterator.hasNext()) {
@@ -131,18 +132,19 @@ public class TestingRunner implements Runner {
     }
 
     @Override
-    public <T> ChangeData<T> loadChangeData(File path, ChangeDataSerializer<T> serializer) throws IOException {
+    public <T> ChangeData<T> loadChangeData(File path, ChangeDataSerializer<T> serializer, boolean frozen) throws IOException {
         Map<Long, IndexedData<T>> data = new HashMap<>();
         List<File> files = sortedListFiles(path);
         for (File partitionFile : files) {
             if (partitionFile.getName().startsWith("part")) {
                 try (FileInputStream fis = new FileInputStream(partitionFile);
-                        GZIPInputStream gis = new GZIPInputStream(fis);
+                        InputStream gis = partitionFile.getName().endsWith(".gz") ? new GZIPInputStream(fis)
+                                : new ZstdCompressorInputStream(fis);
                         LineNumberReader ln = new LineNumberReader(new InputStreamReader(gis))) {
                     Iterator<String> iterator = ln.lines().iterator();
                     while (iterator.hasNext()) {
                         String line = iterator.next().trim();
-                        if (line.isEmpty()) {
+                        if (line.isEmpty() || line.startsWith(ChangeData.partitionEndMarker)) {
                             break;
                         }
                         IndexedData<T> indexedData = IndexedData.read(line, serializer);

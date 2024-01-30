@@ -66,8 +66,9 @@ public class TestingGrid implements Grid {
     }
 
     public static List<Record> groupRowsIntoRecords(List<IndexedRow> rows, int keyCellIndex) {
-        return Record.groupIntoRecords(
-                CloseableIterator.wrapping(rows.iterator()), keyCellIndex, false, Collections.emptyList())
+        return Record
+                .groupIntoRecords(CloseableIterator.wrapping(rows.iterator()), keyCellIndex, false,
+                        () -> CloseableIterator.ofAll(Collections.emptyList()))
                 .toJavaList();
     }
 
@@ -516,6 +517,9 @@ public class TestingGrid implements Grid {
         RowChangeDataProducer<T> deserializedMapper = TestingRunner.serializeAndDeserialize(rowMapper);
         RowFilter deserializedFilter = TestingRunner.serializeAndDeserialize(filter);
 
+        ColumnMapper columnMapper = new ColumnMapper(rowMapper.getColumnDependencies(), columnModel);
+        ColumnModel reducedColumnModel = columnMapper.getReducedColumnModel();
+
         Map<Long, IndexedData<T>> changeData = new HashMap<>();
         Stream<IndexedRow> filteredRows = indexedRows.stream()
                 .filter(ir -> deserializedFilter.filterRow(ir.getIndex(), ir.getRow()));
@@ -536,13 +540,16 @@ public class TestingGrid implements Grid {
         // compute missing change data items
         if (deserializedMapper.getBatchSize() == 1) {
             filteredRows.forEach(ir -> {
-                changeData.put(ir.getIndex(), new IndexedData<>(ir.getIndex(), deserializedMapper.call(ir.getIndex(), ir.getRow())));
+                changeData.put(ir.getIndex(), new IndexedData<>(ir.getIndex(), deserializedMapper.call(
+                        ir.getIndex(),
+                        columnMapper.translateRow(ir.getRow()),
+                        reducedColumnModel)));
             });
         } else {
             Iterator<List<IndexedRow>> batches = Iterators.partition(filteredRows.iterator(), deserializedMapper.getBatchSize());
             while (batches.hasNext()) {
-                List<IndexedRow> batch = batches.next();
-                List<T> results = deserializedMapper.callRowBatch(batch);
+                List<IndexedRow> batch = columnMapper.translateIndexedRowBatch(batches.next());
+                List<T> results = deserializedMapper.callRowBatch(batch, reducedColumnModel);
                 if (results.size() != batch.size()) {
                     throw new IllegalStateException(
                             String.format("Change data producer returned %d results on a batch of %d rows", results.size(), batch.size()));
@@ -564,6 +571,9 @@ public class TestingGrid implements Grid {
         RecordChangeDataProducer<T> deserializedMapper = TestingRunner.serializeAndDeserialize(recordMapper);
         RecordFilter deserializedFilter = TestingRunner.serializeAndDeserialize(filter);
 
+        ColumnMapper columnMapper = new ColumnMapper(recordMapper.getColumnDependencies(), columnModel);
+        ColumnModel reducedColumnModel = columnMapper.getReducedColumnModel();
+
         Map<Long, IndexedData<T>> changeData = new HashMap<>();
         Stream<Record> filteredRecords = records.stream()
                 .filter(ir -> deserializedFilter.filterRecord(ir));
@@ -582,12 +592,13 @@ public class TestingGrid implements Grid {
 
         if (deserializedMapper.getBatchSize() == 1) {
             filteredRecords.forEach(record -> changeData.put(record.getStartRowId(),
-                    new IndexedData<>(record.getStartRowId(), deserializedMapper.call(record))));
+                    new IndexedData<>(record.getStartRowId(),
+                            deserializedMapper.call(columnMapper.translateRecord(record), reducedColumnModel))));
         } else {
             Iterator<List<Record>> batches = Iterators.partition(filteredRecords.iterator(), deserializedMapper.getBatchSize());
             while (batches.hasNext()) {
                 List<Record> batch = batches.next();
-                List<T> results = deserializedMapper.callRecordBatch(batch);
+                List<T> results = deserializedMapper.callRecordBatch(columnMapper.translateRecordBatch(batch), reducedColumnModel);
                 if (results.size() != batch.size()) {
                     throw new IllegalStateException(
                             String.format("Change data producer returned %d results on a batch of %d rows", results.size(), batch.size()));
@@ -598,6 +609,11 @@ public class TestingGrid implements Grid {
             }
         }
         return new TestingChangeData<>(changeData, true);
+    }
+    
+    @Override
+    public <T> ChangeData<T> emptyChangeData() {
+        return new TestingChangeData<>(Collections.emptyMap(), false);
     }
 
     @Override

@@ -35,6 +35,7 @@ package org.openrefine.model;
 
 import java.io.Serializable;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -45,6 +46,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import org.openrefine.model.recon.ReconConfig;
 import org.openrefine.operations.exceptions.MissingColumnException;
+import org.openrefine.util.ColumnDependencyException;
 
 /**
  * The list of columns in a project. For each column, this holds the associated {@link ColumnMetadata}.
@@ -62,8 +64,9 @@ public class ColumnModel implements Serializable {
     private final int _keyColumnIndex;
     private final boolean _hasRecords;
 
-    protected Map<String, Integer> _nameToPosition;
-    protected List<String> _columnNames;
+    protected final Map<String, Integer> _nameToPosition;
+    protected final Map<ColumnId, Integer> _idToPosition;
+    protected final List<String> _columnNames;
 
     @JsonCreator
     public ColumnModel(
@@ -74,14 +77,16 @@ public class ColumnModel implements Serializable {
         _keyColumnIndex = keyColumnIndex;
         _hasRecords = hasRecords;
         _nameToPosition = new HashMap<>();
+        _idToPosition = new HashMap<>();
         _columnNames = new ArrayList<String>();
         int index = 0;
         for (ColumnMetadata column : columns) {
             if (_nameToPosition.containsKey(column.getName())) {
                 throw new IllegalArgumentException(
-                        String.format("Duplicate columns for name %1", column.getName()));
+                        String.format("Duplicate columns for name %s", column.getName()));
             }
             _nameToPosition.put(column.getName(), index);
+            _idToPosition.put(column.getColumnId(), index);
             _columnNames.add(column.getName());
             index++;
         }
@@ -133,7 +138,9 @@ public class ColumnModel implements Serializable {
     }
 
     /**
-     * Replaces the recon config at the given column index. It returns a modified copy of this column model.
+     * Replaces the recon config at the given column index.
+     * 
+     * @return a modified copy of this column model.
      */
     public ColumnModel withReconConfig(int index, ReconConfig config) {
         try {
@@ -141,6 +148,31 @@ public class ColumnModel implements Serializable {
         } catch (ModelException e) {
             return null; // unreachable
         }
+    }
+
+    /**
+     * Updates the last modification field of a column to a newer history entry id.
+     * 
+     * @return a modified copy of this column model
+     */
+    public ColumnModel markColumnAsModified(int index, long historyEntryId) {
+        try {
+            return replaceColumn(index, _columns.get(index).markAsModified(historyEntryId));
+        } catch (ModelException e) {
+            return null; // unreachable
+        }
+    }
+
+    /**
+     * Updates the last modification field of all columns to a newer history entry id.
+     * 
+     * @return a modified copy of this column model
+     */
+    public ColumnModel markColumnsAsModified(long historyEntryId) {
+        List<ColumnMetadata> columns = getColumns().stream()
+                .map(column -> column.markAsModified(historyEntryId))
+                .collect(Collectors.toList());
+        return new ColumnModel(columns, getKeyColumnIndex(), hasRecords());
     }
 
     /**
@@ -297,6 +329,31 @@ public class ColumnModel implements Serializable {
         } else {
             throw new MissingColumnException(columnName);
         }
+    }
+
+    /**
+     * Utility method to get a column index based on its column id (original column name and version).
+     *
+     * @throws ColumnDependencyException
+     *             if the column does not exist
+     */
+    public int getRequiredColumnIndex(ColumnId id) throws ColumnDependencyException {
+        if (_idToPosition.containsKey(id)) {
+            return _idToPosition.get(id);
+        } else {
+            throw new ColumnDependencyException(id);
+        }
+    }
+
+    /**
+     * Checks whether this column model contains a column with the sepecified id.
+     *
+     * @param columnId
+     *            the id of the column to lookup
+     * @return true if the column is present
+     */
+    public boolean hasColumnId(ColumnId columnId) {
+        return _idToPosition.containsKey(columnId);
     }
 
     @JsonIgnore

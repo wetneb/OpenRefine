@@ -1,14 +1,18 @@
 
 package org.openrefine.runners.local.pll;
 
+import static java.nio.file.StandardWatchEventKinds.ENTRY_MODIFY;
+
 import java.io.*;
 import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
-import java.nio.file.Files;
+import java.nio.file.*;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.ZipException;
 
+import com.github.luben.zstd.ZstdInputStream;
 import com.google.common.io.CountingInputStream;
 import io.vavr.collection.Array;
 import org.slf4j.Logger;
@@ -16,15 +20,16 @@ import org.slf4j.LoggerFactory;
 
 import org.openrefine.importers.MultiFileReadingProgress;
 import org.openrefine.model.Runner;
+import org.openrefine.runners.local.pll.util.IterationContext;
 import org.openrefine.runners.local.pll.util.LineReader;
 import org.openrefine.util.CloseableIterator;
 
 /**
  * A PLL whose contents are read from a set of text files. The text files are partitioned using a method similar to that
  * of Hadoop, using new lines as boundaries.
- * 
+ *
  * This class aims at producing a certain number of partitions determined by the default parallelism of the PLL context.
- * 
+ *
  * @author Antonin Delpeuch
  *
  */
@@ -35,10 +40,18 @@ public class TextFilePLL extends PLL<String> {
     private final String path;
     private final Charset encoding;
     private final boolean ignoreEarlyEOF;
+    private final String endMarker;
     private ReadingProgressReporter progress;
 
+    /**
+     * The behaviour to adopt when reaching the end of a partition
+     */
+    public enum EarlyEOF {
+        FAIL, IGNORE, STALL
+    }
+
     public TextFilePLL(PLLContext context, String path, Charset encoding) throws IOException {
-        this(context, path, encoding, false);
+        this(context, path, encoding, false, null);
     }
 
     /**
@@ -51,13 +64,18 @@ public class TextFilePLL extends PLL<String> {
      * @param encoding
      *            the encoding in which the files should be read
      * @param ignoreEarlyEOF
-     *            whether to ignore early ends of files, due to an interrupted write
+     *            what to do if the stream ends unexpectedly
+     * @param endMarker
+     *            an optional string which should be considered the end marker of each partition. If the last line of a
+     *            partition is equal to this marker, this line will be omitted from the iteration. This marker is useful
+     *            to enable synchronous reading from the PLL. If null, no such marker is expected.
      */
-    public TextFilePLL(PLLContext context, String path, Charset encoding, boolean ignoreEarlyEOF) throws IOException {
+    public TextFilePLL(PLLContext context, String path, Charset encoding, boolean ignoreEarlyEOF, String endMarker) throws IOException {
         super(context, "Text file from " + path);
         this.path = path;
         this.encoding = encoding;
         this.ignoreEarlyEOF = ignoreEarlyEOF;
+        this.endMarker = endMarker;
         this.progress = null;
 
         File file = new File(path);
@@ -87,11 +105,15 @@ public class TextFilePLL extends PLL<String> {
         return file.getName().endsWith(".gz");
     }
 
+    private static boolean isZstdCompressed(File file) {
+        return file.getName().endsWith(".zst");
+    }
+
     private void addPartitionsForFile(File file) throws IOException {
         long size = Files.size(file.toPath());
-        if (size < context.getMinSplitSize() * context.getDefaultParallelism() || isGzipped(file)) {
+        if (size < context.getMinSplitSize() * context.getDefaultParallelism() || isGzipped(file) || isZstdCompressed(file)) {
             // a single split
-            partitions.add(new TextFilePartition(file, partitions.size(), 0L, size));
+            partitions.add(new TextFilePartition(file, partitions.size(), 0L, -1L));
         } else {
             // defaultParallelism many splits, unless that makes splits too big
             long splitSize = Math.min((size / context.getDefaultParallelism()) + 1, context.getMaxSplitSize());
@@ -157,11 +179,22 @@ public class TextFilePLL extends PLL<String> {
             }
         }
 
+        @Override
+        public void mark(int limit) {
+            parent.mark(limit);
+        }
+
+        @Override
+        public void reset() throws IOException {
+            parent.reset();
+        }
+
     }
 
     @Override
-    protected CloseableIterator<String> compute(Partition partition) {
+    protected CloseableIterator<String> compute(Partition partition, IterationContext context) {
         TextFilePartition textPartition = (TextFilePartition) partition;
+        boolean synchronous = !context.generateIncompleteElements() && endMarker != null && ignoreEarlyEOF;
 
         int reportBatchSize = 64;
         try {
@@ -176,12 +209,14 @@ public class TextFilePLL extends PLL<String> {
                                    // stream
             LineNumberReader lineNumberReader; // used when we do not need to keep track (faster)
 
-            if (isGzipped(textPartition.getPath())) {
+            boolean gzipped = isGzipped(textPartition.getPath());
+            boolean zstdCompressed = isZstdCompressed(textPartition.getPath());
+            if (gzipped || zstdCompressed) {
                 // if we decompress, we count the bytes before decompression (since that is how the file size was
                 // computed).
                 InputStream bufferedIs = new BufferedInputStream(stream);
                 countingIs = new CountingInputStream(bufferedIs);
-                bufferedIs = new GZIPInputStream(countingIs);
+                bufferedIs = gzipped ? new GZIPInputStream(countingIs) : new ZstdInputStream(countingIs).setContinuous(true);
                 if (ignoreEarlyEOF) {
                     bufferedIs = new NoEOFInputStream(bufferedIs);
                 }
@@ -206,36 +241,70 @@ public class TextFilePLL extends PLL<String> {
 
                 boolean nextLineAttempted = false;
                 String nextLine = null;
+                boolean endMarkerFound = false;
                 long lastOffsetReported = -1;
                 long lastOffsetSeen = -1;
                 int lastReport = 0;
                 boolean closed = false;
+                WatchService watchService = null;
 
                 @Override
                 public boolean hasNext() {
-                    long currentPosition;
-                    try {
-                        currentPosition = textPartition.start + (countingIs == null ? 0 : countingIs.getCount());
-                        if (!nextLineAttempted && currentPosition <= textPartition.getEnd()) {
-                            if (lineNumberReader != null) {
-                                nextLine = lineNumberReader.readLine();
-                            } else {
-                                nextLine = lineReader.readLine();
+                    while (!nextLineAttempted && nextLine == null && !endMarkerFound) {
+                        long currentPosition = textPartition.start + (countingIs == null ? 0 : countingIs.getCount());
+                        try {
+                            if (!nextLineAttempted
+                                    && ((currentPosition <= textPartition.getEnd() || textPartition.getEnd() < 0) || synchronous)) {
+                                if (synchronous) {
+                                    lineNumberReader.mark(4096);
+                                    // TODO add logic to bump this readAheadLimit (restart from the beginning of the
+                                    // stream…)
+                                }
+                                nextLineAttempted = true;
+                                if (lineNumberReader != null) {
+                                    nextLine = lineNumberReader.readLine();
+                                } else {
+                                    nextLine = lineReader.readLine();
+                                }
+                                lastOffsetSeen = currentPosition;
+                                if (endMarker != null && nextLine != null && nextLine.startsWith(endMarker)) {
+                                    endMarkerFound = true;
+                                    nextLine = null;
+                                }
                             }
-                            nextLineAttempted = true;
-                            lastOffsetSeen = currentPosition;
-                        }
-                        if (nextLine == null && lastOffsetSeen > lastOffsetReported) {
-                            reportProgress();
-                        }
-                    } catch (EOFException | ZipException e) {
-                        if (ignoreEarlyEOF) {
-                            nextLine = null;
-                        } else {
+                            if (nextLine == null && lastOffsetSeen > lastOffsetReported) {
+                                reportProgress();
+                            }
+                        } catch (EOFException | ZipException e) {
+                            if (ignoreEarlyEOF) {
+                                nextLine = null;
+                            } else {
+                                throw new UncheckedIOException(e);
+                            }
+                        } catch (IOException e) {
                             throw new UncheckedIOException(e);
                         }
-                    } catch (IOException e) {
-                        throw new UncheckedIOException(e);
+                        if (nextLine == null && synchronous && !endMarkerFound) {
+                            try {
+                                lineNumberReader.reset();
+                                if (watchService == null) {
+                                    watchService = FileSystems.getDefault().newWatchService();
+                                    Path pathToWatch = Paths.get(textPartition.getPath().getParent());
+                                    pathToWatch.register(watchService, ENTRY_MODIFY);
+                                }
+                                WatchKey key = watchService.poll(1000, TimeUnit.MILLISECONDS);
+                                if (key != null) {
+                                    key.reset();
+                                }
+                                nextLineAttempted = false;
+                            } catch (IOException e) {
+                                throw new UncheckedIOException(e);
+                            } catch (InterruptedException e) {
+                                Thread.currentThread().interrupt();
+                            }
+                        } else {
+                            nextLineAttempted = true;
+                        }
                     }
                     return nextLine != null;
                 }
@@ -278,6 +347,13 @@ public class TextFilePLL extends PLL<String> {
                         } catch (IOException e) {
                             throw new UncheckedIOException(e);
                         } finally {
+                            if (watchService != null) {
+                                try {
+                                    watchService.close();
+                                } catch (IOException e) {
+                                    throw new UncheckedIOException(e);
+                                }
+                            }
                             closed = true;
                         }
                     }
@@ -309,7 +385,7 @@ public class TextFilePLL extends PLL<String> {
 
         /**
          * Represents a split in an uncompressed text file.
-         * 
+         *
          * @param path
          *            the path to the file being read
          * @param index
@@ -317,7 +393,7 @@ public class TextFilePLL extends PLL<String> {
          * @param start
          *            starting byte where to read from in the file
          * @param end
-         *            first byte not to be read after the end of the file
+         *            first byte not to be read after the end of the partition, or -1 if the entire file should be read
          */
         protected TextFilePartition(File path, int index, long start, long end) {
             this.path = path;

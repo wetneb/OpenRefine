@@ -4,10 +4,7 @@ package org.openrefine.runners.testing;
 import static org.mockito.Mockito.mock;
 import static org.testng.Assert.fail;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.Serializable;
+import java.io.*;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -21,10 +18,12 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.io.Files;
 import org.apache.commons.collections.IteratorUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.NotImplementedException;
 import org.testng.Assert;
+import org.testng.annotations.*;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
@@ -42,22 +41,10 @@ import org.openrefine.browsing.facets.StringFacet;
 import org.openrefine.browsing.facets.StringFacetState;
 import org.openrefine.importers.MultiFileReadingProgress;
 import org.openrefine.importers.MultiFileReadingProgressStub;
-import org.openrefine.model.Cell;
-import org.openrefine.model.ColumnMetadata;
-import org.openrefine.model.ColumnModel;
-import org.openrefine.model.Grid;
+import org.openrefine.model.*;
 import org.openrefine.model.Grid.ApproxCount;
 import org.openrefine.model.Grid.PartialAggregation;
-import org.openrefine.model.IndexedRow;
 import org.openrefine.model.Record;
-import org.openrefine.model.RecordFilter;
-import org.openrefine.model.RecordMapper;
-import org.openrefine.model.Row;
-import org.openrefine.model.RowFilter;
-import org.openrefine.model.RowFlatMapper;
-import org.openrefine.model.RowMapper;
-import org.openrefine.model.RowScanMapper;
-import org.openrefine.model.Runner;
 import org.openrefine.model.changes.ChangeData;
 import org.openrefine.model.changes.ChangeDataSerializer;
 import org.openrefine.model.changes.IndexedData;
@@ -77,6 +64,7 @@ import org.openrefine.sorting.SortingConfig;
 import org.openrefine.sorting.StringCriterion;
 import org.openrefine.util.CloseableIterable;
 import org.openrefine.util.CloseableIterator;
+import org.openrefine.util.IOUtils;
 import org.openrefine.util.TestUtils;
 
 /**
@@ -510,7 +498,7 @@ public abstract class RunnerTestBase {
         ColumnModel columnModel = new ColumnModel(Collections.singletonList(new ColumnMetadata("foo")));
         ReconCandidate candidate = new ReconCandidate("Q2334", "Hello World", new String[] {}, 89.3);
         Recon recon = new Recon(
-                1234L, 5678L, Judgment.Matched, candidate, new Object[] {},
+                1234L, 5678L, Judgment.Matched, candidate, null, new Object[] {},
                 Collections.singletonList(candidate), "http://my.service/api",
                 "http://my.service/space", "http://my.service/schema", "batch", 0);
         Cell cell = new Cell("value", recon);
@@ -952,7 +940,32 @@ public abstract class RunnerTestBase {
 
     @Test(expectedExceptions = IOException.class)
     public void testLoadChangeDataDoesNotExist() throws IOException {
-        SUT.loadChangeData(new File(tempDir, "doesNotExist"), stringSerializer);
+        SUT.loadChangeData(new File(tempDir, "doesNotExist"), stringSerializer, false);
+    }
+
+    @DataProvider(name = "supportedCompressionFormats")
+    public static Object[][] supportedCompressionFormats() {
+        return new Object[][] {
+                { "gz" }, { "zst" }
+        };
+    }
+
+    @Test(dataProvider = "supportedCompressionFormats")
+    public void testLoadCompressedChangeData(String format) throws IOException {
+        File tempFile = new File(tempDir, "test_" + format + "_change_data");
+        tempFile.mkdir();
+        try (InputStream stream = RunnerTestBase.class.getClassLoader().getResourceAsStream("sample-change-data." + format)) {
+            File subDir = new File(tempDir, "incomplete");
+            File partitionFile = new File(tempFile, "part-00000." + format);
+            IOUtils.copy(stream, partitionFile);
+        }
+
+        ChangeData<String> loaded = SUT.loadChangeData(tempFile, stringSerializer, false);
+
+        Assert.assertNotNull(loaded.getRunner());
+        Assert.assertFalse(loaded.isComplete()); // because the completion marker is missing
+        Assert.assertEquals(loaded.get(0L), new IndexedData(0L, "hey"));
+        Assert.assertEquals(loaded.get(3L), new IndexedData(3L, "bar"));
     }
 
     @Test
@@ -961,7 +974,7 @@ public abstract class RunnerTestBase {
 
         simpleChangeData.saveToFile(new File(tempFile, "data"), stringSerializer);
 
-        ChangeData<String> loaded = SUT.loadChangeData(new File(tempFile, "data"), stringSerializer);
+        ChangeData<String> loaded = SUT.loadChangeData(new File(tempFile, "data"), stringSerializer, false);
 
         Assert.assertNotNull(loaded.getRunner());
         Assert.assertEquals(loaded.get(0L), new IndexedData<>(0L, "first"));
@@ -984,7 +997,7 @@ public abstract class RunnerTestBase {
         future.get();
         Assert.assertEquals(progress.getPercentage(), 100);
 
-        ChangeData<String> loaded = SUT.loadChangeData(new File(tempFile, "data"), stringSerializer);
+        ChangeData<String> loaded = SUT.loadChangeData(new File(tempFile, "data"), stringSerializer, false);
 
         Assert.assertNotNull(loaded.getRunner());
         Assert.assertEquals(loaded.get(0L), new IndexedData<>(0L, "first"));
@@ -1003,7 +1016,7 @@ public abstract class RunnerTestBase {
 
         simpleChangeData.saveToFile(tempFile, stringSerializer);
 
-        ChangeData<String> loaded = SUT.loadChangeData(tempFile, stringSerializer);
+        ChangeData<String> loaded = SUT.loadChangeData(tempFile, stringSerializer, false);
 
         Assert.assertNotNull(loaded.getRunner());
         Assert.assertEquals(loaded.get(0L), new IndexedData<>(0L, "first"));
@@ -1028,8 +1041,27 @@ public abstract class RunnerTestBase {
         private static final long serialVersionUID = -2137895769820170019L;
 
         @Override
-        public String call(long rowId, Row row) {
+        public String call(long rowId, Row row, ColumnModel columnModel) {
             return row.getCellValue(1).toString() + "_concat";
+        }
+
+    };
+
+    public static RowChangeDataProducer<String> concatChangeMapperWithDependencies = new RowChangeDataProducer<String>() {
+
+        private static final long serialVersionUID = -2137895769820170019L;
+
+        @Override
+        public String call(long rowId, Row row, ColumnModel columnModel) {
+            // this mapper should only be supplied with the column it declares a dependency on
+            Assert.assertEquals(row.getCells().size(), 1);
+            Assert.assertEquals(columnModel, new ColumnModel(Arrays.asList(new ColumnMetadata("bar")), -1, false));
+            return row.getCellValue(0).toString() + "_concat";
+        }
+
+        @Override
+        public List<ColumnId> getColumnDependencies() {
+            return Collections.singletonList(new ColumnId("bar", 0L));
         }
 
     };
@@ -1043,10 +1075,20 @@ public abstract class RunnerTestBase {
     }
 
     @Test
+    public void testGenerateRowChangeDataWithDeclaredDependencies() {
+        ChangeData<String> changeData = simpleGrid.mapRows(myRowFilter, concatChangeMapperWithDependencies, Optional.empty());
+
+        Assert.assertEquals(changeData.get(0L), new IndexedData<>(0L, "b_concat"));
+        Assert.assertEquals(changeData.get(1L), new IndexedData<>(1L, null)); // because it is excluded by the facet
+    }
+
+    @Test
     public void testLoadEmptyChangeData() throws IOException {
         File tempDir = TestUtils.createTempDirectory("empty_change_data");
+        File partitionFile = new File(tempDir, "part-0000");
+        Files.touch(partitionFile);
 
-        ChangeData<String> empty = SUT.loadChangeData(tempDir, stringSerializer);
+        ChangeData<String> empty = SUT.loadChangeData(tempDir, stringSerializer, false);
         Assert.assertFalse(empty.isComplete());
 
         Assert.assertEquals(empty.get(0L), new IndexedData<>(0L));
@@ -1066,7 +1108,7 @@ public abstract class RunnerTestBase {
         completionMarker.delete();
 
         // reload the now properly incomplete change data
-        incomplete = SUT.loadChangeData(tempFile, stringSerializer);
+        incomplete = SUT.loadChangeData(tempFile, stringSerializer, false);
         Assert.assertFalse(incomplete.isComplete());
 
         // check that it returns incomplete IndexedData objects for unseen keys
@@ -1095,19 +1137,19 @@ public abstract class RunnerTestBase {
     protected static RowChangeDataProducer<String> countingChangeMapper = new RowChangeDataProducer<String>() {
 
         @Override
-        public String call(long rowId, Row row) {
+        public String call(long rowId, Row row, ColumnModel columnModel) {
             if (rowId < 2L) {
                 throw new IllegalStateException("mapper called for a row that was meant to be already computed");
             }
-            return concatChangeMapper.call(rowId, row) + "_v2";
+            return concatChangeMapper.call(rowId, row, columnModel) + "_v2";
         }
 
         @Override
-        public List<String> callRowBatch(List<IndexedRow> rows) {
+        public List<String> callRowBatch(List<IndexedRow> rows, ColumnModel columnModel) {
             if (rows.isEmpty()) {
                 throw new IllegalStateException("Row mapper called on an empty batch");
             }
-            return RowChangeDataProducer.super.callRowBatch(rows);
+            return RowChangeDataProducer.super.callRowBatch(rows, columnModel);
         }
     };
 
@@ -1116,11 +1158,14 @@ public abstract class RunnerTestBase {
         private static final long serialVersionUID = -2137895769820170019L;
 
         @Override
-        public List<String> callRowBatch(List<IndexedRow> rows) {
+        public List<String> callRowBatch(List<IndexedRow> rows, ColumnModel columnModel) {
+            // this mapper should only be supplied with the column it declares a dependency on
+            Assert.assertEquals(columnModel, new ColumnModel(Arrays.asList(new ColumnMetadata("bar")), -1, false));
             String val = "";
             List<String> results = new ArrayList<>();
             for (IndexedRow ir : rows) {
-                val = val + "," + ir.getRow().getCellValue(1).toString();
+                Assert.assertEquals(ir.getRow().getCells().size(), 1);
+                val = val + "," + ir.getRow().getCellValue(0).toString();
                 results.add(val);
             }
             return results;
@@ -1132,7 +1177,12 @@ public abstract class RunnerTestBase {
         }
 
         @Override
-        public String call(long rowId, Row row) {
+        public List<ColumnId> getColumnDependencies() {
+            return Collections.singletonList(new ColumnId("bar", 0L));
+        }
+
+        @Override
+        public String call(long rowId, Row row, ColumnModel columnModel) {
             throw new NotImplementedException();
         }
 
@@ -1151,7 +1201,7 @@ public abstract class RunnerTestBase {
         private static final long serialVersionUID = -2137895769820170019L;
 
         @Override
-        public List<String> callRowBatch(List<IndexedRow> rows) {
+        public List<String> callRowBatch(List<IndexedRow> rows, ColumnModel columnModel) {
             // it is incorrect to return a list of a different size than the argument
             return Collections.emptyList();
         }
@@ -1162,7 +1212,7 @@ public abstract class RunnerTestBase {
         }
 
         @Override
-        public String call(long rowId, Row row) {
+        public String call(long rowId, Row row, ColumnModel columnModel) {
             throw new NotImplementedException();
         }
 
@@ -1196,12 +1246,19 @@ public abstract class RunnerTestBase {
         private static final long serialVersionUID = -3973242967552705600L;
 
         @Override
-        public String call(Record record) {
+        public String call(Record record, ColumnModel columnModel) {
+            int cellIndex = columnModel.getRequiredColumnIndex(new ColumnId("bar", 0L));
             StringBuilder builder = new StringBuilder();
             for (Row row : record.getRows()) {
-                builder.append(row.getCellValue(1).toString());
+                Assert.assertEquals(row.getCells().size(), 2);
+                builder.append(row.getCellValue(cellIndex).toString());
             }
             return builder.toString();
+        }
+
+        @Override
+        public List<ColumnId> getColumnDependencies() {
+            return Arrays.asList(new ColumnId("foo", 0L), new ColumnId("bar", 0L));
         }
 
     };
@@ -1227,19 +1284,19 @@ public abstract class RunnerTestBase {
     protected static RecordChangeDataProducer<String> countingRecordChangeMapper = new RecordChangeDataProducer<String>() {
 
         @Override
-        public String call(Record record) {
+        public String call(Record record, ColumnModel columnModel) {
             if (record.getStartRowId() == 0) {
                 throw new IllegalArgumentException("calling the countingRecordChangeMapper on a previously computed record");
             }
-            return recordChangeMapper.call(record) + "_v2";
+            return recordChangeMapper.call(record, columnModel) + "_v2";
         }
 
         @Override
-        public List<String> callRecordBatch(List<Record> records) {
+        public List<String> callRecordBatch(List<Record> records, ColumnModel columnModel) {
             if (records.isEmpty()) {
                 throw new IllegalStateException("calling the record mapper on an empty batch of records");
             }
-            return RecordChangeDataProducer.super.callRecordBatch(records);
+            return RecordChangeDataProducer.super.callRecordBatch(records, columnModel);
         }
     };
 
@@ -1255,7 +1312,7 @@ public abstract class RunnerTestBase {
         completionMarker.delete();
 
         // reload the now properly incomplete change data
-        incomplete = SUT.loadChangeData(tempFile, stringSerializer);
+        incomplete = SUT.loadChangeData(tempFile, stringSerializer, false);
 
         // complete it with more records
 
@@ -1272,7 +1329,7 @@ public abstract class RunnerTestBase {
         private static final long serialVersionUID = -2137895769820170019L;
 
         @Override
-        public List<String> callRecordBatch(List<Record> records) {
+        public List<String> callRecordBatch(List<Record> records, ColumnModel columnModel) {
             // it is incorrect to return a list of a different size than the argument
             return Collections.emptyList();
         }
@@ -1283,7 +1340,7 @@ public abstract class RunnerTestBase {
         }
 
         @Override
-        public String call(Record record) {
+        public String call(Record record, ColumnModel columnModel) {
             throw new NotImplementedException();
         }
 
@@ -1548,11 +1605,25 @@ public abstract class RunnerTestBase {
     }
 
     @Test
-    public void testEmptyChangeData() throws IOException {
-        ChangeData<String> changeData = getDatamodelRunner().emptyChangeData();
+    public void testEmptyChangeData() throws IOException, InterruptedException {
+        ChangeData<String> changeData = simpleGrid.emptyChangeData();
 
         Assert.assertFalse(changeData.isComplete());
         Assert.assertEquals(changeData.get(3L), new IndexedData<String>(3L));
+
+        File saveDir = new File(tempDir, "empty_change_data");
+        try {
+            changeData.saveToFile(saveDir, stringSerializer);
+            List<String> filenames = Arrays.asList(saveDir.listFiles()).stream()
+                    .map(path -> path.getName())
+                    .sorted()
+                    .collect(Collectors.toList());
+            Assert.assertFalse(filenames.isEmpty());
+            Assert.assertFalse(new File(saveDir, Runner.COMPLETION_MARKER_FILE_NAME).exists());
+            Assert.assertTrue(filenames.get(0).startsWith("part-00000"));
+        } finally {
+            FileUtils.deleteDirectory(saveDir);
+        }
     }
 
     /**

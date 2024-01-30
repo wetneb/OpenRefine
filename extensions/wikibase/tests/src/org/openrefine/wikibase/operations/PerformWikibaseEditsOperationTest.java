@@ -124,7 +124,7 @@ public class PerformWikibaseEditsOperationTest extends OperationTest {
                 Collections.singletonList(new IndexedData<>(0L, rowNewReconUpdate)));
 
         when(context.<PerformWikibaseEditsOperation.RowEditingResults> getChangeData(Mockito.eq(PerformWikibaseEditsOperation.changeDataId),
-                Mockito.any(), Mockito.any()))
+                Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any()))
                 .thenReturn(changeData);
 
         ChangeResult changeResult = operation.apply(grid, context);
@@ -142,7 +142,7 @@ public class PerformWikibaseEditsOperationTest extends OperationTest {
         ChangeData<PerformWikibaseEditsOperation.RowEditingResults> changeData = runner().emptyChangeData();
 
         when(context.<PerformWikibaseEditsOperation.RowEditingResults> getChangeData(Mockito.eq(PerformWikibaseEditsOperation.changeDataId),
-                Mockito.any(), Mockito.any()))
+                Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any()))
                 .thenReturn(changeData);
 
         ChangeResult changeResult = operation.apply(grid, context);

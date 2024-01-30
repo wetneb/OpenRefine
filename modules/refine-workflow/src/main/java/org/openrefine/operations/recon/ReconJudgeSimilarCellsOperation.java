@@ -23,8 +23,8 @@ LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
 A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
 OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
 SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,           
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY           
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
 THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
@@ -32,6 +32,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 package org.openrefine.operations.recon;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
@@ -41,7 +45,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import org.openrefine.browsing.EngineConfig;
 import org.openrefine.expr.ExpressionUtils;
 import org.openrefine.model.Cell;
-import org.openrefine.model.Grid;
+import org.openrefine.model.ColumnInsertion;
+import org.openrefine.model.ColumnModel;
 import org.openrefine.model.Record;
 import org.openrefine.model.Row;
 import org.openrefine.model.RowInRecordMapper;
@@ -53,6 +58,7 @@ import org.openrefine.model.recon.ReconConfig;
 import org.openrefine.operations.OperationDescription;
 import org.openrefine.operations.RowMapOperation;
 import org.openrefine.operations.exceptions.OperationException;
+import org.openrefine.overlay.OverlayModel;
 
 public class ReconJudgeSimilarCellsOperation extends RowMapOperation {
 
@@ -119,9 +125,20 @@ public class ReconJudgeSimilarCellsOperation extends RowMapOperation {
     }
 
     @Override
-    public RowInRecordMapper getPositiveRowMapper(Grid grid, ChangeContext context) throws OperationException {
-        int columnIndex = grid.getColumnModel().getRequiredColumnIndex(_columnName);
-        ReconConfig reconConfig = grid.getColumnModel().getColumnByName(_columnName).getReconConfig();
+    public List<String> getColumnDependencies() {
+        return Collections.singletonList(_columnName);
+    }
+
+    @Override
+    public List<ColumnInsertion> getColumnInsertions() {
+        return Collections.singletonList(ColumnInsertion.replacement(_columnName));
+    }
+
+    @Override
+    public RowInRecordMapper getPositiveRowMapper(ColumnModel columnModel, Map<String, OverlayModel> overlayModels, long estimatedRowCount, ChangeContext context)
+            throws OperationException {
+        int columnIndex = columnModel.getRequiredColumnIndex(_columnName);
+        ReconConfig reconConfig = columnModel.getColumnByName(_columnName).getReconConfig();
         long historyEntryId = context.getHistoryEntryId();
 
         if (_shareNewTopics && _judgment == Judgment.New) {

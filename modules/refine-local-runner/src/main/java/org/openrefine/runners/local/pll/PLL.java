@@ -5,6 +5,7 @@ import java.io.*;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -14,18 +15,19 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.zip.GZIPOutputStream;
 
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import io.vavr.collection.Array;
 import io.vavr.collection.Iterator;
+import org.apache.commons.compress.compressors.zstandard.ZstdCompressorOutputStream;
 import org.apache.commons.lang.Validate;
 
 import org.openrefine.model.Grid;
 import org.openrefine.model.Runner;
 import org.openrefine.process.ProgressingFuture;
 import org.openrefine.process.ProgressingFutures;
+import org.openrefine.runners.local.pll.util.IterationContext;
 import org.openrefine.runners.local.pll.util.ProgressingFutureWrapper;
 import org.openrefine.runners.local.pll.util.QueryTree;
 import org.openrefine.runners.local.pll.util.TaskSignalling;
@@ -76,9 +78,10 @@ public abstract class PLL<T> {
      * 
      * @param partition
      *            the partition to iterate over
+     * @param context
      * @return
      */
-    protected abstract CloseableIterator<T> compute(Partition partition);
+    protected abstract CloseableIterator<T> compute(Partition partition, IterationContext context);
 
     /**
      * @return the number of partitions in this list
@@ -94,17 +97,30 @@ public abstract class PLL<T> {
 
     /**
      * Iterate over the elements of the given partition. If the contents of this PLL have been cached, this will iterate
-     * from the cache instead.
-     * 
+     * from the cache instead. Iteration is done with the default {@link IterationContext}.
+     *
      * @param partition
      *            the partition to iterate over
-     * @return
      */
     public CloseableIterator<T> iterate(Partition partition) {
+        return iterate(partition, IterationContext.DEFAULT);
+    }
+
+    /**
+     * Iterate over the elements of the given partition. If the contents of this PLL have been cached, this will iterate
+     * from the cache instead.
+     *
+     * @param partition
+     *            the partition to iterate over
+     * @param context
+     *            some additional information to configure the iteration, relaxing the completeness requirements of the
+     *            generated data
+     */
+    public CloseableIterator<T> iterate(Partition partition, IterationContext context) {
         if (cachedPartitions != null) {
             return CloseableIterator.wrapping(cachedPartitions.get(partition.getIndex()).iterator());
         } else {
-            return compute(partition);
+            return compute(partition, context);
         }
     }
 
@@ -180,27 +196,63 @@ public abstract class PLL<T> {
     }
 
     /**
-     * Returns an iterator over the list
+     * Returns an iterator over the list. This may contain incomplete elements if the underlying collection is being
+     * computed.
+     *
+     * @see #blockingIterator()
      */
     public CloseableIterator<T> iterator() {
         return iterateFromPartition(0);
     }
 
     /**
-     * Stream over the part of the collection that starts at given partition boundary.
-     * 
+     * Returns an iterator over the list, blocking synchronously if we are encountering elements that are not fuly
+     * computed. They will only be enumerated once they are fully computed.
+     *
+     * @see #iterator()
+     */
+    public CloseableIterator<T> blockingIterator() {
+        return iterateFromPartition(0, IterationContext.SYNCHRONOUS_DEFAULT);
+    }
+
+    /**
+     * Returns an iterator over the list, with the settings of the iteration described by the parameter supplied.
+     *
+     * @see #iterator()
+     * @see #blockingIterator()
+     */
+    public CloseableIterator<T> iterator(IterationContext context) {
+        return iterateFromPartition(0, context);
+    }
+
+    /**
+     * Stream over the part of the collection that starts at given partition boundary. The iteration is done with the
+     * default iteration context, {@link IterationContext#DEFAULT}.
+     *
      * @param partitionId
      *            the index of the partition to start enumerating from
-     * @return
+     * @see #iterateFromPartition(int, IterationContext)
      */
     protected CloseableIterator<T> iterateFromPartition(int partitionId) {
+        return iterateFromPartition(partitionId, IterationContext.DEFAULT);
+    }
+
+    /**
+     * Stream over the part of the collection that starts at given partition boundary.
+     *
+     * @param partitionId
+     *            the index of the partition to start enumerating from
+     * @param context
+     *            the iteration context to use
+     */
+    protected CloseableIterator<T> iterateFromPartition(int partitionId, IterationContext context) {
         CloseableIterator<? extends Partition> partitions = CloseableIterator.wrapping(getPartitions().iterator().drop(partitionId));
         if (cachedPartitions != null) {
             return CloseableIterator.wrapping(partitions
                     .flatMap(p -> cachedPartitions.get(p.getIndex())));
         } else {
             return partitions
-                    .flatMapCloseable(this::iterate);
+                    .flatMapCloseable(partition -> iterate(partition, context));
         }
     }
 
@@ -489,8 +541,13 @@ public abstract class PLL<T> {
      * @return
      */
     public PLL<T> limitPartitions(long limit) {
-        return new MapPartitionsPLL<T, T>(this, (i, iterator) -> iterator.take((int) limit),
+        if (limit == 0L) {
+            // We preserve the number of partitions
+            return new InMemoryPLL<T>(this.context, Collections.emptyList(), numPartitions());
+        } else {
+            return new MapPartitionsPLL<T, T>(this, (i, iterator) -> iterator.take((int) limit),
                 String.format("Limit each partition to %d", limit));
+        }
     }
 
     /**
@@ -598,10 +655,11 @@ public abstract class PLL<T> {
 
     /**
      * Write the PLL to a directory, containing one file for each partition.
+     * @param completionMarker TODO
      */
-    public void saveAsTextFile(String path, int maxConcurrency, boolean repartition, boolean flushRegularly)
+    public void saveAsTextFile(String path, int maxConcurrency, boolean repartition, boolean flushRegularly, boolean completionMarker)
             throws IOException, InterruptedException {
-        ProgressingFuture<Void> future = saveAsTextFileAsync(path, maxConcurrency, repartition, flushRegularly);
+        ProgressingFuture<Void> future = saveAsTextFileAsync(path, maxConcurrency, repartition, flushRegularly, completionMarker);
         try {
             future.get();
         } catch (ExecutionException e) {
@@ -641,9 +699,11 @@ public abstract class PLL<T> {
      * @param flushRegularly
      *            whether the file should be written to disk often (at the cost of a lower compression ratio, and more
      *            disk writes)
+     * @param completionMarker
+     *            whether to add an empty file as completion marker (with filename {@link Runner#COMPLETION_MARKER_FILE_NAME}).
      * @return a future for the saving process, which supports progress reporting and pausing.
      */
-    public ProgressingFuture<Void> saveAsTextFileAsync(String path, int maxConcurrency, boolean repartition, boolean flushRegularly) {
+    public ProgressingFuture<Void> saveAsTextFileAsync(String path, int maxConcurrency, boolean repartition, boolean flushRegularly, boolean completionMarker) {
 
         File gridPath = new File(path);
         gridPath.mkdirs();
@@ -668,10 +728,13 @@ public abstract class PLL<T> {
                 }
             }
 
+            // Create files for each partition
+            touchPartitions(gridPath, partitions.size());
+
             // Iterate sequentially over the whole PLL.
             TaskSignalling taskSignalling = new TaskSignalling(count());
             partitionWritingFuture = new ProgressingFutureWrapper<>(context.getExecutorService().submit(() -> {
-                try (CloseableIterator<T> fullIterator = iterator()) {
+                try (CloseableIterator<T> fullIterator = blockingIterator()) {
                     try {
                         Iterator<Integer> partitionSizes = Array.ofAll(partitions)
                                 .iterator()
@@ -689,6 +752,9 @@ public abstract class PLL<T> {
                 }
             }), taskSignalling, true);
         } else {
+            // we create files for all partitions first (synchronously), to make sure the PLL can be loaded
+            // immediately after returning the future
+            touchPartitions(gridPath, numPartitions());
             partitionWritingFuture = runOnPartitionsAsync((p, taskSignalling) -> {
                 try {
                     writeOriginalPartition(p, gridPath, Optional.of(taskSignalling), flushRegularly);
@@ -703,43 +769,75 @@ public abstract class PLL<T> {
         ProgressingFuture<Void> future = ProgressingFutures.transform(
                 partitionWritingFuture,
                 v -> {
-                    try {
-                        // Write an empty file as success marker
-                        File successMarker = new File(gridPath, Runner.COMPLETION_MARKER_FILE_NAME);
-                        try (FileOutputStream fos = new FileOutputStream(successMarker)) {
-                            Writer writer = new OutputStreamWriter(fos);
-                            writer.close();
+                    if (completionMarker) {
+                        try {
+                            // Write an empty file as success marker
+                            File successMarker = new File(gridPath, Runner.COMPLETION_MARKER_FILE_NAME);
+                            try (FileOutputStream fos = new FileOutputStream(successMarker)) {
+                                Writer writer = new OutputStreamWriter(fos);
+                                writer.close();
+                            }
+                        } catch (IOException e) {
+                            throw new UncheckedIOException(e);
                         }
-                    } catch (IOException e) {
-                        throw new UncheckedIOException(e);
                     }
                     return null;
                 }, context.getExecutorService());
         return future;
     }
 
+    /**
+     * Ensures that there is a file for each partition. This is important to make it possible for a reader to know the
+     * number of partitions ahead of time, before all partitions have been fully written. The number of partitions in a
+     * PLL is not supposed to change after creation of the PLL so it would be more difficult to dynamically discover new
+     * partition files as they are created.
+     * 
+     * @param directory
+     *            the directory in which the partitions are written
+     * @param partitionCount
+     *            the number of partitions
+     * @throws IOException
+     */
+    protected void touchPartitions(File directory, int partitionCount) {
+        try {
+            for (int i = 0; i != partitionCount; i++) {
+                File file = new File(directory, partitionFilename(i));
+                file.createNewFile();
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
     protected void writeOriginalPartition(Partition partition, File directory, Optional<TaskSignalling> taskSignalling,
             boolean flushRegularly)
             throws IOException {
-        String filename = String.format("part-%05d.gz", partition.getIndex());
+        String filename = partitionFilename(partition.getIndex());
         File partFile = new File(directory, filename);
-        writePartition(partition.getIndex(), iterate(partition), partFile, taskSignalling, flushRegularly);
+        writePartition(partition.getIndex(), iterate(partition, IterationContext.SYNCHRONOUS_DEFAULT), partFile, taskSignalling,
+                flushRegularly);
     }
 
     protected void writePlannedPartition(PlannedPartition partition, File directory, Iterator<T> choppedIterator,
             Optional<TaskSignalling> taskSignalling, boolean flushRegularly)
             throws IOException {
-        String filename = String.format("part-%05d.gz", partition.index);
+        String filename = partitionFilename(partition.index);
         File partFile = new File(directory, filename);
         CloseableIterator<T> limitedIterator = CloseableIterator.wrapping(choppedIterator);
         writePartition(partition.index, limitedIterator, partFile, taskSignalling, flushRegularly);
+    }
+
+    protected String partitionFilename(int index) {
+        return String.format("part-%05d.zst", index);
     }
 
     protected void writePartition(int partitionIndex, CloseableIterator<T> iterator, File partFile, Optional<TaskSignalling> taskSignalling,
             boolean flushRegularly)
             throws IOException {
         try (FileOutputStream fos = new FileOutputStream(partFile);
-                GZIPOutputStream gos = new GZIPOutputStream(fos, 512, flushRegularly);
+                ZstdCompressorOutputStream gos = new ZstdCompressorOutputStream(fos); // TODO pass flushRegularly?
+                                                                                      // requires finding out which
+                                                                                      // level to use
                 Writer writer = new OutputStreamWriter(gos);
                 iterator) {
 

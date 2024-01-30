@@ -30,7 +30,7 @@ import org.openrefine.util.ParsingUtilities;
 /**
  * Tests for this datamodel implementation are taken from the standard test suite, in {@link RunnerTestBase}. Some
  * additional tests are provided here: those test some optimizations that are specific to the local runner.
- * 
+ *
  * @author Antonin Delpeuch
  *
  */
@@ -160,7 +160,7 @@ public class LocalRunnerTests extends RunnerTestBase {
         };
 
         ChangeData<String> changeData = getDatamodelRunner().changeDataFromList(Arrays.asList(
-                new IndexedData(0L, "foo")));
+                new IndexedData<String>(0L, "foo")));
         LocalGrid joined = (LocalGrid) initial.join(changeData, joiner, initial.getColumnModel());
         Assert.assertFalse(joined.constructedFromRows);
     }
@@ -205,7 +205,7 @@ public class LocalRunnerTests extends RunnerTestBase {
             writer.write("56,{\"some unfinished json");
         }
 
-        ChangeData<JsonNode> changeData = getDatamodelRunner().loadChangeData(tempFile, serializer);
+        ChangeData<JsonNode> changeData = getDatamodelRunner().loadChangeData(tempFile, serializer, false);
 
         Assert.assertFalse(changeData.isComplete());
         assertEquals(changeData.get(34L), indexedDataList.get(0));
@@ -220,7 +220,7 @@ public class LocalRunnerTests extends RunnerTestBase {
         /*
          * When a PLL has many partitions (here, 16), we do not want to sample from every single partition because it
          * would mean opening a lot of files to only process few rows in it.
-         * 
+         *
          * In this toy example we only open 8 of them, equally spread in the collection, and process 4 rows in each of
          * them.
          */

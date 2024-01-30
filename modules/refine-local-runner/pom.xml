@@ -98,6 +98,11 @@
       <artifactId>vavr</artifactId>
       <version>0.10.4</version>
     </dependency>
+    <dependency>
+      <groupId>com.github.luben</groupId>
+      <artifactId>zstd-jni</artifactId>
+      <version>${zstd-jni.version}</version>
+    </dependency>
 
 
     <!-- test dependencies -->

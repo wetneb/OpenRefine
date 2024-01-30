@@ -78,6 +78,7 @@ public class ReconMarkNewTopicsOperationTests extends RefineTest {
                 schemaSpace,
                 null,
                 false,
+                10,
                 Collections.emptyList(),
                 0);
 
@@ -99,6 +100,12 @@ public class ReconMarkNewTopicsOperationTests extends RefineTest {
                 + "\"op\":\"core/recon-mark-new-topics\","
                 + "\"engineConfig\":{\"mode\":\"row-based\",\"facets\":[]},"
                 + "\"columnName\":\"my column\","
+                + "\"columnDependencies\" : [ \"my column\" ],"
+                + "\"columnInsertions\" : [ {"
+                + "  \"insertAt\" : \"my column\","
+                + "  \"name\" : \"my column\","
+                + "  \"replace\" : true"
+                + "} ],"
                 + "\"shareNewTopics\":true,"
                 + "\"description\":\"Mark to create new items for cells in column my column, one item for each group of similar cells\","
                 + "\"service\":\"http://my.service.com/api\","
@@ -127,20 +134,24 @@ public class ReconMarkNewTopicsOperationTests extends RefineTest {
         Grid expected = createGrid(
                 new String[] { "foo", "bar" },
                 new Serializable[][] {
-                        { "a", new Cell("b", reconConfig.createNewRecon(2891L)
+                        { "a", new Cell("b", testRecon("e", "h", Recon.Judgment.New)
+                                .withJudgmentHistoryEntry(2891L)
                                 .withId(commonReconId)
                                 .withJudgmentAction("mass")
                                 .withJudgment(Judgment.New)) },
-                        { "c", new Cell("b", reconConfig.createNewRecon(2891L)
+                        { "c", new Cell("b", testRecon("x", "p", Recon.Judgment.New)
+                                .withJudgmentHistoryEntry(2891L)
                                 .withId(commonReconId)
                                 .withJudgmentAction("mass")
                                 .withJudgment(Judgment.New)) },
-                        { "c", new Cell("d", reconConfig.createNewRecon(2891L)
+                        { "c", new Cell("d", testRecon("b", "j", Recon.Judgment.New)
+                                .withJudgmentHistoryEntry(2891L)
                                 .withId(otherReconId)
                                 .withJudgmentAction("mass")
                                 .withJudgment(Judgment.New)) },
                         { "d", "" }
                 });
+        expected = markAsModified(expected, "bar", context.getHistoryEntryId());
         ColumnModel columnModel = expected.getColumnModel().withReconConfig(1, reconConfig);
         expected = expected.withColumnModel(columnModel);
 
@@ -179,6 +190,7 @@ public class ReconMarkNewTopicsOperationTests extends RefineTest {
                                 .withJudgmentAction("mass")) },
                         { "d", "" }
                 });
+        expected = markAsModified(expected, "bar", context.getHistoryEntryId());
         ColumnModel columnModel = expected.getColumnModel().withReconConfig(1, reconConfig);
         expected = expected.withColumnModel(columnModel);
 
@@ -225,6 +237,7 @@ public class ReconMarkNewTopicsOperationTests extends RefineTest {
                                 .withJudgment(Judgment.New)) },
                         { "d", "" }
                 });
+        expected = markAsModified(expected, "bar", context.getHistoryEntryId());
         ColumnModel columnModel = expected.getColumnModel().withReconConfig(1, reconConfig);
         expected = expected.withColumnModel(columnModel);
 

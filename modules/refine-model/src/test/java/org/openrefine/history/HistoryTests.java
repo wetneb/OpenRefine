@@ -55,7 +55,9 @@ import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import org.openrefine.browsing.Engine;
 import org.openrefine.expr.ParsingException;
+import org.openrefine.model.ColumnId;
 import org.openrefine.model.ColumnMetadata;
 import org.openrefine.model.ColumnModel;
 import org.openrefine.model.Grid;
@@ -64,6 +66,7 @@ import org.openrefine.model.changes.ChangeDataStore;
 import org.openrefine.model.changes.GridCache;
 import org.openrefine.operations.ChangeResult;
 import org.openrefine.operations.Operation;
+import org.openrefine.operations.RowMapOperation;
 import org.openrefine.operations.exceptions.OperationException;
 
 public class HistoryTests {
@@ -75,6 +78,7 @@ public class HistoryTests {
     Grid intermediateState;
     Grid finalState;
     Grid newState;
+    Grid newStateModified;
     Grid cachedIntermediateState;
 
     ChangeResult intermediateResult;
@@ -82,13 +86,16 @@ public class HistoryTests {
     ChangeResult newResult;
 
     ColumnModel columnModel;
+    ColumnModel intermediateColumnModel;
+    ColumnModel finalColumnModel;
+    ColumnModel columnModelModified;
 
     long firstChangeId = 1234L;
     long secondChangeId = 5678L;
     long newChangeId = 9012L;
 
-    Operation firstOperation;
-    Operation secondOperation;
+    RowMapOperation firstOperation;
+    RowMapOperation secondOperation;
     Operation newOperation;
     Operation failingOperation;
 
@@ -102,57 +109,62 @@ public class HistoryTests {
     public void setUp() throws OperationException, ParsingException, IOException {
         dataStore = mock(ChangeDataStore.class);
         gridStore = mock(GridCache.class);
+
         initialState = mock(Grid.class);
         intermediateState = mock(Grid.class);
         newState = mock(Grid.class);
+        newStateModified = mock(Grid.class);
         cachedIntermediateState = mock(Grid.class);
         finalState = mock(Grid.class);
+
         columnModel = new ColumnModel(Arrays.asList(new ColumnMetadata("foo")));
-        firstOperation = mock(Operation.class);
-        secondOperation = mock(Operation.class);
+        intermediateColumnModel = new ColumnModel(Arrays.asList(
+                new ColumnMetadata("foo"),
+                new ColumnMetadata("bar", "bar", firstChangeId, null)));
+        finalColumnModel = new ColumnModel(Arrays.asList(
+                new ColumnMetadata("foo"),
+                new ColumnMetadata("bar", "bar", secondChangeId, null)));
+        columnModelModified = columnModel.markColumnsAsModified(newChangeId);
+
+        firstOperation = mock(RowMapOperation.class);
+        secondOperation = mock(RowMapOperation.class);
         newOperation = mock(Operation.class);
         failingOperation = mock(Operation.class);
-        firstEntry = mock(HistoryEntry.class);
-        secondEntry = mock(HistoryEntry.class);
-        newEntry = mock(HistoryEntry.class);
+        firstEntry = new HistoryEntry(firstChangeId, firstOperation, GridPreservation.PRESERVES_RECORDS);
+        secondEntry = new HistoryEntry(secondChangeId, secondOperation, GridPreservation.PRESERVES_ROWS);
+        newEntry = new HistoryEntry(newChangeId, newOperation, GridPreservation.NO_ROW_PRESERVATION);
         intermediateResult = mock(ChangeResult.class);
         finalResult = mock(ChangeResult.class);
         newResult = mock(ChangeResult.class);
 
         when(firstOperation.apply(eq(initialState), any())).thenReturn(intermediateResult);
         when(intermediateResult.getGrid()).thenReturn(intermediateState);
+        when(intermediateResult.getGridPreservation()).thenReturn(GridPreservation.PRESERVES_RECORDS);
         when(firstOperation.isReproducible()).thenReturn(false);
         when(secondOperation.apply(eq(intermediateState), any())).thenReturn(finalResult);
         when(secondOperation.apply(eq(cachedIntermediateState), any())).thenReturn(finalResult);
         when(finalResult.getGrid()).thenReturn(finalState);
+        when(finalResult.getGridPreservation()).thenReturn(GridPreservation.PRESERVES_ROWS);
         when(secondOperation.isReproducible()).thenReturn(true);
         when(newOperation.apply(eq(intermediateState), any())).thenReturn(newResult);
         when(newOperation.apply(eq(cachedIntermediateState), any())).thenReturn(newResult);
         when(newResult.getGrid()).thenReturn(newState);
+        when(newResult.getGridPreservation()).thenReturn(GridPreservation.NO_ROW_PRESERVATION);
         when(newOperation.isReproducible()).thenReturn(true);
         when(failingOperation.apply(eq(intermediateState), any()))
                 .thenThrow(new OperationException("some_error", "Some error occured"));
 
         when(initialState.getColumnModel()).thenReturn(columnModel);
-        when(intermediateState.getColumnModel()).thenReturn(columnModel);
+        when(intermediateState.getColumnModel()).thenReturn(intermediateColumnModel);
+        when(cachedIntermediateState.getColumnModel()).thenReturn(intermediateColumnModel);
         when(newState.getColumnModel()).thenReturn(columnModel);
-        when(finalState.getColumnModel()).thenReturn(columnModel);
+        when(newState.withColumnModel(columnModelModified)).thenReturn(newStateModified);
+        when(newStateModified.getColumnModel()).thenReturn(columnModelModified);
+        when(finalState.getColumnModel()).thenReturn(finalColumnModel);
         when(initialState.rowCount()).thenReturn(8L);
         when(intermediateState.rowCount()).thenReturn(10L);
         when(finalState.rowCount()).thenReturn(12L);
         when(newState.rowCount()).thenReturn(10000000L);
-
-        when(firstEntry.getId()).thenReturn(firstChangeId);
-        when(secondEntry.getId()).thenReturn(secondChangeId);
-        when(newEntry.getId()).thenReturn(newChangeId);
-
-        when(firstEntry.getOperation()).thenReturn(firstOperation);
-        when(secondEntry.getOperation()).thenReturn(secondOperation);
-        when(newEntry.getOperation()).thenReturn(newOperation);
-
-        when(firstEntry.getGridPreservation()).thenReturn(GridPreservation.PRESERVES_RECORDS);
-        when(secondEntry.getGridPreservation()).thenReturn(GridPreservation.PRESERVES_ROWS);
-        when(newEntry.getGridPreservation()).thenReturn(GridPreservation.NO_ROW_PRESERVATION);
 
         when(dataStore.getChangeDataIds(firstChangeId))
                 .thenReturn(Collections.singletonList(new ChangeDataId(firstChangeId, "data")));
@@ -269,7 +281,7 @@ public class HistoryTests {
     @Test
     public void testConstructWithCachedGrids() throws OperationException, IOException, ParsingException {
         HistoryEntry thirdEntry = mock(HistoryEntry.class);
-        Operation thirdChange = mock(Operation.class);
+        Operation thirdChange = mock(RowMapOperation.class);
         Grid thirdState = mock(Grid.class);
         Grid fourthState = mock(Grid.class);
         ChangeResult changeResult = mock(ChangeResult.class);
@@ -311,7 +323,7 @@ public class HistoryTests {
     }
 
     @Test
-    public void testEraseUndoneChanges() throws OperationException, ParsingException {
+    public void testApplyingAfterUndoEraseUndoneChanges() throws OperationException, ParsingException {
         History history = new History(initialState, dataStore, gridStore, entries, 1, 1234L);
 
         Assert.assertEquals(history.getPosition(), 1);
@@ -322,8 +334,20 @@ public class HistoryTests {
         history.addEntry(newEntry.getId(), newEntry.getOperation());
 
         Assert.assertEquals(history.getPosition(), 2);
-        Assert.assertEquals(history.getCurrentGrid(), newState);
+        Assert.assertEquals(history.getCurrentGrid(), newStateModified);
         Assert.assertEquals(history.getEntries().size(), 2);
+        verify(dataStore, times(1)).discardAll(secondChangeId);
+    }
+
+    @Test
+    public void testDeleteFutureEntries() throws OperationException {
+        History history = new History(initialState, dataStore, gridStore, entries, 1, 1234L);
+
+        history.deleteFutureEntries();
+
+        Assert.assertEquals(history.getPosition(), 1);
+        Assert.assertEquals(history.getCurrentGrid(), intermediateState);
+        Assert.assertEquals(history.getEntries().size(), 1);
         verify(dataStore, times(1)).discardAll(secondChangeId);
     }
 
@@ -404,6 +428,10 @@ public class HistoryTests {
         verify(intermediateState, times(0)).cache();
         Assert.assertEquals(history.getCachedPosition(), 0);
         Assert.assertEquals(history.getCurrentGrid(), intermediateState);
+        Assert.assertTrue(history.isFullyComputedAtStep(0));
+        Assert.assertFalse(history.isFullyComputedAtStep(1));
+        Assert.assertTrue(history.isStreamableAtStep(0)); // because the initial grid is always already computed
+        Assert.assertTrue(history.isStreamableAtStep(1)); // because the first operation is a RowMapOperation
     }
 
     @Test
@@ -447,6 +475,86 @@ public class HistoryTests {
         verify(intermediateState, times(1)).cache();
         verify(finalState, times(1)).cache();
         Assert.assertEquals(history.getCachedPosition(), 2);
+    }
+
+    @Test
+    public void testComputeEarliestStepContainingDependencies() throws OperationException {
+        List<ColumnId> noDeps = Collections.emptyList();
+        List<ColumnId> fooDep = Collections.singletonList(new ColumnId("foo", 0L));
+        List<ColumnId> barDep1 = Collections.singletonList(new ColumnId("bar", firstChangeId));
+        List<ColumnId> barDep2 = Collections.singletonList(new ColumnId("bar", secondChangeId));
+
+        History history = new History(initialState, dataStore, gridStore, entries, 2, 1234L);
+
+        Assert.assertEquals(history.earliestStepContainingDependencies(0, null, Engine.Mode.RowBased), 0);
+        Assert.assertEquals(history.earliestStepContainingDependencies(0, null, Engine.Mode.RecordBased), 0);
+        Assert.assertEquals(history.earliestStepContainingDependencies(1, null, Engine.Mode.RowBased), 1);
+        Assert.assertEquals(history.earliestStepContainingDependencies(1, null, Engine.Mode.RecordBased), 1);
+        Assert.assertEquals(history.earliestStepContainingDependencies(2, null, Engine.Mode.RowBased), 2);
+        Assert.assertEquals(history.earliestStepContainingDependencies(2, null, Engine.Mode.RecordBased), 2);
+
+        Assert.assertEquals(history.earliestStepContainingDependencies(0, noDeps, Engine.Mode.RowBased), 0);
+        Assert.assertEquals(history.earliestStepContainingDependencies(0, noDeps, Engine.Mode.RecordBased), 0);
+        Assert.assertEquals(history.earliestStepContainingDependencies(1, noDeps, Engine.Mode.RowBased), 0);
+        Assert.assertEquals(history.earliestStepContainingDependencies(1, noDeps, Engine.Mode.RecordBased), 0);
+        Assert.assertEquals(history.earliestStepContainingDependencies(2, noDeps, Engine.Mode.RowBased), 0);
+        Assert.assertEquals(history.earliestStepContainingDependencies(2, noDeps, Engine.Mode.RecordBased), 2);
+
+        Assert.assertEquals(history.earliestStepContainingDependencies(0, fooDep, Engine.Mode.RowBased), 0);
+        Assert.assertEquals(history.earliestStepContainingDependencies(0, fooDep, Engine.Mode.RecordBased), 0);
+        Assert.assertEquals(history.earliestStepContainingDependencies(1, fooDep, Engine.Mode.RowBased), 0);
+        Assert.assertEquals(history.earliestStepContainingDependencies(1, fooDep, Engine.Mode.RecordBased), 0);
+        Assert.assertEquals(history.earliestStepContainingDependencies(2, fooDep, Engine.Mode.RowBased), 0);
+        Assert.assertEquals(history.earliestStepContainingDependencies(2, fooDep, Engine.Mode.RecordBased), 2);
+
+        Assert.assertEquals(history.earliestStepContainingDependencies(1, barDep1, Engine.Mode.RowBased), 1);
+        Assert.assertEquals(history.earliestStepContainingDependencies(1, barDep1, Engine.Mode.RecordBased), 1);
+
+        Assert.assertEquals(history.earliestStepContainingDependencies(2, barDep2, Engine.Mode.RowBased), 2);
+        Assert.assertEquals(history.earliestStepContainingDependencies(2, barDep2, Engine.Mode.RecordBased), 2);
+    }
+
+    @Test
+    public void testMarkColumnsAsModified() {
+        long historyEntryId = 7979L;
+        ChangeResult changeResult = mock(ChangeResult.class);
+
+        RowMapOperation rowMapOperation = mock(RowMapOperation.class);
+        Operation opaqueOperation = mock(Operation.class);
+
+        Grid grid = mock(Grid.class);
+        Grid modifiedGrid = mock(Grid.class);
+        when(changeResult.getGrid()).thenReturn(grid);
+        ColumnModel columnModel = mock(ColumnModel.class);
+        when(grid.getColumnModel()).thenReturn(columnModel);
+        ColumnModel modifiedColumnModel = mock(ColumnModel.class);
+        when(modifiedGrid.getColumnModel()).thenReturn(modifiedColumnModel);
+        when(columnModel.markColumnsAsModified(historyEntryId)).thenReturn(modifiedColumnModel);
+        when(grid.withColumnModel(modifiedColumnModel)).thenReturn(modifiedGrid);
+
+        Grid actual = History.markColumnsAsModified(changeResult, opaqueOperation, historyEntryId);
+
+        Assert.assertEquals(actual, modifiedGrid);
+
+        Grid notModified = History.markColumnsAsModified(changeResult, rowMapOperation, historyEntryId);
+
+        Assert.assertEquals(notModified, grid);
+    }
+
+    @Test
+    public void testNonStreamableChange() throws OperationException, ParsingException {
+        // none of the operations used in this test are complete
+        when(dataStore.needsRefreshing(firstChangeId)).thenReturn(true);
+        when(dataStore.needsRefreshing(newChangeId)).thenReturn(true);
+        
+        History history = new History(initialState, dataStore, gridStore, Arrays.asList(firstEntry, newEntry), 2, 1234L);
+
+        Assert.assertEquals(history.getPosition(), 2);
+        Assert.assertEquals(history.getCurrentGrid(), newStateModified);
+        Assert.assertEquals(history.isFullyComputedAtStep(1), false);
+        Assert.assertEquals(history.isFullyComputedAtStep(2), false);
+        Assert.assertEquals(history.isStreamableAtStep(1), true); // the first operation is row-wise
+        Assert.assertEquals(history.isStreamableAtStep(2), false); // the second is not
     }
 
     @Test

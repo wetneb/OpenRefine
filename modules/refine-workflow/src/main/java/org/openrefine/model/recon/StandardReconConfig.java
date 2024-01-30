@@ -23,8 +23,8 @@ LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
 A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
 OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
 SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,           
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY           
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
 THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
@@ -37,6 +37,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.io.StringWriter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -162,6 +163,8 @@ public class StandardReconConfig extends ReconConfig {
     final public String typeName;
     @JsonProperty("autoMatch")
     final public boolean autoMatch;
+    @JsonProperty("batchSize")
+    final public int batchSize;
     @JsonProperty("columnDetails")
     final public List<ColumnDetail> columnDetails;
     @JsonProperty("limit")
@@ -177,12 +180,13 @@ public class StandardReconConfig extends ReconConfig {
             @JsonProperty("schemaSpace") String schemaSpace,
             @JsonProperty("type") ReconType type,
             @JsonProperty("autoMatch") boolean autoMatch,
+            @JsonProperty("batchSize") int batchSize,
             @JsonProperty("columnDetails") List<ColumnDetail> columnDetails,
             @JsonProperty("limit") int limit) {
         this(service, identifierSpace, schemaSpace,
                 type != null ? type.id : null,
                 type != null ? type.name : null,
-                autoMatch, columnDetails, limit);
+                autoMatch, batchSize, columnDetails, limit);
     }
 
     public StandardReconConfig(
@@ -193,8 +197,9 @@ public class StandardReconConfig extends ReconConfig {
             String typeID,
             String typeName,
             boolean autoMatch,
+            int batchSize,
             List<ColumnDetail> columnDetails) {
-        this(service, identifierSpace, schemaSpace, typeID, typeName, autoMatch, columnDetails, 0);
+        this(service, identifierSpace, schemaSpace, typeID, typeName, autoMatch, batchSize, columnDetails, 0);
     }
 
     /**
@@ -215,6 +220,7 @@ public class StandardReconConfig extends ReconConfig {
             String typeID,
             String typeName,
             boolean autoMatch,
+            int batchSize,
             List<ColumnDetail> columnDetails,
             int limit) {
         this.service = service;
@@ -224,6 +230,7 @@ public class StandardReconConfig extends ReconConfig {
         this.typeID = typeID;
         this.typeName = typeName;
         this.autoMatch = autoMatch;
+        this.batchSize = batchSize;
         this.columnDetails = columnDetails;
         this.limit = limit;
     }
@@ -239,8 +246,8 @@ public class StandardReconConfig extends ReconConfig {
 
     @Override
     @JsonIgnore
-    public int getBatchSize() {
-        return 10;
+    public int getBatchSize(long rowCount) {
+        return Math.min((int) Math.max(rowCount / 10, 10), batchSize);
     }
 
     @Override
@@ -363,6 +370,8 @@ public class StandardReconConfig extends ReconConfig {
         public double score;
         @JsonProperty("match")
         public boolean match = false;
+        @JsonProperty("error")
+        public ReconCandidate error = null;
 
         @JsonIgnore
         public ReconCandidate toCandidate() {
@@ -400,11 +409,11 @@ public class StandardReconConfig extends ReconConfig {
             /*
              * if (cell2 == null || !ExpressionUtils.isNonBlankData(cell2.value)) { int cellIndex =
              * columnModel.getColumnByName(columnName).getCellIndex();
-             * 
+             *
              * RowDependency rd = project.recordModel.getRowDependency(rowIndex); if (rd != null && rd.cellDependencies
              * != null) { int contextRowIndex = rd.cellDependencies[cellIndex].rowIndex; if (contextRowIndex >= 0 &&
              * contextRowIndex < project.rows.size()) { Row row2 = project.rows.get(contextRowIndex);
-             * 
+             *
              * cell2 = row2.getCell(detailCellIndex); } } }
              */
 
@@ -442,12 +451,7 @@ public class StandardReconConfig extends ReconConfig {
     }
 
     private String postQueries(String url, String queriesString) throws IOException {
-        try {
-            return getHttpClient().postNameValue(url, "queries", queriesString);
-
-        } catch (IOException e) {
-            throw new IOException("Failed to batch recon with load:\n" + queriesString, e);
-        }
+        return getHttpClient().postNameValue(url, "queries", queriesString);
     }
 
     @Override
@@ -468,48 +472,56 @@ public class StandardReconConfig extends ReconConfig {
         stringWriter.write("}");
         String queriesString = stringWriter.toString();
 
+        String responseString = "";
+        ObjectNode o = null;
         try {
-            String responseString = postQueries(service, queriesString);
-            ObjectNode o = ParsingUtilities.evaluateJsonStringToObjectNode(responseString);
-
-            if (o == null) { // utility method returns null instead of throwing
-                logger.error("Failed to parse string as JSON: " + responseString);
-            } else {
-                for (int i = 0; i < jobs.size(); i++) {
-                    StandardReconJob job = (StandardReconJob) jobs.get(i);
-                    Recon recon = null;
-
-                    String text = job.getCellValue();
-                    String key = "q" + i;
-                    if (o.has(key) && o.get(key) instanceof ObjectNode) {
-                        ObjectNode o2 = (ObjectNode) o.get(key);
-                        if (o2.has("result") && o2.get("result") instanceof ArrayNode) {
-                            ArrayNode results = (ArrayNode) o2.get("result");
-
-                            recon = createReconServiceResults(text, results, historyEntryID);
-                        } else {
-                            // TODO: better error reporting
-                            logger.warn("Service error for text: " + text + "\n  Job code: " + job.getJsonQuery() + "\n  Response: "
-                                    + o2.toString());
-                        }
-                    } else {
-                        // TODO: better error reporting
-                        logger.warn(
-                                "Service error for text: " + text + "\n  Job code: " + job.getJsonQuery() + "\n Response: " + o.toString());
-                    }
-
-                    if (recon != null) {
-                        recon = recon.withService(service);
-                    }
-                    recons.add(recon);
-                }
-            }
+            responseString = postQueries(service, queriesString);
+            o = ParsingUtilities.mapper.readValue(responseString, ObjectNode.class);
         } catch (IOException e) {
-            logger.error("Failed to batch recon with load:\n" + queriesString, e);
+            Recon recon = new Recon(historyEntryID, identifierSpace, schemaSpace)
+                    .withError(e.getMessage());
+            recons.add(recon);
+        }
+
+        if (o == null) { // utility method returns null instead of throwing
+            Recon recon = new Recon(historyEntryID, identifierSpace, schemaSpace)
+                    .withError("The reconciliation service returned an invalid response");
+            recons.add(recon);
+
+        } else {
+            for (int i = 0; i < jobs.size(); i++) {
+                StandardReconJob job = (StandardReconJob) jobs.get(i);
+                Recon recon = null;
+
+                String text = job.jsonQuery;
+                String key = "q" + i;
+                if (o.has(key) && o.get(key) instanceof ObjectNode) {
+                    ObjectNode o2 = (ObjectNode) o.get(key);
+                    if (o2.has("result") && o2.get("result") instanceof ArrayNode) {
+                        ArrayNode results = (ArrayNode) o2.get("result");
+
+                        recon = createReconServiceResults(text, results, historyEntryID);
+                    } else {
+                        recon = new Recon(historyEntryID, identifierSpace, schemaSpace)
+                                .withError("The service returned a JSON response without \"result\" field for query " + key);
+                    }
+                } else {
+                    recon = new Recon(historyEntryID, identifierSpace, schemaSpace)
+                            .withError("The service returned a JSON response without \"" + key + "\" field");
+                }
+
+                if (recon != null) {
+                    recon = recon.withService(service);
+                }
+                recons.add(recon);
+            }
+
         }
 
         while (recons.size() < jobs.size()) {
-            recons.add(null);
+            Recon recon = new Recon(historyEntryID, identifierSpace, schemaSpace)
+                    .withError("No. of recon objects was less than no. of jobs");
+            recons.add(recon);
         }
 
         return recons;
@@ -558,7 +570,7 @@ public class StandardReconConfig extends ReconConfig {
 
     /**
      * Recomputes the features associated with this reconciliation object (only if we have at least one candidate).
-     * 
+     *
      * @param text
      *            the cell value to compare the reconciliation data to
      */
@@ -637,6 +649,13 @@ public class StandardReconConfig extends ReconConfig {
         return "standard-service";
     }
 
+    @Override
+    public List<String> getColumnDependencies() {
+        return columnDetails.stream()
+                .map(columnDetail -> columnDetail.columnName)
+                .collect(Collectors.toList());
+    }
+
     public boolean equals(Object other) {
         if (!(other instanceof StandardReconConfig)) {
             return false;
@@ -648,6 +667,7 @@ public class StandardReconConfig extends ReconConfig {
                 ((typeID == null && otherConfig.typeID == null) || typeID.equals(otherConfig.typeID)) &&
                 ((typeName == null && otherConfig.typeName == null) || typeName.equals(otherConfig.typeName)) &&
                 autoMatch == otherConfig.autoMatch &&
+                batchSize == otherConfig.batchSize &&
                 columnDetails.equals(otherConfig.columnDetails) &&
                 limit == otherConfig.limit);
     }

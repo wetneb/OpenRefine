@@ -23,8 +23,8 @@ LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
 A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
 OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
 SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,           
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY           
+LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
 THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
@@ -34,24 +34,21 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package org.openrefine.operations.recon;
 
 import java.util.Collections;
-import java.util.Map.Entry;
+import java.util.List;
+import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableMap.Builder;
 
 import org.openrefine.browsing.EngineConfig;
-import org.openrefine.browsing.facets.RowAggregator;
 import org.openrefine.expr.ExpressionUtils;
 import org.openrefine.model.Cell;
+import org.openrefine.model.ColumnInsertion;
 import org.openrefine.model.ColumnMetadata;
 import org.openrefine.model.ColumnModel;
-import org.openrefine.model.Grid;
 import org.openrefine.model.Record;
 import org.openrefine.model.Row;
-import org.openrefine.model.RowFilter;
 import org.openrefine.model.RowInRecordMapper;
 import org.openrefine.model.changes.ChangeContext;
 import org.openrefine.model.recon.Recon;
@@ -61,6 +58,7 @@ import org.openrefine.model.recon.StandardReconConfig;
 import org.openrefine.operations.OperationDescription;
 import org.openrefine.operations.RowMapOperation;
 import org.openrefine.operations.exceptions.OperationException;
+import org.openrefine.overlay.OverlayModel;
 
 /**
  * Marks all filtered cells in a given column as reconciled to "new". Similar values can either be matched to the same
@@ -125,76 +123,47 @@ public class ReconMarkNewTopicsOperation extends RowMapOperation {
     }
 
     @Override
-    protected ColumnModel getNewColumnModel(Grid state, ChangeContext context) throws OperationException {
-        ColumnModel columnModel = state.getColumnModel();
-        int columnIndex = columnModel.getRequiredColumnIndex(_columnName);
-        return columnModel.withReconConfig(columnIndex, getNewReconConfig(columnModel.getColumnByIndex(columnIndex)));
-    }
-
-    protected ReconConfig getNewReconConfig(ColumnMetadata column) {
-        return column.getReconConfig() != null ? column.getReconConfig()
-                : new StandardReconConfig(
-                        _service,
-                        _identifierSpace,
-                        _schemaSpace,
-                        null,
-                        false,
-                        Collections.emptyList(),
-                        0);
+    public List<String> getColumnDependencies() {
+        return Collections.singletonList(_columnName);
     }
 
     @Override
-    public RowInRecordMapper getPositiveRowMapper(Grid state, ChangeContext context) throws OperationException {
-        int columnIndex = state.getColumnModel().getRequiredColumnIndex(_columnName);
-        ReconConfig reconConfig = getNewReconConfig(state.getColumnModel().getColumnByName(_columnName));
+    public List<ColumnInsertion> getColumnInsertions() {
+        return Collections.singletonList(ColumnInsertion.builder()
+                .withName(_columnName)
+                .withInsertAt(_columnName)
+                .withReplace(true)
+                .withReconConfig(getNewReconConfig())
+                .build());
+    }
+
+    protected ReconConfig getNewReconConfig() {
+        return new StandardReconConfig(
+                _service,
+                _identifierSpace,
+                _schemaSpace,
+                null,
+                false,
+                10,
+                Collections.emptyList(),
+                0);
+    }
+
+    @Override
+    public RowInRecordMapper getPositiveRowMapper(ColumnModel columnModel, Map<String, OverlayModel> overlayModels, long estimatedRowCount,
+            ChangeContext context)
+            throws OperationException {
+        int columnIndex = columnModel.getRequiredColumnIndex(_columnName);
+        ColumnMetadata column = columnModel.getColumnByName(_columnName);
+        ReconConfig reconConfig = column.getReconConfig() != null ? column.getReconConfig() : getNewReconConfig();
         long historyEntryId = context.getHistoryEntryId();
+        long seedId = new Recon(0L, "", "").getId();
 
-        if (_shareNewTopics) {
-            // Aggregate the set of distinct values
-            ImmutableMap<String, Long> empty = ImmutableMap.of();
-            RowFilter filter = getEngine(state, context.getProjectId()).combinedRowFilters();
-            ImmutableMap<String, Long> valueToId = state.aggregateRows(aggregator(columnIndex, filter), empty);
-
-            return rowMapperWithSharing(columnIndex, reconConfig, historyEntryId, valueToId);
-        } else {
-            return rowMapperNoSharing(columnIndex, reconConfig, historyEntryId);
-        }
+        return rowMapper(columnIndex, reconConfig, historyEntryId, _shareNewTopics, seedId);
     }
 
-    protected static RowInRecordMapper rowMapperWithSharing(int columnIndex, ReconConfig reconConfig, long historyEntryId,
-            ImmutableMap<String, Long> valueToId) {
-        return new RowInRecordMapper() {
-
-            private static final long serialVersionUID = -2838679493823196821L;
-
-            @Override
-            public Row call(Record record, long rowId, Row row) {
-                Cell cell = row.getCell(columnIndex);
-                if (cell != null && ExpressionUtils.isNonBlankData(cell.value) && !cell.isPending()) {
-                    Recon recon = reconConfig.createNewRecon(historyEntryId)
-                            .withJudgment(Judgment.New)
-                            .withJudgmentAction("mass");
-                    String s = cell.value == null ? "" : cell.value.toString();
-                    if (valueToId.containsKey(s)) {
-                        recon = recon.withId(valueToId.get(s));
-                    }
-
-                    Cell newCell = new Cell(cell.value, recon);
-
-                    return row.withCell(columnIndex, newCell);
-                }
-                return row;
-            }
-
-            @Override
-            public boolean preservesRecordStructure() {
-                return true; // cells remain blank or non-blank after this
-            }
-
-        };
-    }
-
-    protected static RowInRecordMapper rowMapperNoSharing(int columnIndex, ReconConfig reconConfig, long historyEntryId) {
+    protected static RowInRecordMapper rowMapper(int columnIndex, ReconConfig reconConfig, long historyEntryId, boolean shareTopics,
+            long seedId) {
         return new RowInRecordMapper() {
 
             private static final long serialVersionUID = 5224856110246957223L;
@@ -202,13 +171,17 @@ public class ReconMarkNewTopicsOperation extends RowMapOperation {
             @Override
             public Row call(Record record, long rowId, Row row) {
                 Cell cell = row.getCell(columnIndex);
-                if (cell != null && ExpressionUtils.isNonBlankData(cell.value)) {
+                if (cell != null && ExpressionUtils.isNonBlankData(cell.value) && !cell.isPending()) {
                     Recon recon = cell.recon == null ? reconConfig.createNewRecon(historyEntryId) : cell.recon.dup(historyEntryId);
                     recon = recon
                             .withMatch(null)
                             .withMatchRank(-1)
                             .withJudgment(Judgment.New)
                             .withJudgmentAction("mass");
+                    if (shareTopics) {
+                        String s = cell.value == null ? "" : cell.value.toString();
+                        recon = recon.withId(seedId + s.hashCode());
+                    }
 
                     Cell newCell = new Cell(cell.value, recon);
 
@@ -220,42 +193,6 @@ public class ReconMarkNewTopicsOperation extends RowMapOperation {
             @Override
             public boolean preservesRecordStructure() {
                 return true; // cells remain blank or non-blank after this operation
-            }
-
-        };
-    }
-
-    protected static RowAggregator<ImmutableMap<String, Long>> aggregator(int columnIndex, RowFilter filter) {
-        return new RowAggregator<ImmutableMap<String, Long>>() {
-
-            private static final long serialVersionUID = 2749743046303701107L;
-
-            @Override
-            public ImmutableMap<String, Long> sum(ImmutableMap<String, Long> first, ImmutableMap<String, Long> second) {
-                Builder<String, Long> builder = ImmutableMap.<String, Long> builder().putAll(first);
-                // sadly we cannot call `putAll(second)` as conflicting keys will raise an exception
-                for (Entry<String, Long> entry : second.entrySet()) {
-                    if (!first.containsKey(entry.getKey())) {
-                        builder.put(entry.getKey(), entry.getValue());
-                    }
-                }
-                return builder.build();
-            }
-
-            @Override
-            public ImmutableMap<String, Long> withRow(ImmutableMap<String, Long> state, long rowId, Row row) {
-                if (!filter.filterRow(rowId, row)) {
-                    return state;
-                }
-                Cell cell = row.getCell(columnIndex);
-                if (cell != null && ExpressionUtils.isNonBlankData(cell.value)) {
-                    String value = cell.value.toString();
-                    if (!state.containsKey(value)) {
-                        long reconId = new Recon(0L, "", "").id;
-                        return ImmutableMap.<String, Long> builder().putAll(state).put(value, reconId).build();
-                    }
-                }
-                return state;
             }
 
         };

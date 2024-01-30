@@ -58,6 +58,7 @@ import org.openrefine.model.Cell;
 import org.openrefine.model.ColumnMetadata;
 import org.openrefine.model.ColumnModel;
 import org.openrefine.model.Grid;
+import org.openrefine.model.ModelException;
 import org.openrefine.model.Project;
 import org.openrefine.model.Row;
 import org.openrefine.model.Runner;
@@ -199,6 +200,19 @@ public class RefineTest {
         return grid.withColumnModel(grid.getColumnModel().withHasRecords(true));
     }
 
+    protected Grid markAsModified(Grid grid, String columnName, long historyEntryId) {
+        ColumnModel columnModel = grid.getColumnModel();
+        int columnIndex = columnModel.getColumnIndexByName(columnName);
+        ColumnMetadata column = columnModel.getColumnByIndex(columnIndex)
+                .withLastModified(historyEntryId);
+        try {
+            return grid.withColumnModel(columnModel.replaceColumn(columnIndex, column));
+        } catch (ModelException e) {
+            // unreachable
+            throw new IllegalStateException();
+        }
+    }
+
     @Deprecated
     protected Project createProject(String projectName, String[] columns, Serializable[] rows) {
         Serializable[][] cells = new Serializable[rows.length / columns.length][];
@@ -275,6 +289,7 @@ public class RefineTest {
                 3478L,
                 judgment,
                 match,
+                null,
                 new Object[3],
                 candidates,
                 "http://my.service.com/api",
@@ -335,5 +350,9 @@ public class RefineTest {
     @AfterMethod
     public void TearDown() throws Exception {
         bindings = null;
+    }
+
+    public static void assertEqualsSystemLineEnding(String actual, String expected) {
+        Assert.assertEquals(actual, expected.replaceAll("\n", System.lineSeparator()));
     }
 }

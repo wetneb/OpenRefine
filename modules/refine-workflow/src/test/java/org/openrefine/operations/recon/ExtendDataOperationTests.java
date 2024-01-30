@@ -65,6 +65,7 @@ import org.openrefine.RefineTest;
 import org.openrefine.browsing.Engine;
 import org.openrefine.browsing.EngineConfig;
 import org.openrefine.model.Cell;
+import org.openrefine.model.ColumnId;
 import org.openrefine.model.ColumnModel;
 import org.openrefine.model.Grid;
 import org.openrefine.model.IndexedRow;
@@ -378,9 +379,11 @@ public class ExtendDataOperationTests extends RefineTest {
             DataExtensionProducer producer = new DataExtensionProducer(
                     new ReconciledDataExtensionJob(extension, server.url("/reconcile").url().toString(),
                             RECON_IDENTIFIER_SPACE, RECON_SCHEMA_SPACE),
-                    0, RowFilter.ANY_ROW);
+                    new ColumnId("country", 0L), new ColumnId("country", 0L), RowFilter.ANY_ROW);
 
-            List<RecordDataExtension> dataExtensions = producer.callRecordBatch(project.getCurrentGrid().collectRecords());
+            Assert.assertEquals(producer.getColumnDependencies(), Collections.singletonList(new ColumnId("country", 0L)));
+            Grid currentGrid = project.getCurrentGrid();
+            List<RecordDataExtension> dataExtensions = producer.callRecordBatch(currentGrid.collectRecords(), currentGrid.getColumnModel());
             RecordDataExtension dataExtension1 = new RecordDataExtension(
                     Collections.singletonMap(0L, new DataExtension(
                             Collections.singletonList(Collections.singletonList(new Cell("IR", null))))));
@@ -432,9 +435,10 @@ public class ExtendDataOperationTests extends RefineTest {
             DataExtensionProducer producer = new DataExtensionProducer(
                     new ReconciledDataExtensionJob(extension, server.url("/reconcile").url().toString(),
                             RECON_IDENTIFIER_SPACE, RECON_SCHEMA_SPACE),
-                    1, filter);
+                    new ColumnId("key", 0L), new ColumnId("country", 0L), filter);
 
-            List<RecordDataExtension> dataExtensions = producer.callRecordBatch(state.collectRecords());
+            Assert.assertEquals(producer.getColumnDependencies(), Arrays.asList(new ColumnId("country", 0L), new ColumnId("key", 0L)));
+            List<RecordDataExtension> dataExtensions = producer.callRecordBatch(state.collectRecords(), state.getColumnModel());
             RecordDataExtension dataExtension1 = new RecordDataExtension(
                     Collections.singletonMap(0L, new DataExtension(
                             Collections.singletonList(Collections.singletonList(new Cell("IR", null))))));
