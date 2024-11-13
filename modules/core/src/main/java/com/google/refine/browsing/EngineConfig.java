@@ -28,9 +28,11 @@
 package com.google.refine.browsing;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -104,6 +106,27 @@ public class EngineConfig {
             }
         }
         return Optional.of(result);
+    }
+
+    /**
+     * Translates this engine config by simultaneously substituting column names, as specified by the supplied map.
+     *
+     * @param substitutions
+     *            a map specifying new names for some columns. Keys of the map are old column names, values are the new
+     *            names for those columns. If a column name is not present in the map, the column is not renamed.
+     * @return a new engine config with updated column names. If this renaming isn't supported, {@link Optional#empty()}
+     *         is returned.
+     */
+    public Optional<EngineConfig> renameColumnDependencies(Map<String, String> substitutions) {
+        List<FacetConfig> newFacets = new ArrayList<>(_facets.size());
+        for (FacetConfig config : _facets) {
+            Optional<FacetConfig> translated = config.renameColumnDependencies(substitutions);
+            if (translated.isEmpty()) {
+                return Optional.empty();
+            }
+            newFacets.add(translated.get());
+        }
+        return Optional.of(new EngineConfig(newFacets, _mode));
     }
 
     /**

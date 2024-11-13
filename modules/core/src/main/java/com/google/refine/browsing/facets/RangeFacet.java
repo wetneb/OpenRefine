@@ -34,6 +34,8 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package com.google.refine.browsing.facets;
 
 import java.util.Collections;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
@@ -147,6 +149,34 @@ public class RangeFacet implements Facet {
             } catch (ParsingException e) {
                 return Optional.of(Collections.emptySet());
             }
+        }
+
+        @Override
+        public Optional<FacetConfig> renameColumnDependencies(Map<String, String> substitutions) {
+            String newExpression;
+            try {
+                Evaluable evaluable = MetaParser.parse(_expression);
+                Optional<Evaluable> translated = evaluable.renameColumnDependencies(substitutions);
+                if (translated.isEmpty()) {
+                    return Optional.empty();
+                } else {
+                    newExpression = evaluable.getFullSource();
+                }
+            } catch (ParsingException e) {
+                return Optional.empty();
+            }
+            String newColumnName = substitutions.getOrDefault(_columnName, _columnName);
+            RangeFacetConfig newConfig = new RangeFacetConfig(
+                    Objects.equals(_name, _columnName) ? newColumnName : _name,
+                    newExpression,
+                    newColumnName,
+                    _selected ? _from : null,
+                    _selected ? _to : null,
+                    _selectNumeric,
+                    _selectNonNumeric,
+                    _selectBlank,
+                    _selectError);
+            return Optional.of(newConfig);
         }
     }
 

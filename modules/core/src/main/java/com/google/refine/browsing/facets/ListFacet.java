@@ -36,6 +36,8 @@ package com.google.refine.browsing.facets;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -153,6 +155,36 @@ public class ListFacet implements Facet {
             }
         }
 
+        @Override
+        public Optional<FacetConfig> renameColumnDependencies(Map<String, String> substitutions) {
+            String newExpression;
+            try {
+                Evaluable evaluable = MetaParser.parse(expression);
+                Optional<Evaluable> translated = evaluable.renameColumnDependencies(substitutions);
+                if (translated.isEmpty()) {
+                    return Optional.empty();
+                } else {
+                    newExpression = evaluable.getFullSource();
+                }
+            } catch (ParsingException e) {
+                return Optional.empty();
+            }
+            ListFacetConfig newConfig = new ListFacetConfig();
+            newConfig.expression = newExpression;
+            newConfig.columnName = substitutions.getOrDefault(columnName, columnName);
+            if (Objects.equals(name, columnName)) {
+                newConfig.name = newConfig.columnName;
+            } else {
+                newConfig.name = name;
+            }
+            newConfig.invert = invert;
+            newConfig.omitBlank = omitBlank;
+            newConfig.omitError = omitError;
+            newConfig.selection = selection;
+            newConfig.selectBlank = selectBlank;
+            newConfig.selectError = selectError;
+            return Optional.of(newConfig);
+        }
     }
 
     /**
