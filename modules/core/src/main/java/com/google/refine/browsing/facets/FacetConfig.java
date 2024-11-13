@@ -27,6 +27,7 @@
 
 package com.google.refine.browsing.facets;
 
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -91,4 +92,18 @@ public interface FacetConfig {
     public default Optional<Set<String>> getColumnDependencies() {
         return Optional.empty();
     }
+
+    /**
+     * Translates this facet by simultaneously substituting column names, as specified by the supplied map.
+     *
+     * @param substitutions
+     *            a map specifying new names for some columns. Keys of the map are old column names, values are the new
+     *            names for those columns. If a column name is not present in the map, the column is not renamed.
+     * @return a new facet with updated column names. If this renaming isn't supported, {@link Optional#empty()} should
+     *         be returned.
+     */
+    public default Optional<FacetConfig> renameColumnDependencies(Map<String, String> substitutions) {
+        return Optional.empty();
+    }
+
 }
