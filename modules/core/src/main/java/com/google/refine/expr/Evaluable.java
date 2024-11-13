@@ -55,6 +55,13 @@ public interface Evaluable {
     public String getLanguagePrefix();
 
     /**
+     * The full source of this evaluable, including the language prefix.
+     */
+    public default String getFullSource() {
+        return getLanguagePrefix() + ":" + getSource();
+    }
+
+    /**
      * Evaluate this expression in the given environment (bindings).
      * 
      * @param bindings
