@@ -33,6 +33,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package com.google.refine;
 
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -45,6 +46,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
@@ -64,6 +66,8 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.BeforeSuite;
 
+import com.google.refine.browsing.Engine.Mode;
+import com.google.refine.browsing.EngineConfig;
 import com.google.refine.importing.ImportingJob;
 import com.google.refine.importing.ImportingManager;
 import com.google.refine.io.FileProjectManager;
@@ -97,6 +101,9 @@ public class RefineTest {
     private List<Project> projects = new ArrayList<Project>();
     private List<ImportingJob> importingJobs = new ArrayList<ImportingJob>();
 
+    protected EngineConfig invalidEngineConfig;
+    protected EngineConfig defaultEngineConfig;
+
     @BeforeSuite
     public void init() {
         System.setProperty("log4j.configuration", "tests.log4j.properties");
@@ -123,6 +130,10 @@ public class RefineTest {
         servlet = new RefineServletStub();
         ProjectManager.singleton = new ProjectManagerStub();
         ImportingManager.initialize(servlet);
+
+        invalidEngineConfig = mock(EngineConfig.class);
+        doThrow(IllegalArgumentException.class).when(invalidEngineConfig).validate();
+        defaultEngineConfig = new EngineConfig(Collections.emptyList(), Mode.RowBased);
     }
 
     protected Project createProjectWithColumns(String projectName, String... columnNames) throws IOException, ModelException {
@@ -388,6 +399,7 @@ public class RefineTest {
      */
     protected long runOperation(AbstractOperation operation, Project project, long timeout) throws Exception {
         long start = System.currentTimeMillis();
+        operation.validate();
         Optional<ColumnsDiff> columnsDiff = operation.getColumnsDiff();
         Set<String> columnNamesBefore = project.columnModel.columns.stream()
                 .map(column -> column.getName())

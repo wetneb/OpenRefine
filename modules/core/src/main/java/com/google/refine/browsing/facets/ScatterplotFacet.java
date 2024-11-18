@@ -171,6 +171,20 @@ public class ScatterplotFacet implements Facet {
         }
 
         @Override
+        public void validate() {
+            try {
+                MetaParser.parse(expression_x);
+            } catch (ParsingException e) {
+                throw new IllegalArgumentException(e);
+            }
+            try {
+                MetaParser.parse(expression_y);
+            } catch (ParsingException e) {
+                throw new IllegalArgumentException(e);
+            }
+        }
+
+        @Override
         public Optional<Set<String>> getColumnDependencies() {
             try {
                 Optional<Set<String>> depsX = MetaParser.parse(expression_x)

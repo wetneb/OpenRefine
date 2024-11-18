@@ -137,6 +137,15 @@ public class ListFacet implements Facet {
         }
 
         @Override
+        public void validate() {
+            try {
+                MetaParser.parse(expression);
+            } catch (ParsingException e) {
+                throw new IllegalArgumentException(e);
+            }
+        }
+
+        @Override
         public Optional<Set<String>> getColumnDependencies() {
             try {
                 return MetaParser.parse(expression)

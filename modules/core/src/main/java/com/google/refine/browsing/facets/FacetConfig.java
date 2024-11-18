@@ -69,6 +69,17 @@ public interface FacetConfig {
     public String getJsonType();
 
     /**
+     * Checks that this facet is correctly configured (such as that expressions are syntactically correct and that
+     * options are not contradictory). This should not be done in the constructor, as it would endanger the
+     * deserialization.
+     * 
+     * @throws IllegalArgumentException
+     *             if any parameter is missing or inconsistent
+     */
+    public default void validate() {
+    }
+
+    /**
      * Returns an approximation of the names of the columns this facet depends on. This approximation is designed to be
      * safe: if a set of column names is returned, then the expression does not read any other column than the ones
      * mentioned, regardless of the data it is executed on.

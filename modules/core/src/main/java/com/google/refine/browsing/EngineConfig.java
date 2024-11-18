@@ -68,6 +68,17 @@ public class EngineConfig {
     }
 
     /**
+     * Checks that all facets in this engine config are valid (rely on syntactically correct expressions, don't contain
+     * contradictory options).
+     * 
+     * @throws IllegalArgumentException
+     *             if not
+     */
+    public void validate() {
+        _facets.stream().forEach(facetConfig -> facetConfig.validate());
+    }
+
+    /**
      * Returns an approximation of the names of the columns this engine depends on. This approximation is designed to be
      * safe: if a set of column names is returned, then the engine does not read any other column than the ones
      * mentioned, regardless of the data it is executed on.

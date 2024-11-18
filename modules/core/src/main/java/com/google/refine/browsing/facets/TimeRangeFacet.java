@@ -110,6 +110,15 @@ public class TimeRangeFacet implements Facet {
         }
 
         @Override
+        public void validate() {
+            try {
+                MetaParser.parse(_expression);
+            } catch (ParsingException e) {
+                throw new IllegalArgumentException(e);
+            }
+        }
+
+        @Override
         public Optional<Set<String>> getColumnDependencies() {
             try {
                 return MetaParser.parse(_expression)
