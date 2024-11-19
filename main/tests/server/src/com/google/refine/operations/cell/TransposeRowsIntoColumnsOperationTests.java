@@ -33,9 +33,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package com.google.refine.operations.cell;
 
+import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertThrows;
 
 import java.io.Serializable;
+import java.util.Optional;
+import java.util.Set;
 
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.BeforeMethod;
@@ -83,6 +86,16 @@ public class TransposeRowsIntoColumnsOperationTests extends RefineTest {
     @Test
     public void testValidate() {
         assertThrows(IllegalArgumentException.class, () -> new TransposeRowsIntoColumnsOperation(null, 2).validate());
+    }
+
+    @Test
+    public void testColumnsDiff() {
+        assertEquals(new TransposeRowsIntoColumnsOperation("b", 2).getColumnsDiff(), Optional.empty());
+    }
+
+    @Test
+    public void testColumnsDependencies() {
+        assertEquals(new TransposeRowsIntoColumnsOperation("b", 2).getColumnDependencies(), Optional.of(Set.of("b")));
     }
 
     @Test
