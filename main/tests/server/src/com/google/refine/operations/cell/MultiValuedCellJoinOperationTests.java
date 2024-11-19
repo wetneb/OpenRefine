@@ -33,9 +33,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package com.google.refine.operations.cell;
 
+import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertThrows;
 
 import java.io.Serializable;
+import java.util.Set;
 
 import org.slf4j.LoggerFactory;
 import org.testng.annotations.BeforeMethod;
@@ -45,6 +47,7 @@ import org.testng.annotations.Test;
 
 import com.google.refine.RefineTest;
 import com.google.refine.model.AbstractOperation;
+import com.google.refine.model.ColumnsDiff;
 import com.google.refine.model.Project;
 import com.google.refine.operations.OperationRegistry;
 import com.google.refine.util.ParsingUtilities;
@@ -102,6 +105,17 @@ public class MultiValuedCellJoinOperationTests extends RefineTest {
         assertThrows(IllegalArgumentException.class, () -> new MultiValuedCellJoinOperation(null, "key", "sep").validate());
         assertThrows(IllegalArgumentException.class, () -> new MultiValuedCellJoinOperation("value", null, "sep").validate());
         assertThrows(IllegalArgumentException.class, () -> new MultiValuedCellJoinOperation("value", "key", null).validate());
+    }
+
+    @Test
+    public void testColumnsDiff() {
+        assertEquals(new MultiValuedCellJoinOperation("value", "key", "sep").getColumnsDiff().get(),
+                ColumnsDiff.modifySingleColumn("value"));
+    }
+
+    @Test
+    public void testColumnsDependencies() {
+        assertEquals(new MultiValuedCellJoinOperation("value", "key", "sep").getColumnDependencies().get(), Set.of("value", "key"));
     }
 
     /*

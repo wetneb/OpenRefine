@@ -27,12 +27,14 @@
 
 package com.google.refine.operations.cell;
 
+import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertThrows;
 
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import org.testng.Assert;
@@ -49,6 +51,7 @@ import com.google.refine.browsing.facets.ListFacet.ListFacetConfig;
 import com.google.refine.expr.EvalError;
 import com.google.refine.expr.MetaParser;
 import com.google.refine.grel.Parser;
+import com.google.refine.model.ColumnsDiff;
 import com.google.refine.model.Project;
 import com.google.refine.operations.OperationRegistry;
 import com.google.refine.operations.cell.MassEditOperation.Edit;
@@ -180,6 +183,18 @@ public class MassOperationTests extends RefineTest {
                 () -> new MassEditOperation(defaultEngineConfig, "foo", "grel:invalid(", editsWithFromBlank).validate());
         assertThrows(IllegalArgumentException.class,
                 () -> new MassEditOperation(defaultEngineConfig, "foo", "grel:value", null).validate());
+    }
+
+    @Test
+    public void testColumnsDiff() {
+        assertEquals(new MassEditOperation(defaultEngineConfig, "foo", "grel:value", editsWithFromBlank).getColumnsDiff().get(),
+                ColumnsDiff.modifySingleColumn("foo"));
+    }
+
+    @Test
+    public void testColumnsDependencies() {
+        assertEquals(new MassEditOperation(engineConfigWithColumnDeps, "foo", "grel:cells['bar'].value", editsWithFromBlank)
+                .getColumnDependencies().get(), Set.of("foo", "bar", "facet_1"));
     }
 
     // Not yet testing for mass edit from OR Error

@@ -27,12 +27,14 @@
 
 package com.google.refine.operations.cell;
 
+import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertThrows;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -49,6 +51,7 @@ import com.google.refine.expr.MetaParser;
 import com.google.refine.grel.Parser;
 import com.google.refine.model.AbstractOperation;
 import com.google.refine.model.Column;
+import com.google.refine.model.ColumnsDiff;
 import com.google.refine.model.Project;
 import com.google.refine.model.Row;
 import com.google.refine.operations.OperationRegistry;
@@ -120,6 +123,17 @@ public class FillDownTests extends RefineTest {
     public void testValidate() {
         assertThrows(IllegalArgumentException.class, () -> new FillDownOperation(invalidEngineConfig, "bar").validate());
         assertThrows(IllegalArgumentException.class, () -> new FillDownOperation(defaultEngineConfig, null).validate());
+    }
+
+    @Test
+    public void testColumnsDiff() {
+        assertEquals(new FillDownOperation(defaultEngineConfig, "bar").getColumnsDiff().get(), ColumnsDiff.modifySingleColumn("bar"));
+    }
+
+    @Test
+    public void testColumnsDependencies() {
+        assertEquals(new FillDownOperation(defaultEngineConfig, "bar").getColumnDependencies().get(), Set.of("bar"));
+        assertEquals(new FillDownOperation(engineConfigWithColumnDeps, "bar").getColumnDependencies().get(), Set.of("bar", "facet_1"));
     }
 
     @Test
