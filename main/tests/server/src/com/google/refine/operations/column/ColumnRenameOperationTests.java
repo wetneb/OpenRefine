@@ -28,6 +28,7 @@
 package com.google.refine.operations.column;
 
 import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertThrows;
 
 import java.io.Serializable;
 import java.util.Set;
@@ -75,6 +76,14 @@ public class ColumnRenameOperationTests extends RefineTest {
                 + "\"newColumnName\":\"new name\"}";
         AbstractOperation op = ParsingUtilities.mapper.readValue(json, AbstractOperation.class);
         TestUtils.isSerializedTo(op, json);
+    }
+
+    @Test
+    public void testValidate() {
+        ColumnRenameOperation noOldName = new ColumnRenameOperation(null, "newfoo");
+        assertThrows(IllegalArgumentException.class, () -> noOldName.validate());
+        ColumnRenameOperation noNewName = new ColumnRenameOperation("foo", null);
+        assertThrows(IllegalArgumentException.class, () -> noNewName.validate());
     }
 
     @Test

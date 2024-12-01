@@ -44,6 +44,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.apache.commons.lang.Validate;
 import org.apache.commons.lang3.StringUtils;
 
 import com.google.refine.browsing.Engine;
@@ -102,6 +103,15 @@ public class ColumnSplitOperation extends EngineDependentOperation {
                     guessCellType,
                     removeOriginalColumn,
                     fieldLengths);
+        }
+    }
+
+    @Override
+    public void validate() {
+        super.validate();
+        Validate.notNull(_columnName, "Missing column name");
+        if (!"separator".equals(_mode)) {
+            Validate.notNull(_fieldLengths, "Missing field lengths");
         }
     }
 
