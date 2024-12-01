@@ -26,6 +26,7 @@
  ******************************************************************************/
 
 package com.google.refine.operations.column;
+import static org.testng.Assert.assertThrows;
 
 import java.io.Serializable;
 
@@ -69,6 +70,14 @@ public class ColumnMoveOperationTests extends RefineTest {
                 + "\"columnName\":\"my column\","
                 + "\"index\":3}";
         TestUtils.isSerializedTo(ParsingUtilities.mapper.readValue(json, ColumnMoveOperation.class), json);
+    }
+
+    @Test
+    public void testValidate() {
+        ColumnMoveOperation missingColumnName = new ColumnMoveOperation(null, 1);
+        assertThrows(IllegalArgumentException.class, () -> missingColumnName.validate());
+        ColumnMoveOperation negativeColumnIndex = new ColumnMoveOperation(null, -1);
+        assertThrows(IllegalArgumentException.class, () -> negativeColumnIndex.validate());
     }
 
     @Test
