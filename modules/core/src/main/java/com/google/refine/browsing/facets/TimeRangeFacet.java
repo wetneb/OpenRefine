@@ -61,6 +61,7 @@ import com.google.refine.expr.MetaParser;
 import com.google.refine.expr.ParsingException;
 import com.google.refine.model.Column;
 import com.google.refine.model.Project;
+import com.google.refine.util.NotImplementedException;
 
 public class TimeRangeFacet implements Facet {
 
@@ -129,18 +130,14 @@ public class TimeRangeFacet implements Facet {
         }
 
         @Override
-        public Optional<FacetConfig> renameColumnDependencies(Map<String, String> substitutions) {
+        public FacetConfig renameColumnDependencies(Map<String, String> substitutions) {
             String newExpression;
             try {
                 Evaluable evaluable = MetaParser.parse(_expression);
-                Optional<Evaluable> translated = evaluable.renameColumnDependencies(substitutions);
-                if (translated.isEmpty()) {
-                    return Optional.empty();
-                } else {
-                    newExpression = translated.get().getFullSource();
-                }
-            } catch (ParsingException e) {
-                return Optional.empty();
+                Evaluable translated = evaluable.renameColumnDependencies(substitutions);
+                newExpression = translated.getFullSource();
+            } catch (ParsingException | NotImplementedException e) {
+                return this;
             }
             TimeRangeFacetConfig newConfig = new TimeRangeFacetConfig();
             newConfig._expression = newExpression;
@@ -156,7 +153,7 @@ public class TimeRangeFacet implements Facet {
             newConfig._selectNonTime = _selectNonTime;
             newConfig._selectBlank = _selectBlank;
             newConfig._selectError = _selectError;
-            return Optional.of(newConfig);
+            return newConfig;
         }
     }
 

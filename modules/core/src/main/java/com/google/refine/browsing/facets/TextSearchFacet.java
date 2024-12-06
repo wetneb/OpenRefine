@@ -106,7 +106,7 @@ public class TextSearchFacet implements Facet {
         }
 
         @Override
-        public Optional<FacetConfig> renameColumnDependencies(Map<String, String> substitutions) {
+        public FacetConfig renameColumnDependencies(Map<String, String> substitutions) {
             TextSearchFacetConfig newConfig = new TextSearchFacetConfig();
             newConfig._columnName = substitutions.getOrDefault(_columnName, _columnName);
             if (Objects.equals(_name, _columnName)) {
@@ -118,7 +118,7 @@ public class TextSearchFacet implements Facet {
             newConfig._mode = _mode;
             newConfig._caseSensitive = _caseSensitive;
             newConfig._invert = _invert;
-            return Optional.of(newConfig);
+            return newConfig;
         }
     }
 

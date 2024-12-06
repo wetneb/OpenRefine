@@ -180,7 +180,7 @@ public class ScatterplotFacetTests extends RefineTest {
     @Test
     public void testRenameColumnDependencies() throws Exception {
         ScatterplotFacetConfig facetConfig = ParsingUtilities.mapper.readValue(configJson, ScatterplotFacetConfig.class);
-        FacetConfig renamed = facetConfig.renameColumnDependencies(Map.of("foo", "bar", "e", "f")).get();
+        FacetConfig renamed = facetConfig.renameColumnDependencies(Map.of("foo", "bar", "e", "f"));
         TestUtils.isSerializedTo(renamed, configJsonRenamed);
     }
 

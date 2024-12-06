@@ -62,6 +62,7 @@ import com.google.refine.expr.MetaParser;
 import com.google.refine.expr.ParsingException;
 import com.google.refine.model.Column;
 import com.google.refine.model.Project;
+import com.google.refine.util.NotImplementedException;
 
 public class RangeFacet implements Facet {
 
@@ -152,18 +153,14 @@ public class RangeFacet implements Facet {
         }
 
         @Override
-        public Optional<FacetConfig> renameColumnDependencies(Map<String, String> substitutions) {
+        public FacetConfig renameColumnDependencies(Map<String, String> substitutions) {
             String newExpression;
             try {
                 Evaluable evaluable = MetaParser.parse(_expression);
-                Optional<Evaluable> translated = evaluable.renameColumnDependencies(substitutions);
-                if (translated.isEmpty()) {
-                    return Optional.empty();
-                } else {
-                    newExpression = evaluable.getFullSource();
-                }
-            } catch (ParsingException e) {
-                return Optional.empty();
+                Evaluable translated = evaluable.renameColumnDependencies(substitutions);
+                newExpression = translated.getFullSource();
+            } catch (ParsingException | NotImplementedException e) {
+                return this;
             }
             String newColumnName = substitutions.getOrDefault(_columnName, _columnName);
             RangeFacetConfig newConfig = new RangeFacetConfig(
@@ -176,7 +173,7 @@ public class RangeFacet implements Facet {
                     _selectNonNumeric,
                     _selectBlank,
                     _selectError);
-            return Optional.of(newConfig);
+            return newConfig;
         }
     }
 

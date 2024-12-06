@@ -71,6 +71,7 @@ import com.google.refine.expr.MetaParser;
 import com.google.refine.expr.ParsingException;
 import com.google.refine.model.Column;
 import com.google.refine.model.Project;
+import com.google.refine.util.NotImplementedException;
 
 public class ScatterplotFacet implements Facet {
 
@@ -204,30 +205,22 @@ public class ScatterplotFacet implements Facet {
         }
 
         @Override
-        public Optional<FacetConfig> renameColumnDependencies(Map<String, String> substitutions) {
+        public FacetConfig renameColumnDependencies(Map<String, String> substitutions) {
             String newExpressionX;
             try {
                 Evaluable evaluableX = MetaParser.parse(expression_x);
-                Optional<Evaluable> translatedX = evaluableX.renameColumnDependencies(substitutions);
-                if (translatedX.isEmpty()) {
-                    return Optional.empty();
-                } else {
-                    newExpressionX = evaluableX.getFullSource();
-                }
-            } catch (ParsingException e) {
-                return Optional.empty();
+                Evaluable translatedX = evaluableX.renameColumnDependencies(substitutions);
+                newExpressionX = translatedX.getFullSource();
+            } catch (ParsingException | NotImplementedException e) {
+                return this;
             }
             String newExpressionY;
             try {
                 Evaluable evaluableY = MetaParser.parse(expression_y);
-                Optional<Evaluable> translatedY = evaluableY.renameColumnDependencies(substitutions);
-                if (translatedY.isEmpty()) {
-                    return Optional.empty();
-                } else {
-                    newExpressionY = evaluableY.getFullSource();
-                }
+                Evaluable translatedY = evaluableY.renameColumnDependencies(substitutions);
+                newExpressionY = translatedY.getFullSource();
             } catch (ParsingException e) {
-                return Optional.empty();
+                return this;
             }
             var newConfig = new ScatterplotFacetConfig();
             newConfig.name = name;
@@ -247,7 +240,7 @@ public class ScatterplotFacet implements Facet {
             newConfig.from_y = from_y;
             newConfig.to_x = to_x;
             newConfig.to_y = to_y;
-            return Optional.of(newConfig);
+            return newConfig;
         }
     }
 

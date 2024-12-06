@@ -99,7 +99,7 @@ public class EngineConfigTests {
     @Test
     public void renameColumnDependencies() {
         EngineConfig ec = EngineConfig.reconstruct(engineConfigJson);
-        EngineConfig renamed = ec.renameColumnDependencies(Map.of("reference", "website")).get();
+        EngineConfig renamed = ec.renameColumnDependencies(Map.of("reference", "website"));
         TestUtils.isSerializedTo(renamed, engineConfigJsonRenamed);
     }
 

@@ -159,7 +159,7 @@ public class RangeFacetTests extends RefineTest {
     @Test
     public void testRenameColumnDependencies() throws Exception {
         RangeFacetConfig facetConfig = ParsingUtilities.mapper.readValue(configJson, RangeFacetConfig.class);
-        FacetConfig renamed = facetConfig.renameColumnDependencies(Map.of("my column", "new column")).get();
+        FacetConfig renamed = facetConfig.renameColumnDependencies(Map.of("my column", "new column"));
         TestUtils.isSerializedTo(renamed, configJsonRenamed);
     }
 }
