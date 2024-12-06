@@ -34,12 +34,16 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package com.google.refine.commands.history;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import com.google.refine.commands.Command;
 import com.google.refine.model.AbstractOperation;
@@ -49,6 +53,18 @@ import com.google.refine.process.Process;
 import com.google.refine.util.ParsingUtilities;
 
 public class ApplyOperationsCommand extends Command {
+
+    private static class Renames {
+
+        @JsonProperty("dependencies")
+        Map<String, String> dependencies = Collections.emptyMap();
+        @JsonProperty("newColumns")
+        Map<String, String> newColumns = Collections.emptyMap();
+
+        public boolean isEmpty() {
+            return dependencies.isEmpty() && newColumns.isEmpty();
+        }
+    }
 
     @Override
     public void doPost(HttpServletRequest request, HttpServletResponse response)
@@ -61,8 +77,18 @@ public class ApplyOperationsCommand extends Command {
             Project project = getProject(request);
             String jsonString = request.getParameter("operations");
 
+            Renames renames = new Renames();
+            String renamesJson = request.getParameter("renames");
+            if (renamesJson != null) {
+                renames = ParsingUtilities.mapper.readValue(renamesJson, Renames.class);
+            }
+
             Recipe recipe = ParsingUtilities.mapper.readValue(jsonString, Recipe.class);
             recipe.validate();
+
+            if (!renames.isEmpty()) {
+                recipe = recipe.renameColumnDependencies(renames.dependencies, renames.newColumns);
+            }
 
             // check all required columns are present
             Set<String> requiredColumns = recipe.getRequiredColumns();
