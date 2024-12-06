@@ -157,14 +157,15 @@ public class ListFacetTests extends RefineTest {
     @Test
     public void testRenameColumns() throws Exception {
         ListFacetConfig facetConfig = ParsingUtilities.mapper.readValue(jsonConfig, ListFacetConfig.class);
-        FacetConfig renamed = facetConfig.renameColumnDependencies(Map.of("Column A", "Column A2")).get();
+        FacetConfig renamed = facetConfig.renameColumnDependencies(Map.of("Column A", "Column A2"));
         TestUtils.isSerializedTo(renamed, jsonConfigRenamed);
     }
 
     @Test
     public void testRenameColumnsWithParseError() throws Exception {
         ListFacetConfig facetConfig = ParsingUtilities.mapper.readValue(jsonConfigParseError, ListFacetConfig.class);
-        assertEquals(facetConfig.renameColumnDependencies(Map.of("foo", "bar")), Optional.empty());
+        FacetConfig renamed = facetConfig.renameColumnDependencies(Map.of("foo", "bar"));
+        TestUtils.isSerializedTo(renamed, jsonConfigParseError);
     }
 
     @Test

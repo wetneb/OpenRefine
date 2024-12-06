@@ -161,7 +161,7 @@ public class TimeRangeFacetTests extends RefineTest {
     @Test
     public void testRenameColumnDependencies() throws Exception {
         TimeRangeFacetConfig facetConfig = ParsingUtilities.mapper.readValue(configJson, TimeRangeFacetConfig.class);
-        FacetConfig renamed = facetConfig.renameColumnDependencies(Map.of("foo", "bar")).get();
+        FacetConfig renamed = facetConfig.renameColumnDependencies(Map.of("foo", "bar"));
         TestUtils.isSerializedTo(renamed, configJsonRenamed);
     }
 }

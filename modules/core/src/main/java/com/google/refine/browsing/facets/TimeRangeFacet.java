@@ -120,18 +120,14 @@ public class TimeRangeFacet implements Facet {
         }
 
         @Override
-        public Optional<FacetConfig> renameColumnDependencies(Map<String, String> substitutions) {
+        public FacetConfig renameColumnDependencies(Map<String, String> substitutions) {
             String newExpression;
             try {
                 Evaluable evaluable = MetaParser.parse(_expression);
-                Optional<Evaluable> translated = evaluable.renameColumnDependencies(substitutions);
-                if (translated.isEmpty()) {
-                    return Optional.empty();
-                } else {
-                    newExpression = translated.get().getFullSource();
-                }
+                Evaluable translated = evaluable.renameColumnDependencies(substitutions);
+                newExpression = translated.getFullSource();
             } catch (ParsingException e) {
-                return Optional.empty();
+                return this;
             }
             TimeRangeFacetConfig newConfig = new TimeRangeFacetConfig();
             newConfig._expression = newExpression;
@@ -147,7 +143,7 @@ public class TimeRangeFacet implements Facet {
             newConfig._selectNonTime = _selectNonTime;
             newConfig._selectBlank = _selectBlank;
             newConfig._selectError = _selectError;
-            return Optional.of(newConfig);
+            return newConfig;
         }
     }
 
