@@ -32,6 +32,7 @@ import static org.testng.Assert.assertThrows;
 
 import java.io.Serializable;
 import java.util.Collections;
+import java.util.Map;
 import java.util.Set;
 
 import org.testng.annotations.AfterMethod;
@@ -47,6 +48,7 @@ import com.google.refine.browsing.facets.ListFacet;
 import com.google.refine.expr.EvalError;
 import com.google.refine.expr.MetaParser;
 import com.google.refine.grel.Parser;
+import com.google.refine.model.AbstractOperation;
 import com.google.refine.model.ColumnsDiff;
 import com.google.refine.model.Project;
 import com.google.refine.operations.OnError;
@@ -143,6 +145,32 @@ public class ColumnAdditionOperationTests extends RefineTest {
                 2);
 
         assertEquals(operation.getColumnDependencies().get(), Set.of("foo", "bar", "other_column"));
+    }
+
+    @Test
+    public void testRenameColumns() {
+        String expectedJSON = "{"
+                + "   \"op\":\"core/column-addition\","
+                + "   \"description\":\"Create column organization_json at index 3 based on column employments using expression grel:value.parseJson().get(\\\"employment-summary\\\").join(\\\"###\\\")\","
+                + "   \"engineConfig\":{\"mode\":\"row-based\",\"facets\":[]},"
+                + "   \"newColumnName\":\"organization_json\","
+                + "   \"columnInsertIndex\":3,"
+                + "   \"baseColumnName\":\"employments\","
+                + "   \"expression\":\"grel:value.parseJson().get(\\\"employment-summary\\\").join(\\\"###\\\")\","
+                + "   \"onError\":\"set-to-blank\""
+                + "}";
+
+        var SUT = new ColumnAdditionOperation(
+                EngineConfig.reconstruct("{}"),
+                "job_titles",
+                "grel:value.parseJson()[\"employment-summary\"].join('###')",
+                OnError.SetToBlank,
+                "new_column",
+                3);
+
+        AbstractOperation result = SUT.renameColumns(Map.of("job_titles", "employments"),
+                Map.of("new_column", "organization_json"));
+        TestUtils.isSerializedTo(result, expectedJSON);
     }
 
     @Test

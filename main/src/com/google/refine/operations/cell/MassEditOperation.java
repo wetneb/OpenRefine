@@ -53,6 +53,7 @@ import com.google.refine.expr.Evaluable;
 import com.google.refine.expr.ExpressionUtils;
 import com.google.refine.expr.MetaParser;
 import com.google.refine.expr.ParsingException;
+import com.google.refine.model.AbstractOperation;
 import com.google.refine.model.Cell;
 import com.google.refine.model.Column;
 import com.google.refine.model.ColumnsDiff;
@@ -159,6 +160,21 @@ public class MassEditOperation extends EngineDependentMassCellOperation {
     @Override
     public Optional<ColumnsDiff> getColumnsDiff() {
         return Optional.of(ColumnsDiff.empty());
+    }
+
+    @Override
+    public AbstractOperation renameColumns(Map<String, String> dependencies, Map<String, String> newColumns) {
+        try {
+            Evaluable parsed = MetaParser.parse(_expression);
+            Evaluable renamed = parsed.renameColumnDependencies(dependencies);
+            return new MassEditOperation(
+                    getEngineConfig().renameColumnDependencies(dependencies),
+                    dependencies.getOrDefault(_columnName, _columnName),
+                    renamed.getFullSource(),
+                    _edits);
+        } catch (ParsingException e) {
+            return this;
+        }
     }
 
     @Override
