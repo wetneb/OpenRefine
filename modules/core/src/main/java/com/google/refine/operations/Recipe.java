@@ -1,8 +1,11 @@
 
 package com.google.refine.operations;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -92,7 +95,7 @@ public class Recipe {
                 }
                 currentColumnNames.get().addAll(columnsDiff.get().getAddedColumnNames());
                 newColumns.removeAll(columnsDiff.get().getDeletedColumns());
-                newColumns.addAll(columnsDiff.get().getAddedColumns());
+                newColumns.addAll(columnsDiff.get().getAddedColumnNames());
             }
         }
     }
@@ -124,6 +127,34 @@ public class Recipe {
             validate();
         }
         return newColumns;
+    }
+
+    /**
+     * Compute a new version of this recipe, where the column dependencies have been renamed according to the map
+     * supplied.
+     * 
+     * @param operations
+     *            the map from old column names (referenced in the current recipe) to the new ones
+     * @return a new recipe, only if all the operations involved could be successfully renamed
+     */
+    public Recipe renameColumnDependencies(Map<String, String> dependencies, Map<String, String> newColumns) {
+        Map<String, String> currentDependenciesRename = new HashMap<>(dependencies);
+        List<AbstractOperation> result = new ArrayList<>(operations.size());
+
+        for (AbstractOperation op : operations) {
+            AbstractOperation renamed = op.renameColumns(currentDependenciesRename, newColumns);
+            result.add(renamed);
+
+            Optional<ColumnsDiff> columnsDiff = op.getColumnsDiff();
+            if (columnsDiff.isPresent()) {
+                // remove deleted columns from the rename so that further columns which would get created with the same
+                // name don't get renamed in turn
+                for (String deletedColumn : columnsDiff.get().getDeletedColumns()) {
+                    currentDependenciesRename.remove(deletedColumn);
+                }
+            }
+        }
+        return new Recipe(result);
     }
 
     @Override
