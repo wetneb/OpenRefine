@@ -63,6 +63,7 @@ import com.google.refine.expr.MetaParser;
 import com.google.refine.expr.ParsingException;
 import com.google.refine.model.Column;
 import com.google.refine.model.Project;
+import com.google.refine.util.NotImplementedException;
 
 public class ListFacet implements Facet {
 
@@ -155,18 +156,14 @@ public class ListFacet implements Facet {
         }
 
         @Override
-        public Optional<FacetConfig> renameColumnDependencies(Map<String, String> substitutions) {
+        public FacetConfig renameColumnDependencies(Map<String, String> substitutions) {
             String newExpression;
             try {
                 Evaluable evaluable = MetaParser.parse(expression);
-                Optional<Evaluable> translated = evaluable.renameColumnDependencies(substitutions);
-                if (translated.isEmpty()) {
-                    return Optional.empty();
-                } else {
-                    newExpression = evaluable.getFullSource();
-                }
-            } catch (ParsingException e) {
-                return Optional.empty();
+                Evaluable translated = evaluable.renameColumnDependencies(substitutions);
+                newExpression = translated.getFullSource();
+            } catch (ParsingException | NotImplementedException e) {
+                return this;
             }
             ListFacetConfig newConfig = new ListFacetConfig();
             newConfig.expression = newExpression;
@@ -182,7 +179,7 @@ public class ListFacet implements Facet {
             newConfig.selection = selection;
             newConfig.selectBlank = selectBlank;
             newConfig.selectError = selectError;
-            return Optional.of(newConfig);
+            return newConfig;
         }
     }
 

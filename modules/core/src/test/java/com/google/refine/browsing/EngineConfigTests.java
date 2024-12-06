@@ -28,6 +28,7 @@
 package com.google.refine.browsing;
 
 import static org.testng.Assert.assertThrows;
+
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -98,7 +99,7 @@ public class EngineConfigTests {
     @Test
     public void renameColumnDependencies() {
         EngineConfig ec = EngineConfig.reconstruct(engineConfigJson);
-        EngineConfig renamed = ec.renameColumnDependencies(Map.of("reference", "website")).get();
+        EngineConfig renamed = ec.renameColumnDependencies(Map.of("reference", "website"));
         TestUtils.isSerializedTo(renamed, engineConfigJsonRenamed);
     }
 
