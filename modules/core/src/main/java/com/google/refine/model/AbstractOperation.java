@@ -33,6 +33,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package com.google.refine.model;
 
+import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
@@ -119,5 +120,20 @@ abstract public class AbstractOperation {
     @JsonIgnore
     public Optional<ColumnsDiff> getColumnsDiff() {
         return Optional.empty();
+    }
+
+    /**
+     * Compute a new version of this operation metadata, with renamed columns. This is a best-effort transformation:
+     * some column references might fail to be updated, for instance if they are embedded into expressions that cannot
+     * be fully analyzed. As a fall-back solution, the same operation can be returned.
+     * 
+     * @param dependencies
+     *            a map from old to new column names, to be applied to columns required by this operation to run
+     * @param newColumns
+     *            a map from old to new column names, to be applied to the columns created by this operation
+     * @return the updated operation metadata
+     */
+    public AbstractOperation renameColumns(Map<String, String> dependencies, Map<String, String> newColumns) {
+        return this;
     }
 }
