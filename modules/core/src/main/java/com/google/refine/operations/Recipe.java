@@ -1,4 +1,3 @@
-
 package com.google.refine.operations;
 
 import java.util.HashSet;
@@ -20,11 +19,15 @@ import com.google.refine.model.ColumnsDiff;
 public class Recipe {
 
     private final List<AbstractOperation> operations;
+    private Set<String> dependencies;
+    private Set<String> newColumns;
 
     @JsonCreator
     public Recipe(
             @JsonUnwrapped List<AbstractOperation> operations) {
         this.operations = operations;
+        this.dependencies = null;
+        this.newColumns = null;
     }
 
     @JsonValue
@@ -45,41 +48,30 @@ public class Recipe {
             }
             op.validate();
         }
-    }
 
-    /**
-     * Computes which columns are required to be present in the project before applying a list of operations. The set
-     * that is returned is an under-approximation: if certain operations in the list fail to analyze their dependencies
-     * or their impact on the set of columns, then some required columns will be missed by this method, resulting in an
-     * error that will only be detected when the list of operations is applied.
-     * 
-     * @param operations
-     *            the operations to analyze. If any of them is null or of an unknown type (see
-     *            {@link UnknownOperation}), then {@link IllegalArgumentException} is thrown.
-     * @return a set of required column names
-     */
-    public Set<String> computeRequiredColumns() {
         // columnNames represents the current set of column names in the project,
         // after having applied the operations scanned so far. If it is empty, then
         // that means we lost track of which columns are present.
         Optional<Set<String>> currentColumnNames = Optional.of(new HashSet<>());
         // keeps track of which columns are required to exist in the project before
         // the first operation is run.
-        Set<String> requiredColumnNames = new HashSet<>();
+        dependencies = new HashSet<>();
+        // columns created by the recipe
+        newColumns = new HashSet<>();
 
         for (AbstractOperation op : operations) {
             Optional<Set<String>> columnDependencies = op.getColumnDependencies();
             if (columnDependencies.isPresent() && currentColumnNames.isPresent()) {
                 for (String columnName : columnDependencies.get()) {
                     if (!currentColumnNames.get().contains(columnName)) {
-                        if (requiredColumnNames.contains(columnName)) {
+                        if (dependencies.contains(columnName)) {
                             // if this column has already been required before,
                             // but is no longer part of the current columns,
                             // that means it has been deleted since.
                             throw new IllegalArgumentException(
                                     "Inconsistent list of operations: column '" + columnName + "' used after being deleted or renamed");
                         } else {
-                            requiredColumnNames.add(columnName);
+                            dependencies.add(columnName);
                         }
                     }
                 }
@@ -91,9 +83,38 @@ public class Recipe {
             } else if (currentColumnNames.isPresent()) {
                 currentColumnNames.get().removeAll(columnsDiff.get().getDeletedColumns());
                 currentColumnNames.get().addAll(columnsDiff.get().getAddedColumns());
+                newColumns.removeAll(columnsDiff.get().getDeletedColumns());
+                newColumns.addAll(columnsDiff.get().getAddedColumns());
             }
         }
-        return requiredColumnNames;
+    }
+
+    /**
+     * Computes which columns are required to be present in the project before applying this recipe. The set that is
+     * returned is an under-approximation: if certain operations in the list fail to analyze their dependencies or their
+     * impact on the set of columns, then some required columns will be missed by this method, resulting in an error
+     * that will only be detected when the list of operations is applied.
+     * 
+     * @return a set of required column names
+     */
+    public Set<String> getRequiredColumns() {
+        if (dependencies == null) {
+            validate();
+        }
+        return dependencies;
+    }
+    /**
+     * Computes which columns will be created by applying this recipe. The set that is returned is an
+     * under-approximation: if certain operations in the list fail to expose their impact on the set of columns, then
+     * the columns created at this stage will be omitted from the return value of this method.
+     * 
+     * @return a set of created column names
+     */
+    public Set<String> getNewColumns() {
+        if (newColumns == null) {
+            validate();
+        }
+        return newColumns;
     }
 
     @Override
