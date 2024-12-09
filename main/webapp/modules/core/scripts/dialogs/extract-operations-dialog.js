@@ -37,7 +37,6 @@ function ExtractOperationsDialog(json) {
     var elmts = DOM.bind(frame);
   
     elmts.dialogHeader.html($.i18n('core-project/extract-history'));
-    elmts.textarea.attr('aria-label',$.i18n('core-project/operation-history-json'))
     elmts.or_proj_extractSave.html($.i18n('core-project/extract-save'));
     elmts.selectAllButton.html($.i18n('core-buttons/select-all'));
     elmts.deselectAllButton.html($.i18n('core-buttons/deselect-all'));
@@ -69,14 +68,27 @@ function ExtractOperationsDialog(json) {
     }
   
     var updateJson = function() {
-      var a = [];
+      self.historyJson = [];
       for (var i = 0; i < json.entries.length; i++) {
         var entry = json.entries[i];
         if ("operation" in entry && entry.selected) {
-          a.push(entry.operation);
+          self.historyJson.push(entry.operation);
         }
       }
-      elmts.textarea.text(JSON.stringify(a, null, 2));
+    
+      Refine.postCSRF(
+        "command/core/get-column-dependencies",
+        { operations: JSON.stringify(self.historyJson) },
+        function(response) {
+          elmts.recipeSvg.empty();
+          let visualizer = new RecipeVisualizer(response.steps, elmts.recipeSvg);
+          visualizer.draw();
+        },
+        "json",
+        function(e) {
+          elmts.errorContainer.text($.i18n('core-project/json-invalid', e.message));   
+        },
+      );
     };
     updateJson();
   
@@ -97,10 +109,8 @@ function ExtractOperationsDialog(json) {
       frame.find('input[type="checkbox"]').prop('checked', false);
       updateJson();
     });
-    elmts.saveJsonAsFileButton.on('click',function() {
-      var historyJson = elmts.textarea[0].value;
-  
-      downloadFile('history.json', historyJson);
+    elmts.saveJsonAsFileButton.on('click',function() {  
+      downloadFile('history.json', JSON.stringify(self.historyJson));
     });
   
     // Function originally created by Matěj Pokorný at StackOverflow:
@@ -118,6 +128,4 @@ function ExtractOperationsDialog(json) {
     }
   
     var level = DialogSystem.showDialog(frame);
-  
-    elmts.textarea[0].select();
 }
