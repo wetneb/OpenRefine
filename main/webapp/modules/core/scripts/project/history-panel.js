@@ -320,7 +320,7 @@ HistoryPanel.prototype._showApplyOperationsDialog = function() {
      elmts.errorContainer.empty();
   });
   
-  elmts.applyButton.html($.i18n('core-buttons/perform-op'));
+  elmts.applyButton.html($.i18n('core-buttons/next'));
   elmts.cancelButton.html($.i18n('core-buttons/cancel'));
   elmts.operationJsonButton.html($.i18n('core-buttons/select'));
 
@@ -336,35 +336,32 @@ HistoryPanel.prototype._showApplyOperationsDialog = function() {
     return json.replace(/\}\s*\,\s*\]/g, "} ]").replace(/\}\s*\{/g, "}, {");
   };
 
+  var level = DialogSystem.showDialog(frame);
+  elmts.textarea.trigger('focus');
+
   elmts.applyButton.on('click',function() {
-    var json;
+    var operations;
 
     try {
-      json = elmts.textarea[0].value;
+      let json = elmts.textarea[0].value;
       json = fixJson(json);
-      json = JSON.parse(json);
+      operations = JSON.parse(json);
     } catch (e) {
       elmts.errorContainer.text($.i18n('core-project/json-invalid', e.message));   
       return;
     }
-
-    Refine.postCoreProcess(
-        "apply-operations",
-        {},
-        { operations: JSON.stringify(json) },
-        { everythingChanged: true },
-        {
-          onDone: function(o) {
-            if (o.code == "pending") {
-              // Something might have already been done and so it's good to update
-              Refine.update({ everythingChanged: true });
-            }
-            DialogSystem.dismissUntil(level - 1);
-          },
-          onError: function(e) {
-             elmts.errorContainer.text($.i18n('core-project/json-invalid', e.message));   
-          },
-        }
+    
+    Refine.postCSRF(
+        "command/core/get-column-dependencies",
+        { operations: JSON.stringify(operations) },
+        function(response) {
+          DialogSystem.dismissUntil(level - 1);
+          let columnMapping = ColumnMappingDialog(operations, response.dependencies, response.newColumns);
+        },
+        "json",
+        function(e) {
+          elmts.errorContainer.text($.i18n('core-project/json-invalid', e.message));   
+        },
     );
   });
 
@@ -372,7 +369,108 @@ HistoryPanel.prototype._showApplyOperationsDialog = function() {
     DialogSystem.dismissUntil(level - 1);
   });
 
+};
+
+function ColumnMappingDialog(operations, columnDependencies, newColumns) {
+  var self = this;
+  var frame = $(DOM.loadHTML("core", "scripts/dialogs/column-mapping-dialog.html"));
+  var elmts = DOM.bind(frame);
+  
+  elmts.dialogHeader.text($.i18n('core-project/map-columns'));
+  elmts.explanation.text("Select which columns the recipe should be applied to.");
+
+  elmts.applyButton.val($.i18n('core-buttons/perform-op'));
+  elmts.backButton.text($.i18n('core-buttons/previous'));
+
+  var trHeader = $('<tr></tr>')
+    .append($('<th></th>').text('In the recipe'))    
+    .append($('<th></th>').text('In the project'))
+    .appendTo(elmts.tableHead);
+
+  let columnExists = function(columnName) {
+    return theProject.columnModel.columns.find(column => column.name === columnName) !== undefined;
+  };
+
+  let allColumns = columnDependencies.map(c => [true, c]).concat(newColumns.map(c => [false, c]));
+  var idx = 0;
+  for (const tuple of allColumns) {
+    var expectedToExist = tuple[0];
+    var columnName = tuple[1];
+    var name = `column_${idx}`;
+    var defaultValue = columnName;
+    if (columnExists(columnName) != expectedToExist) {
+      defaultValue = '';
+    }
+    var tr = $('<tr></tr>')
+      .append(
+        $('<td></td>').append(
+         $('<label></label>').attr("for", name).text(columnName))
+      ).append(
+        $('<td></td>').append(
+          $('<input type="text" />')
+             .attr('value', defaultValue)
+             .data('originalName', columnName)
+             .data('expectedToExist', expectedToExist)
+             .attr('required', 'true')
+             .attr('name', name))
+      ).appendTo(elmts.tableBody);
+    idx++;
+  }
+
   var level = DialogSystem.showDialog(frame);
 
-  elmts.textarea.trigger('focus');
-};
+  elmts.backButton.on('click',function() {
+    DialogSystem.dismissUntil(level - 1);
+  });
+
+  elmts.form.on('submit',function(e) {
+    e.preventDefault();
+    // collect the column mapping from the form
+    var renames = {
+     dependencies: {},
+     newColumns: {}
+    };
+    var errorFound = false;
+    elmts.tableBody.find('input').each(function(index, child) {
+      let inputElem = $(child);
+      let fromColumn = inputElem.data('originalName');
+      let toColumn = inputElem.val();
+      let expectedToExist = inputElem.data('expectedToExist');
+      if (columnExists(toColumn) !== expectedToExist) {
+        errorFound = true;
+        inputElem.addClass('invalid');
+        alert(`Invalid column ${toColumn}, ` + (expectedToExist ? 'expected to exist' : 'expected not to exist'));
+      } else {
+        if (expectedToExist) {
+          renames.dependencies[fromColumn] = toColumn;
+        } else {
+          renames.newColumns[fromColumn] = toColumn;
+        }
+      }
+    });
+    
+    if (!errorFound) {
+      Refine.postCoreProcess(
+          "apply-operations",
+          {},
+          {
+            operations: JSON.stringify(operations),
+            renames: JSON.stringify(renames)
+          },
+          { everythingChanged: true },
+          {
+            onDone: function(o) {
+              if (o.code == "pending") {
+                // Something might have already been done and so it's good to update
+                Refine.update({ everythingChanged: true });
+              }
+              DialogSystem.dismissUntil(level - 1);
+            },
+            onError: function(e) {
+              elmts.errorContainer.text($.i18n('core-project/json-invalid', e.message));   
+            },
+          }
+      );
+    }
+  });
+}
