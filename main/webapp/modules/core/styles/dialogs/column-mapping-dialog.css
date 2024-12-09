@@ -1,0 +1,11 @@
+.column-mapping-panel-container {
+    display: flex;
+}
+
+.column-mapping-panel {
+    flex: 1;
+}
+
+.column-mapping-panel canvas {
+    border: 1px solid #ccc;
+}

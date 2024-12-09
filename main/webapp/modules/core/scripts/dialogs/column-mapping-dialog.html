@@ -1,0 +1,29 @@
+<div class="dialog-frame" style="min-width: 800px;">
+  <div class="dialog-border">
+    <form bind="form">
+      <div class="dialog-header" bind="dialogHeader"></div>
+      <div class="dialog-body" bind="dialogBody">
+        <div class="column-mapping-panel-container">
+          <div class="column-mapping-panel">
+            <canvas bind="canvas">
+            </canvas>
+          </div>
+          <div class="column-mapping-panel grid-layout layout-normal">
+            <p bind="explanation"></p>
+            <table>
+                <thead bind="tableHead">
+                </thead>
+                <tbody bind="tableBody">
+                </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="history-operation-json-error" bind="errorContainer"></div>
+      </div>
+      <div class="dialog-footer" bind="dialogFooter">
+      <input type="submit" class="button button-primary" bind="applyButton" />
+      <button class="button" bind="backButton"></button>
+      </div>
+    </form>
+  </div>
+</div>

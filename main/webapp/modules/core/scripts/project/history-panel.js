@@ -320,7 +320,7 @@ HistoryPanel.prototype._showApplyOperationsDialog = function() {
      elmts.errorContainer.empty();
   });
   
-  elmts.applyButton.html($.i18n('core-buttons/perform-op'));
+  elmts.applyButton.html($.i18n('core-buttons/next'));
   elmts.cancelButton.html($.i18n('core-buttons/cancel'));
   elmts.operationJsonButton.html($.i18n('core-buttons/select'));
 
@@ -336,35 +336,32 @@ HistoryPanel.prototype._showApplyOperationsDialog = function() {
     return json.replace(/\}\s*\,\s*\]/g, "} ]").replace(/\}\s*\{/g, "}, {");
   };
 
+  var level = DialogSystem.showDialog(frame);
+  elmts.textarea.trigger('focus');
+
   elmts.applyButton.on('click',function() {
-    var json;
+    var operations;
 
     try {
-      json = elmts.textarea[0].value;
+      let json = elmts.textarea[0].value;
       json = fixJson(json);
-      json = JSON.parse(json);
+      operations = JSON.parse(json);
     } catch (e) {
       elmts.errorContainer.text($.i18n('core-project/json-invalid', e.message));   
       return;
     }
-
-    Refine.postCoreProcess(
-        "apply-operations",
-        {},
-        { operations: JSON.stringify(json) },
-        { everythingChanged: true },
-        {
-          onDone: function(o) {
-            if (o.code == "pending") {
-              // Something might have already been done and so it's good to update
-              Refine.update({ everythingChanged: true });
-            }
-            DialogSystem.dismissUntil(level - 1);
-          },
-          onError: function(e) {
-             elmts.errorContainer.text($.i18n('core-project/json-invalid', e.message));   
-          },
-        }
+    
+    Refine.postCSRF(
+        "command/core/get-column-dependencies",
+        { operations: JSON.stringify(operations) },
+        function(response) {
+          DialogSystem.dismissUntil(level - 1);
+          let columnMapping = ColumnMappingDialog(operations, response);
+        },
+        "json",
+        function(e) {
+          elmts.errorContainer.text($.i18n('core-project/json-invalid', e.message));   
+        },
     );
   });
 
@@ -372,7 +369,4 @@ HistoryPanel.prototype._showApplyOperationsDialog = function() {
     DialogSystem.dismissUntil(level - 1);
   });
 
-  var level = DialogSystem.showDialog(frame);
-
-  elmts.textarea.trigger('focus');
 };
