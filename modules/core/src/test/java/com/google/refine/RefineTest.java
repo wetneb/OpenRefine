@@ -422,7 +422,7 @@ public class RefineTest {
                     .filter(name -> project.columnModel.getColumnByName(name) == null)
                     .collect(Collectors.toSet());
             
-            assertEquals(columnsDiff.get().getAddedColumns().stream().map(c -> c.getName()).collect(Collectors.toSet()),
+            assertEquals(columnsDiff.get().getAddedColumnNames(),
                     addedColumns, "incorrect added columns announced by the operation:");
             assertEquals(columnsDiff.get().getDeletedColumns(),
                     deletedColumns, "incorrect deleted columns announced by the operation:");

@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.Validate;
 
@@ -57,6 +58,13 @@ public class ColumnsDiff {
     public List<AddedColumn> getAddedColumns() {
         return addedColumns;
     }
+    
+    /**
+     * Convenience method to return only added column names, without position info.
+     */
+    public List<String> getAddedColumnNames() {
+        return addedColumns.stream().map(AddedColumn::getName).collect(Collectors.toList());
+    }
 
     /**
      * The columns names that were present before and absent after the operation. This includes the old names of any
@@ -66,6 +74,9 @@ public class ColumnsDiff {
         return deletedColumns;
     }
     
+    /**
+     * The names of columns that are modified by this operation.
+     */
     public Set<String> getModifiedColumns() {
         return modifiedColumns;
     }
