@@ -27,6 +27,13 @@ public class ColumnsDiff {
     public static ColumnsDiff empty() {
         return empty;
     }
+    
+    /**
+     * A column diff which for an operation that only modifies a single column
+     */
+    public static ColumnsDiff modifySingleColumn(String name) {
+        return builder().modifyColumn(name).build();
+    }
 
     /**
      * A fresh builder object.
@@ -103,6 +110,12 @@ public class ColumnsDiff {
         public Builder deleteColumn(String columnName) {
             Validate.isTrue(!built, "The ColumnsDiff was already built");
             deleted.add(columnName);
+            return this;
+        }
+        
+        public Builder modifyColumn(String columnName) {
+            Validate.isTrue(!built, "The ColumnsDiff was already built");
+            modified.add(columnName);
             return this;
         }
 
