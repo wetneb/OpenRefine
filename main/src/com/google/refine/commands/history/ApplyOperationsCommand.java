@@ -156,7 +156,7 @@ public class ApplyOperationsCommand extends Command {
                 currentColumnNames = Optional.empty();
             } else if (currentColumnNames.isPresent()) {
                 currentColumnNames.get().removeAll(columnsDiff.get().getDeletedColumns());
-                currentColumnNames.get().addAll(columnsDiff.get().getAddedColumns());
+                currentColumnNames.get().addAll(columnsDiff.get().getAddedColumnNames());
             }
         }
         return requiredColumnNames;
