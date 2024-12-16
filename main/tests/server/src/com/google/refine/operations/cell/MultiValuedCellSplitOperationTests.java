@@ -120,7 +120,7 @@ public class MultiValuedCellSplitOperationTests extends RefineTest {
                 "Value",
                 "Key",
                 ":",
-                false).getColumnsDiff().get(), ColumnsDiff.empty());
+                false).getColumnsDiff().get(), ColumnsDiff.modifySingleColumn("Value"));
     }
 
     @Test

@@ -140,7 +140,7 @@ public class BlankDownTests extends RefineTest {
 
     @Test
     public void testColumnsDiff() {
-        assertEquals(new BlankDownOperation(defaultEngineConfig, "bar").getColumnsDiff().get(), ColumnsDiff.empty());
+        assertEquals(new BlankDownOperation(defaultEngineConfig, "bar").getColumnsDiff().get(), ColumnsDiff.modifySingleColumn("bar"));
     }
 
     @Test

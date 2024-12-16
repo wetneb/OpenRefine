@@ -127,7 +127,7 @@ public class FillDownTests extends RefineTest {
 
     @Test
     public void testColumnsDiff() {
-        assertEquals(new FillDownOperation(defaultEngineConfig, "bar").getColumnsDiff().get(), ColumnsDiff.empty());
+        assertEquals(new FillDownOperation(defaultEngineConfig, "bar").getColumnsDiff().get(), ColumnsDiff.modifySingleColumn("bar"));
     }
 
     @Test

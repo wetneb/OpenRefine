@@ -100,7 +100,7 @@ public class TextTransformOperationTests extends RefineTest {
                 "bar",
                 "grel:cells[\"foo\"].value+'_'+value",
                 OnError.SetToBlank,
-                false, 0).getColumnsDiff().get(), ColumnsDiff.empty());
+                false, 0).getColumnsDiff().get(), ColumnsDiff.modifySingleColumn("bar"));
     }
 
     @Test

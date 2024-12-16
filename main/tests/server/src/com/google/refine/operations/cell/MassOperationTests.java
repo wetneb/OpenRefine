@@ -188,7 +188,7 @@ public class MassOperationTests extends RefineTest {
     @Test
     public void testColumnsDiff() {
         assertEquals(new MassEditOperation(defaultEngineConfig, "foo", "grel:value", editsWithFromBlank).getColumnsDiff().get(),
-                ColumnsDiff.empty());
+                ColumnsDiff.modifySingleColumn("foo"));
     }
 
     @Test

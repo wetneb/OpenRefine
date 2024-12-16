@@ -82,7 +82,7 @@ public class FillDownOperation extends EngineDependentMassCellOperation {
 
     @Override
     public Optional<ColumnsDiff> getColumnsDiff() {
-        return Optional.of(ColumnsDiff.empty());
+        return Optional.of(ColumnsDiff.modifySingleColumn(_columnName));
     }
 
     @Override

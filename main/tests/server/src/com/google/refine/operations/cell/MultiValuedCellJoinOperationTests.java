@@ -109,7 +109,7 @@ public class MultiValuedCellJoinOperationTests extends RefineTest {
 
     @Test
     public void testColumnsDiff() {
-        assertEquals(new MultiValuedCellJoinOperation("value", "key", "sep").getColumnsDiff().get(), ColumnsDiff.empty());
+        assertEquals(new MultiValuedCellJoinOperation("value", "key", "sep").getColumnsDiff().get(), ColumnsDiff.modifySingleColumn("value"));
     }
 
     @Test
