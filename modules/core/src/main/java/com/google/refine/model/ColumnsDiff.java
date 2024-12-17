@@ -8,6 +8,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.lang3.Validate;
 
 /**
@@ -62,6 +64,7 @@ public class ColumnsDiff {
      * The columns names that were absent before and present after the operation. This includes the new names of any
      * renamed columns.
      */
+    @JsonProperty("added")
     public List<AddedColumn> getAddedColumns() {
         return addedColumns;
     }
@@ -69,6 +72,7 @@ public class ColumnsDiff {
     /**
      * Convenience method to return only added column names, without position info.
      */
+    @JsonIgnore
     public List<String> getAddedColumnNames() {
         return addedColumns.stream().map(AddedColumn::getName).collect(Collectors.toList());
     }
@@ -77,6 +81,7 @@ public class ColumnsDiff {
      * The columns names that were present before and absent after the operation. This includes the old names of any
      * renamed columns.
      */
+    @JsonProperty("deleted")
     public Set<String> getDeletedColumns() {
         return deletedColumns;
     }
@@ -84,6 +89,7 @@ public class ColumnsDiff {
     /**
      * The names of columns that are modified by this operation.
      */
+    @JsonProperty("modified")
     public Set<String> getModifiedColumns() {
         return modifiedColumns;
     }

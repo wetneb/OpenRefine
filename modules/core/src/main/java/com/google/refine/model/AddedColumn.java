@@ -3,6 +3,7 @@ package com.google.refine.model;
 
 import java.util.Objects;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.commons.lang.Validate;
 
 /**
@@ -31,6 +32,7 @@ public class AddedColumn {
     /**
      * The name of the column being added.
      */
+    @JsonProperty("name")
     public String getName() {
         return name;
     }
@@ -38,6 +40,7 @@ public class AddedColumn {
     /**
      * The name of the column it is added after, or null if it is not known.
      */
+    @JsonProperty("afterName")
     public String getAfterName() {
         return afterName;
     }
