@@ -27,7 +27,11 @@
 
 package com.google.refine.operations.row;
 
+import static org.testng.Assert.assertEquals;
+
 import java.io.Serializable;
+import java.util.Optional;
+import java.util.Set;
 
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -39,6 +43,7 @@ import com.google.refine.RefineTest;
 import com.google.refine.browsing.Engine.Mode;
 import com.google.refine.model.AbstractOperation;
 import com.google.refine.model.Cell;
+import com.google.refine.model.ColumnsDiff;
 import com.google.refine.model.Project;
 import com.google.refine.operations.OperationRegistry;
 import com.google.refine.sorting.SortingConfig;
@@ -71,6 +76,17 @@ public class RowReorderOperationTests extends RefineTest {
     @AfterMethod
     public void tearDown() {
         ProjectManager.singleton.deleteProject(project.id);
+    }
+
+    @Test
+    public void testColumnDependencies() throws Exception {
+        String sortingJson = "{\"criteria\":[{\"column\":\"key\",\"valueType\":\"number\",\"reverse\":true,\"blankPosition\":-1,\"errorPosition\":1}]}";
+        SortingConfig sortingConfig = SortingConfig.reconstruct(sortingJson);
+        AbstractOperation op = new RowReorderOperation(
+                Mode.RowBased, sortingConfig);
+
+        assertEquals(op.getColumnDependencies(), Optional.of(Set.of()));
+        assertEquals(op.getColumnsDiff(), Optional.of(ColumnsDiff.empty()));
     }
 
     @Test
