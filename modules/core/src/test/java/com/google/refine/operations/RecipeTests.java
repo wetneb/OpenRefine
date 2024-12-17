@@ -79,6 +79,26 @@ public class RecipeTests {
             return Optional.empty();
         }
     }
+    
+    class ColumnTransformOperation extends AbstractOperation {
+
+        final String columnName;
+
+        public ColumnTransformOperation(String columnName) {
+            this.columnName = columnName;
+        }
+
+        @Override
+        public Optional<Set<String>> getColumnDependencies() {
+            return Optional.of(Set.of(columnName));
+        }
+
+        @Override
+        public Optional<ColumnsDiff> getColumnsDiff() {
+            return Optional.of(ColumnsDiff.modifySingleColumn(columnName));
+        }
+    }
+
 
     class OpaqueOperation extends AbstractOperation {
 
@@ -149,6 +169,12 @@ public class RecipeTests {
                         // so we can't predict if "bar" is going to be produced by it or not.
                         new ColumnRemovalOperation("bar"))).getRequiredColumns(),
                 Set.of("foo"));
+        
+        assertEquals(
+                new Recipe(List.of(
+                        new ColumnTransformOperation("foo"),
+                        new ColumnRemovalOperation("foo"))).getRequiredColumns(),
+                Set.of("foo"));
 
         // unanalyzable operation
         assertEquals(
@@ -185,6 +211,13 @@ public class RecipeTests {
     public void testRequiredColumnsFromInconsistentOperations() {
         assertThrows(IllegalArgumentException.class, () -> new Recipe(List.of(
                 new ColumnRemovalOperation("foo"),
+                new ColumnRenameOperation("foo", "bar"))).getRequiredColumns());
+    }
+    
+    @Test
+    public void testConflictingColumnCreation() {
+        assertThrows(IllegalArgumentException.class, () -> new Recipe(List.of(
+                new ColumnTransformOperation("bar"),
                 new ColumnRenameOperation("foo", "bar"))).getRequiredColumns());
     }
 

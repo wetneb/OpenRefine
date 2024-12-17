@@ -75,6 +75,7 @@ public class Recipe {
                                     "Inconsistent list of operations: column '" + columnName + "' used after being deleted or renamed");
                         } else {
                             dependencies.add(columnName);
+                            currentColumnNames.get().add(columnName);
                         }
                     }
                 }
@@ -85,6 +86,12 @@ public class Recipe {
                 currentColumnNames = Optional.empty();
             } else if (currentColumnNames.isPresent()) {
                 currentColumnNames.get().removeAll(columnsDiff.get().getDeletedColumns());
+                for (String addedColumn : columnsDiff.get().getAddedColumnNames()) {
+                    if (currentColumnNames.get().contains(addedColumn)) {
+                        throw new IllegalArgumentException(
+                                "Creation of column '" + addedColumn + "' conflicts with an existing column with the same name");
+                    }
+                }
                 currentColumnNames.get().addAll(columnsDiff.get().getAddedColumnNames());
                 newColumns.removeAll(columnsDiff.get().getDeletedColumns());
                 newColumns.addAll(columnsDiff.get().getAddedColumnNames());
