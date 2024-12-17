@@ -86,6 +86,9 @@ function ColumnMappingDialog(operations, analyzedOperations) {
     DialogSystem.dismissUntil(level - 1);
   });
 
+  let visualizer = new RecipeVisualizer(analyzedOperations.steps);
+  visualizer.computeLayout();
+
   elmts.form.on('submit',function(e) {
     e.preventDefault();
     // collect the column mapping from the form
@@ -138,3 +141,179 @@ function ColumnMappingDialog(operations, analyzedOperations) {
   });
 }
 
+function addToMultiMap(multiMap, key, value) {
+    let list = multiMap.get(key);
+    if (list === undefined) {
+        list = [];
+        multiMap.set(key, list);
+    }
+    list.push(value);
+}
+
+class RecipeVisualizer {
+    
+    constructor(analyzedOperations) {
+      this.analyzedOperations = analyzedOperations;
+    }
+
+    computeLayout() {
+        let operationsWithIds = this.getColumnConstraints();
+        console.log(operationsWithIds);
+
+        // Do a topological sort
+        let unconstrainedColumns = new Set();
+        let positionMap = new Map();
+        for (let i = 0; i != operationsWithIds.columns.length; i++) {
+            unconstrainedColumns.add(i);
+            positionMap.set(i, 0);
+        }
+        // Index the constraints in bidirectional maps
+        let leftToRight = new Map();
+        let rightToLeft = new Map();
+        for (const constraint of operationsWithIds.constraints) {
+            addToMultiMap(leftToRight, constraint.left, constraint.right);
+            addToMultiMap(rightToLeft, constraint.right, constraint.left);
+            unconstrainedColumns.delete(constraint.right);
+        }
+
+        let sorted = [];
+        while (unconstrainedColumns.size > 0) {
+            let id = unconstrainedColumns[Symbol.iterator]().next().value;
+            unconstrainedColumns.delete(id);
+            let position = positionMap.get(id);
+            sorted.push(id);
+            for(const rightId of leftToRight.get(id) || []) {
+                positionMap.set(rightId, Math.max(positionMap.get(rightId), position + 1));
+                let otherConstraints = rightToLeft.get(rightId);
+                let newConstraints = otherConstraints.filter(x => x != id);
+                rightToLeft.set(rightId, newConstraints);
+                if (newConstraints.length == 0) {
+                    unconstrainedColumns.add(rightId);
+                }
+            }
+        }
+        if (sorted.length < operationsWithIds.columns.length) {
+            throw new Error("invalid column constraints: loop detected");
+        }
+
+        console.log(sorted);
+        console.log(positionMap);
+    }
+  
+    getColumnConstraints() {
+      let currentColumns = {};
+      let currentColumnIds = [];
+      let constraints = [];
+      let lastColumnReset = 0;
+      let columns = [];
+      let translatedOperations = [];
+      for (let i = 0; i != this.analyzedOperations.length; i++) {
+        let operation = this.analyzedOperations[i];
+
+        let columnIds = {
+        };
+
+        if (operation.dependencies !== null) {
+            columnIds.dependencies = [];
+            for(const columnName of operation.dependencies) {
+                if (currentColumns[columnName] === undefined) {
+                    let columnId = columns.length;
+                    currentColumns[columnName] = columnId;
+                    currentColumnIds.push(columnId);
+                    if (currentColumnIds.length > 1) {
+                        constraints.push({left: currentColumnIds[currentColumnIds.length - 2], right: columnId});
+                    }
+                    columns.push({
+                        id: columnId,
+                        name: columnName,
+                        start: lastColumnReset,
+                        firstRequiredAt: i,
+                    })
+                    columnIds.dependencies.push(columnId);
+                }
+            }
+        }
+
+        if (operation.columnsDiff === null) {
+            // make all current columns end here
+            for(const [name, id] of Object.entries(currentColumns)) {
+                columns[id].end = i;
+            }
+            currentColumns = {};
+            currentColumnIds = [];
+            lastColumnReset = i;
+        } else {
+            columnIds.added = [];
+            columnIds.deleted = [];
+            columnIds.modified = [];
+            for(const deletedColumn of operation.columnsDiff.deleted) {
+                let id = currentColumns[deletedColumn];
+                if (id !== undefined) {
+                    columns[id].end = i;
+                    columnIds.deleted.push(id);
+                    delete currentColumns[deletedColumn];
+                    currentColumnIds = currentColumnIds.filter(x => x != id);
+                }
+            }
+            for (const addedColumn of operation.columnsDiff.added) {
+                // TODO check that it does not collide with existing column names
+                let name = addedColumn.name;
+                let columnId = columns.length;
+                currentColumns[name] = columnId;
+                columns.push({
+                    id: columnId,
+                    name,
+                    start: i,
+                });
+                let addedColumnAsId = {
+                    id: columnId
+                };
+                if (addedColumn.afterName != null) {
+                    let afterId = currentColumns[addedColumn.afterName];
+                    addedColumnAsId.afterId = afterId;
+                    let indexOfAfterId = currentColumnIds.indexOf(afterId);
+                    if (indexOfAfterId == -1) {
+                        indexOfAfterId = currentColumnIds.length - 1;
+                    } else {
+                        constraints.push({left: afterId, right: columnId});
+                    }
+                    currentColumnIds.splice(indexOfAfterId + 1, 0, columnId);
+                    if (indexOfAfterId + 2 < currentColumnIds.length) {
+                        constraints.push({left: afterId, right: currentColumnIds[indexOfAfterId + 2]});
+                    }
+                } else {
+                    // if no afterName is provided, the column gets added at the end of the list
+                    currentColumnIds.push(columnId);
+                    if (currentColumnIds.length > 1) {
+                        constraints.push({left: currentColumnIds[currentColumnIds.length - 2], right: columnId});
+                    }
+                }
+                columnIds.added.push(columnId);
+            }
+            for (const modifiedColumn of operation.columnsDiff.modified) {
+                let id = currentColumns[modifiedColumn];
+                if (id !== undefined) {
+                    columnIds.modified.push(id);
+                }
+            }
+        }
+
+        translatedOperations.push({
+            operation,
+            columnIds,
+        });
+      }
+      // fill the end field on all columns that remain at the end
+      for(let column of columns) {
+        if (column.end === undefined) {
+            column.end = this.analyzedOperations.length;
+        }
+      }
+      return {
+        columns,
+        constraints,
+        translatedOperations,
+      };
+    }
+  
+  }
