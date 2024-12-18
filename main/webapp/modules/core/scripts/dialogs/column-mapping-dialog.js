@@ -87,7 +87,7 @@ function ColumnMappingDialog(operations, analyzedOperations) {
   });
 
   let visualizer = new RecipeVisualizer(analyzedOperations.steps);
-  visualizer.computeLayout();
+  visualizer.draw();
 
   elmts.form.on('submit',function(e) {
     e.preventDefault();
@@ -154,12 +154,198 @@ class RecipeVisualizer {
     
     constructor(analyzedOperations) {
       this.analyzedOperations = analyzedOperations;
+      this.hoverTimeout = null;
+      this.tooltip = null;
     }
 
-    computeLayout() {
-        let operationsWithIds = this.getColumnConstraints();
+    draw() {
+        let operationsWithIds = this.computeColumnIds();
         console.log(operationsWithIds);
+        let columnPositions = this.computeColumnPositions(operationsWithIds);
 
+        const svg = $("#recipe-svg");
+        let sliceHeight = 35;
+        let columnDistance = 30;
+        let columnHoverMargin = 10;
+        let opaqueMargin = 5;
+        let columnColor = '#888';
+        let columnWidth = 2;
+        let dependencyRadius = 5;
+
+        // Resize canvas to make it of a fitting size
+        let maxX = 0;
+        let maxY = 0;
+        for (const column of operationsWithIds.columns) {
+            maxX = Math.max(maxX, (columnPositions.get(column.id) + 2) * columnDistance);
+            maxY = Math.max(maxY, column.end * sliceHeight);
+        }
+        svg.attr("viewBox", `${-columnDistance/2} ${-sliceHeight/2} ${maxX + columnDistance} ${maxY + sliceHeight/2}`);
+        svg.attr("width", `${maxX + 1.5*columnDistance}`);
+
+        // Draw all column lines
+        for(const column of operationsWithIds.columns) {
+            let xPos = (columnPositions.get(column.id) + 1) * columnDistance;
+            let line = $(document.createElementNS('http://www.w3.org/2000/svg', 'line'))
+              .attr('id', `column-${column.id}`)
+              .attr('x1', xPos)
+              .attr('y1', (column.start - 0.5) * sliceHeight)
+              .attr('x2', xPos)
+              .attr('y2', (column.end + 0.5) * sliceHeight)
+              .attr("stroke", columnColor)
+              .attr("stroke-width", columnWidth)
+              .attr("alt", column.name)
+              .appendTo(svg);
+            let hoverArea = $(document.createElementNS('http://www.w3.org/2000/svg', 'rect'))
+              .attr('x', xPos - columnHoverMargin)
+              .attr('y', (column.start - 0.5) * sliceHeight)
+              .attr('width', columnHoverMargin * 2)
+              .attr('height', (column.end - column.start + 1)*sliceHeight)
+              .attr('fill', 'white')
+              .attr('fill-opacity', 0)
+              .appendTo(svg);
+            this.setUpTooltip(svg, hoverArea, line, 8, column.name, true);
+        }
+
+        // Draw all operations
+        let sliceId = 0;
+        for(const slice of operationsWithIds.translatedOperations) {
+          if (slice.operation.columnsDiff == null) {
+            let rect = $(document.createElementNS('http://www.w3.org/2000/svg', 'rect'))
+              .attr('id', `opaque-${sliceId}`)
+              .attr('x', opaqueMargin)
+              .attr('y', sliceId * sliceHeight + opaqueMargin)
+              .attr('width', maxX - 2*opaqueMargin)
+              .attr('height', sliceHeight - 2*opaqueMargin)
+              .attr('stroke', 'black')
+              .attr('stroke-width', 1)
+              .attr('fill', 'white')
+              .appendTo(svg);
+            this.addOperationLogo(svg, maxX / 2, (sliceId + 0.5) * sliceHeight, slice.operation.operation);
+            this.setUpTooltip(svg, rect, rect, 5, slice.operation.operation.description, false);
+          } else {
+            // Draw operation circles for added columns
+            for (const addedColumn of slice.columnIds.added) {
+              let columnId = addedColumn.id;
+              let xPos = (columnPositions.get(columnId) + 1) * columnDistance;
+              let yPos = (sliceId + 0.5)* sliceHeight;
+              if (addedColumn.afterId !== undefined) {
+                let xPosSource = (columnPositions.get(addedColumn.afterId) + 1) * columnDistance;
+                var line = $(document.createElementNS('http://www.w3.org/2000/svg', 'line'))
+                  .attr('x1', xPos)
+                  .attr('y1', yPos)
+                  .attr('x2', xPosSource)
+                  .attr('y2', yPos)
+                  .attr('stroke', columnColor)
+                  .attr('stroke-width', columnWidth)
+                  .appendTo(svg);
+              }
+              this.makeOperationCircle(svg, xPos, yPos, `circle-${sliceId}-${columnId}`, slice.operation.operation);
+            }
+
+            // Draw operation circles for modified and deleted columns
+            for (const columnId of slice.columnIds.modified.concat(slice.columnIds.deleted)) {
+              let xPos = (columnPositions.get(columnId) + 1) * columnDistance;
+              let yPos = (sliceId + 0.5)* sliceHeight;
+              this.makeOperationCircle(svg, xPos, yPos, `circle-${sliceId}-${columnId}`, slice.operation.operation);
+            }
+
+            // Draw other column dependencies
+            let modifiedOrDeleted = new Set(slice.columnIds.modified.concat(slice.columnIds.deleted));
+            for (const columnId of slice.columnIds.dependencies || []) {
+              if (!modifiedOrDeleted.has(columnId)) {
+                let xPos = (columnPositions.get(columnId) + 1) * columnDistance;
+                let yPos = (sliceId + 0.5) * sliceHeight;
+                let circle = $(document.createElementNS('http://www.w3.org/2000/svg', 'circle'))
+                  .attr('cx', xPos)
+                  .attr('cy', yPos)
+                  .attr('r', dependencyRadius)
+                  .attr('fill', columnColor)
+                  .appendTo(svg);
+                this.setUpTooltip(svg, circle, circle, dependencyRadius, operationsWithIds.columns[columnId].name, false);
+              }
+            }
+          }
+          sliceId++;
+        }
+    }
+
+    makeOperationCircle(svg, xPos, yPos, id, operation) {
+      let circleRadius = 12;
+      let circleHoverRadius = 15;
+      let circle = $(document.createElementNS('http://www.w3.org/2000/svg', 'circle'))
+        .attr('id', id)
+        .attr('cx', xPos)
+        .attr('cy', yPos)
+        .attr('r', circleRadius)
+        .attr('stroke', 'black')
+        .attr('fill', 'white')
+        .appendTo(svg);
+      this.addOperationLogo(svg, xPos, yPos, operation);
+      let hoverArea = $(document.createElementNS('http://www.w3.org/2000/svg', 'circle'))
+        .attr('id', id)
+        .attr('cx', xPos)
+        .attr('cy', yPos)
+        .attr('r', circleHoverRadius)
+        .attr('opacity', 0)
+        .attr('fill', 'white')
+        .appendTo(svg);
+      this.setUpTooltip(svg, hoverArea, circle, circleRadius, operation.description, false);
+      return circle;
+    }
+
+    addOperationLogo(svg, xPos, yPos, operation) {
+      let firstLetter = operation.description[0];
+      $(document.createElementNS('http://www.w3.org/2000/svg', 'text'))
+        .attr('x', xPos)
+        .attr('y', yPos)
+        .attr('dominant-baseline', 'middle')
+        .attr('text-anchor', 'middle')
+        .text(firstLetter)
+        .appendTo(svg);
+    }
+
+    setUpTooltip(svg, hoverArea, relativeTo, tooltipOffset, text, useCursorY) {
+      let self = this;
+      hoverArea.on("mouseenter", function(event) {
+        if (self.hoverTimeout != null) {
+          clearTimeout(self.hoverTimeout);
+          self.hoverTimeout = null;
+        }
+        self.hoverTimeout = setTimeout(function() {
+          self.hoverTimeout = null;
+          if (self.tooltip != null) {
+            self.tooltip.remove();
+            self.tooltip = null;
+          }
+          let rect = relativeTo[0].getBoundingClientRect();
+          let x = (rect.left + rect.right) / 2;
+          let y = (rect.top + rect.bottom) / 2;
+          if (useCursorY) {
+            y = event.clientY;
+          }
+          self.tooltip = $("<div></div>")
+            .css("left", x + tooltipOffset)
+            .text(text)
+            .attr('class', 'recipe-tooltip')
+            .appendTo(svg.parent());
+          // TODO: center vertically?
+          self.tooltip.css("top", y);//  - 0.5 * tooltip.height());
+        }, 300);
+
+        hoverArea.on("mouseleave", function() {
+          if (self.hoverTimeout != null) {
+            clearTimeout(self.hoverTimeout);
+            self.hoverTimeout = null;
+          }
+          if (self.tooltip != null) {
+            self.tooltip.remove();
+            self.tooltip = null;
+          }
+        });
+      });
+    }
+
+    computeColumnPositions(operationsWithIds) {
         // Do a topological sort
         let unconstrainedColumns = new Set();
         let positionMap = new Map();
@@ -176,6 +362,8 @@ class RecipeVisualizer {
             unconstrainedColumns.delete(constraint.right);
         }
 
+        // main loop of the topological sort algorithm, greedily allocating
+        // positions to columns which are no longer constrained to be to the right of any column
         let sorted = [];
         while (unconstrainedColumns.size > 0) {
             let id = unconstrainedColumns[Symbol.iterator]().next().value;
@@ -196,11 +384,10 @@ class RecipeVisualizer {
             throw new Error("invalid column constraints: loop detected");
         }
 
-        console.log(sorted);
-        console.log(positionMap);
+        return positionMap;
     }
   
-    getColumnConstraints() {
+    computeColumnIds() {
       let currentColumns = {};
       let currentColumnIds = [];
       let constraints = [];
@@ -213,25 +400,30 @@ class RecipeVisualizer {
         let columnIds = {
         };
 
-        if (operation.dependencies !== null) {
-            columnIds.dependencies = [];
-            for(const columnName of operation.dependencies) {
-                if (currentColumns[columnName] === undefined) {
-                    let columnId = columns.length;
-                    currentColumns[columnName] = columnId;
-                    currentColumnIds.push(columnId);
-                    if (currentColumnIds.length > 1) {
-                        constraints.push({left: currentColumnIds[currentColumnIds.length - 2], right: columnId});
-                    }
-                    columns.push({
-                        id: columnId,
-                        name: columnName,
-                        start: lastColumnReset,
-                        firstRequiredAt: i,
-                    })
-                    columnIds.dependencies.push(columnId);
+        columnIds.dependencies = [];
+        var fullDependencies = operation.dependencies || [];
+        if (operation.columnsDiff != null) {
+          let addedColumns = operation.columnsDiff.added
+            .filter(added => added.afterName != undefined)
+            .map(added => added.afterName);
+          fullDependencies = fullDependencies.concat(addedColumns);
+        }
+        for(const columnName of new Set(fullDependencies)) {
+            if (currentColumns[columnName] === undefined) {
+                let columnId = columns.length;
+                currentColumns[columnName] = columnId;
+                currentColumnIds.push(columnId);
+                if (currentColumnIds.length > 1) {
+                    constraints.push({left: currentColumnIds[currentColumnIds.length - 2], right: columnId});
                 }
+                columns.push({
+                    id: columnId,
+                    name: columnName,
+                    start: lastColumnReset,
+                    firstRequiredAt: i,
+                })
             }
+            columnIds.dependencies.push(currentColumns[columnName]);
         }
 
         if (operation.columnsDiff === null) {
@@ -241,7 +433,7 @@ class RecipeVisualizer {
             }
             currentColumns = {};
             currentColumnIds = [];
-            lastColumnReset = i;
+            lastColumnReset = i + 1;
         } else {
             columnIds.added = [];
             columnIds.deleted = [];
@@ -263,7 +455,7 @@ class RecipeVisualizer {
                 columns.push({
                     id: columnId,
                     name,
-                    start: i,
+                    start: i + 1,
                 });
                 let addedColumnAsId = {
                     id: columnId
@@ -279,7 +471,7 @@ class RecipeVisualizer {
                     }
                     currentColumnIds.splice(indexOfAfterId + 1, 0, columnId);
                     if (indexOfAfterId + 2 < currentColumnIds.length) {
-                        constraints.push({left: afterId, right: currentColumnIds[indexOfAfterId + 2]});
+                        constraints.push({left: columnId, right: currentColumnIds[indexOfAfterId + 2]});
                     }
                 } else {
                     // if no afterName is provided, the column gets added at the end of the list
@@ -288,7 +480,7 @@ class RecipeVisualizer {
                         constraints.push({left: currentColumnIds[currentColumnIds.length - 2], right: columnId});
                     }
                 }
-                columnIds.added.push(columnId);
+                columnIds.added.push(addedColumnAsId);
             }
             for (const modifiedColumn of operation.columnsDiff.modified) {
                 let id = currentColumns[modifiedColumn];

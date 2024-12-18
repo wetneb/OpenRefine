@@ -5,17 +5,21 @@
       <div class="dialog-body" bind="dialogBody">
         <div class="column-mapping-panel-container">
           <div class="column-mapping-panel">
-            <canvas bind="canvas">
-            </canvas>
+            <div class="recipe-svg-container">
+              <svg bind="canvas" id="recipe-svg">
+              </svg>
+            </div>
           </div>
-          <div class="column-mapping-panel grid-layout layout-normal">
-            <p bind="explanation"></p>
-            <table>
-                <thead bind="tableHead">
-                </thead>
-                <tbody bind="tableBody">
-                </tbody>
-            </table>
+          <div class="column-mapping-panel">
+            <div class="grid-layout layout-normal">
+              <p bind="explanation"></p>
+              <table>
+                  <thead bind="tableHead">
+                  </thead>
+                  <tbody bind="tableBody">
+                  </tbody>
+              </table>
+            </div>
           </div>
         </div>
         <div class="history-operation-json-error" bind="errorContainer"></div>

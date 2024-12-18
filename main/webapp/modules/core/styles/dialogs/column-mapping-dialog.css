@@ -1,11 +1,33 @@
 .column-mapping-panel-container {
     display: flex;
+    max-height: 500px;
 }
 
 .column-mapping-panel {
     flex: 1;
 }
 
-.column-mapping-panel canvas {
+.column-mapping-panel {
+    padding: 10px;
+    margin: 10px;
+}
+
+.recipe-svg-container {
     border: 1px solid #ccc;
+    text-align: center;
+    overflow: auto;
+    min-height: 100px;
+    max-height: 500px;
+    position: relative;
+}
+
+.recipe-tooltip {
+    position: fixed;
+    background-color: white;
+    border: 1px solid #888;
+    padding: 3px;
+    border-radius: 3px;
+    font-size: 0.9em;
+    max-width: 200px;
+    z-index: 20;
 }
