@@ -11,12 +11,19 @@
             </div>
           </div>
           <div class="column-mapping-panel">
-            <div class="grid-layout layout-normal">
-              <p bind="explanation"></p>
+            <div class="grid-layout layout-normal" bind="columnMap">
+              <p bind="dependenciesExplanation"></p>
               <table>
-                  <thead bind="tableHead">
+                  <thead bind="dependenciesTableHead">
                   </thead>
-                  <tbody bind="tableBody">
+                  <tbody bind="dependenciesTableBody">
+                  </tbody>
+              </table>
+              <p bind="newColumnsExplanation"></p>
+              <table>
+                  <thead bind="newColumnsTableHead">
+                  </thead>
+                  <tbody bind="newColumnsTableBody">
                   </tbody>
               </table>
             </div>

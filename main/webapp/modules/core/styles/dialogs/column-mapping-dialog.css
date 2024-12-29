@@ -10,6 +10,10 @@
 .column-mapping-panel {
     padding: 10px;
     margin: 10px;
+
+    p {
+        font-weight: bold;
+    }
 }
 
 .recipe-svg-container {

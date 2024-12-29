@@ -40,15 +40,19 @@ function ColumnMappingDialog(operations, analyzedOperations) {
   var newColumns = analyzedOperations.newColumns;
   
   elmts.dialogHeader.text($.i18n('core-project/map-columns'));
-  elmts.explanation.text("Select which columns the recipe should be applied to.");
+  elmts.dependenciesExplanation.text("Required columns:");
+  elmts.newColumnsExplanation.text("Created columns:");
 
   elmts.applyButton.val($.i18n('core-buttons/perform-op'));
   elmts.backButton.text($.i18n('core-buttons/previous'));
 
   var trHeader = $('<tr></tr>')
     .append($('<th></th>').text('In the recipe'))    
-    .append($('<th></th>').text('In the project'))
-    .appendTo(elmts.tableHead);
+    .append($('<th></th>').text('In this project'))
+  trHeader.clone()
+    .appendTo(elmts.dependenciesTableHead);
+  trHeader
+    .appendTo(elmts.newColumnsTableHead);
 
   let columnExists = function(columnName) {
     return theProject.columnModel.columns.find(column => column.name === columnName) !== undefined;
@@ -76,7 +80,12 @@ function ColumnMappingDialog(operations, analyzedOperations) {
              .data('expectedToExist', expectedToExist)
              .attr('required', 'true')
              .attr('name', name))
-      ).appendTo(elmts.tableBody);
+      );
+    if (expectedToExist) {
+      tr.appendTo(elmts.dependenciesTableBody);
+    } else {
+      tr.appendTo(elmts.newColumnsTableBody);
+    }
     idx++;
   }
 
