@@ -74,6 +74,13 @@ a.menu-item img {
   border: none;
 }
 
+a.menu-item .menu-icon {
+  display: inline;
+  height: 1.5em;
+  vertical-align: middle;
+  margin-left: -2px;
+}
+
 table.menu-item-layout td {
   vertical-align: middle;
 }
