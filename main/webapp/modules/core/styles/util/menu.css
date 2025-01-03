@@ -67,7 +67,13 @@ a.menu-item {
 }
 
 a.menu-item:hover {
-  background: #dbe8f8;
+  background-color: #dbe8f8;
+}
+
+.menu-item.submenu {
+  background: url('../../images/right-arrow.png') no-repeat;
+  background-position-x: right 7px;
+  background-position-y: 50%;
 }
 
 a.menu-item img {
@@ -79,10 +85,7 @@ a.menu-item .menu-icon {
   height: 1.5em;
   vertical-align: middle;
   margin-left: -2px;
-}
-
-table.menu-item-layout td {
-  vertical-align: middle;
+  margin-top: -2px;
 }
 
 .menu-section {
