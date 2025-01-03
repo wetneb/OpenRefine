@@ -572,13 +572,15 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
       {
         id: "core/split-column",
         label: $.i18n('core-views/split-into-col'),
+        icon: 'images/operations/split-columns.svg',
         click: doSplitColumn
       },
       {
         id: "core/join-column",
         label: $.i18n('core-views/join-col'),
-          click : doJoinColumns
-        },
+        icon: 'images/operations/join-columns.svg',
+        click : doJoinColumns
+      },
       {},
       {
         id: "core/add-column",
