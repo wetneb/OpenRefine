@@ -59,12 +59,29 @@ class RecipeVisualizer {
 
         const svg = this.svg;
         let sliceHeight = 35;
-        let columnDistance = 30;
+        let columnDistance = 35;
         let columnHoverMargin = 10;
         let opaqueMargin = 5;
         let columnColor = '#888';
         let columnWidth = 2;
         let dependencyRadius = 5;
+
+        // Define arrow marker
+        let defs = $(document.createElementNS('http://www.w3.org/2000/svg', 'defs'))
+          .appendTo(svg);
+        let marker = $(document.createElementNS('http://www.w3.org/2000/svg', 'marker'))
+          .attr('id', 'arrow')
+          .attr('viewBox', '0 0 10 10')
+          .attr('refX', '5')
+          .attr('refY', '5')
+          .attr('markerWidth', '4')
+          .attr('markerHeight', '4')
+          .attr('orient', 'auto-start-reverse')
+          .appendTo(defs);
+        let markerPath = $(document.createElementNS('http://www.w3.org/2000/svg', 'path'))
+          .attr('d', 'M 0 0 L 10 5 L 0 10 z')
+          .attr('fill', 'context-stroke')
+          .appendTo(marker);
 
         // Compute diagram boundaries
         let maxX = columnDistance * 2;
@@ -115,7 +132,8 @@ class RecipeVisualizer {
                 this.drawBoundaryColumnName(svg, xPos,  -0.6 * sliceHeight, false, name.name);
               }
               if (end === operationsWithIds.translatedOperations.length) {
-                this.drawBoundaryColumnName(svg, xPos,  (end + 0.7) * sliceHeight, true, name.name);
+                this.drawBoundaryColumnName(svg, xPos,  (end + 0.8) * sliceHeight, true, name.name);
+                line.attr('marker-end', 'url(#arrow)');
               }
             }
         }
@@ -158,12 +176,13 @@ class RecipeVisualizer {
               if (addedColumn.afterId !== undefined) {
                 let xPosSource = (columnPositions.get(addedColumn.afterId) + 1) * columnDistance;
                 var line = $(document.createElementNS('http://www.w3.org/2000/svg', 'line'))
-                  .attr('x1', xPos)
+                  .attr('x1', xPosSource)
                   .attr('y1', yPos)
-                  .attr('x2', xPosSource)
+                  .attr('x2', xPos - 15)
                   .attr('y2', yPos)
                   .attr('stroke', columnColor)
                   .attr('stroke-width', columnWidth)
+                  .attr('marker-end', 'url(#arrow)')
                   .appendTo(edgesGroup);
               }
               this.makeOperationCircle(svg, xPos, yPos, `circle-${sliceId}-${columnId}`, slice.operation.operation);
