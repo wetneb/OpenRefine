@@ -51,6 +51,7 @@ class RecipeVisualizer {
       this.hoverTimeout = null;
       this.tooltip = null;
       this.svg = svg;
+      this.minWidth = 400;
     }
 
     draw() {
@@ -91,11 +92,17 @@ class RecipeVisualizer {
         let maxY = operationsWithIds.translatedOperations.length * sliceHeight;
 
         // Draw slices
+        let boundaryMin = - columnDistance;
+        let boundaryMax = maxX + 2 * columnDistance;
+        if (boundaryMax - boundaryMin < this.minWidth) {
+          boundaryMin -= (this.minWidth - boundaryMax + boundaryMin) / 2;
+          boundaryMax += (this.minWidth - boundaryMax + boundaryMin) / 2;
+        }
         for (let i = 0; i < operationsWithIds.translatedOperations.length; i += 2) {
           $(document.createElementNS('http://www.w3.org/2000/svg', 'rect'))
-              .attr('x', - columnDistance / 2)
+              .attr('x', boundaryMin)
               .attr('y', i * sliceHeight)
-              .attr('width', maxX + 1.5 * columnDistance)
+              .attr('width', boundaryMax - boundaryMin)
               .attr('height', sliceHeight)
               .attr('fill', '#f2f2f2')
               .appendTo(svg);
@@ -225,7 +232,7 @@ class RecipeVisualizer {
         let bbox = svg[0].getBBox();
         let margin = 5;
         svg.attr("viewBox", `${bbox.x} ${bbox.y - margin} ${bbox.width} ${bbox.height + 2*margin}`);
-        svg.attr("width", `${maxX + 1.5*columnDistance}`);
+        svg.attr("width", `${bbox.width}`);
     }
 
     nameAtSlice(column, sliceId) {
