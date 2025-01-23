@@ -62,14 +62,50 @@ function ColumnMappingDialog(operations, analyzedOperations) {
     return theProject.columnModel.columns.find(column => column.name === columnName) !== undefined;
   };
 
-  let allColumns = columnDependencies.map(c => [true, c]).concat(newColumns.map(c => [false, c]));
   var idx = 0;
-  for (const tuple of allColumns) {
-    var expectedToExist = tuple[0];
-    var columnName = tuple[1];
+  for (const columnName of columnDependencies) {
     var name = `column_${idx}`;
     var defaultValue = columnName;
-    if (columnExists(columnName) != expectedToExist) {
+    if (!columnExists(columnName)) {
+      defaultValue = '';
+    }
+    let select = $('<select></select>')
+      .attr('value', defaultValue)
+      .data('originalName', columnName)
+      .attr('required', 'true')
+      .attr('name', name);
+    if (defaultValue === '') {
+      $('<option></option>')
+        .attr('value', '')
+        .text("Select a column")
+        .attr('selected', 'true')
+        .attr('disabled', 'true')
+        .css('display', 'none')
+        .appendTo(select);
+    }
+    for (const existingColumn of theProject.columnModel.columns) {
+      let option = $('<option></option>')
+        .attr('value', existingColumn.name)
+        .text(existingColumn.name)
+        .appendTo(select);
+      if (existingColumn.name === defaultValue) {
+        option.attr('selected', 'true');
+      }
+    }
+    $('<tr></tr>')
+      .append(
+        $('<td></td>').append(
+         $('<label></label>').attr("for", name).text(columnName))
+      ).append(
+        $('<td></td>').append(select)
+      )
+      .appendTo(elmts.dependenciesTableBody);
+    idx++;
+  }
+  for (const columnName of newColumns) {
+    var name = `column_${idx}`;
+    var defaultValue = columnName;
+    if (columnExists(columnName)) {
       defaultValue = '';
     }
     var tr = $('<tr></tr>')
@@ -81,15 +117,11 @@ function ColumnMappingDialog(operations, analyzedOperations) {
           $('<input type="text" />')
              .attr('value', defaultValue)
              .data('originalName', columnName)
-             .data('expectedToExist', expectedToExist)
+             .data('expectedToExist', false)
              .attr('required', 'true')
              .attr('name', name))
       );
-    if (expectedToExist) {
-      tr.appendTo(elmts.dependenciesTableBody);
-    } else {
-      tr.appendTo(elmts.newColumnsTableBody);
-    }
+    tr.appendTo(elmts.newColumnsTableBody);
     idx++;
   }
 
@@ -109,21 +141,29 @@ function ColumnMappingDialog(operations, analyzedOperations) {
     var renames = {
     };
     var errorFound = false;
-    elmts.tableBody.find('input').each(function(index, child) {
+
+    elmts.columnMap.find('select').each(function(index, child) {
       let inputElem = $(child);
       let fromColumn = inputElem.data('originalName');
       let toColumn = inputElem.val();
-      let expectedToExist = inputElem.data('expectedToExist');
-      if (columnExists(toColumn) !== expectedToExist) {
+      if (!columnExists(toColumn)) {
         errorFound = true;
         inputElem.addClass('invalid');
-        alert(`Invalid column ${toColumn}, ` + (expectedToExist ? 'expected to exist' : 'expected not to exist'));
+        alert(`Invalid dependency column name "${toColumn}", expected to exist in the project`);
       } else {
-        if (expectedToExist) {
-          renames[fromColumn] = toColumn;
-        } else {
-          renames[fromColumn] = toColumn;
-        }
+        renames[fromColumn] = toColumn;
+      }
+    });
+    elmts.columnMap.find('input').each(function(index, child) {
+      let inputElem = $(child);
+      let fromColumn = inputElem.data('originalName');
+      let toColumn = inputElem.val();
+      if (columnExists(toColumn)) {
+        errorFound = true;
+        inputElem.addClass('invalid');
+        alert(`Invalid created column name "${toColumn}", expected not to exist in the project`);
+      } else {
+        renames[fromColumn] = toColumn;
       }
     });
     
