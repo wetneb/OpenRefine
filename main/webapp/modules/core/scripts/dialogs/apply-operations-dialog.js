@@ -37,20 +37,47 @@ function ApplyOperationsDialog() {
   var elmts = DOM.bind(frame);
   
   elmts.dialogHeader.html($.i18n('core-project/apply-operation'));
+  elmts.dragFiles.text($.i18n('core-index-import/drag-files'));
   elmts.or_proj_pasteJson.html($.i18n('core-project/paste-json'));
 
   const fileInput = elmts.operationJsonButton[0];
   fileInput.accept = '.json';
   fileInput.onchange = async function() {
+    elmts.errorContainer.empty();
     const file = fileInput.files[0];
     const reader = new FileReader();
     reader.onload = function(e) {
       try {
-        const fileContent = JSON.parse(e.target.result);
-        const textAreaElement = elmts.textarea[0];
-        if (textAreaElement) {
-          textAreaElement.textContent = JSON.stringify(fileContent, null, 2)
-        }
+        const operations = JSON.parse(e.target.result);
+        var dismissBusy = null;
+        var done = false;
+
+        Refine.postCSRF(
+          "command/core/get-column-dependencies",
+          { operations: JSON.stringify(operations) },
+          function(response) {
+            done = true;
+            if (dismissBusy) {
+                dismissBusy();
+            }
+            if (response.code === "ok") {
+                DialogSystem.dismissUntil(level - 1);
+                new ColumnMappingDialog(operations, response);
+            } else {
+                elmts.errorContainer.text($.i18n('core-project/json-invalid', response.message));
+            }
+          },
+          "json",
+          function(e) {
+            elmts.errorContainer.text($.i18n('core-project/json-invalid', e.message));   
+          },
+        );
+
+        window.setTimeout(function() {
+          if (!done) {
+            dismissBusy = DialogSystem.showBusy();
+          }
+        }, 500);
       } catch (error) {
         elmts.errorContainer.text($.i18n('core-project/json-invalid', e.message));   
       }
@@ -58,68 +85,8 @@ function ApplyOperationsDialog() {
     reader.readAsText(file);
   };
 
-  elmts.textarea.on('change', function() {
-     elmts.errorContainer.empty();
-  });
-  
-  elmts.applyButton.html($.i18n('core-buttons/next'));
   elmts.cancelButton.html($.i18n('core-buttons/cancel'));
   elmts.operationJsonButton.html($.i18n('core-buttons/select'));
-
-  var fixJson = function(json) {
-    json = json.trim();
-    if (!json.startsWith("[")) {
-      json = "[" + json;
-    }
-    if (!json.endsWith("]")) {
-      json = json + "]";
-    }
-
-    return json.replace(/\}\s*\,\s*\]/g, "} ]").replace(/\}\s*\{/g, "}, {");
-  };
-
-  elmts.applyButton.on('click',function() {
-    var operations;
-
-    try {
-      let json = elmts.textarea[0].value;
-      json = fixJson(json);
-      operations = JSON.parse(json);
-    } catch (e) {
-      elmts.errorContainer.text($.i18n('core-project/json-invalid', e.message));   
-      return;
-    }
-    
-    var dismissBusy = null;
-    var done = false;
-
-    Refine.postCSRF(
-        "command/core/get-column-dependencies",
-        { operations: JSON.stringify(operations) },
-        function(response) {
-          done = true;
-          if (dismissBusy) {
-            dismissBusy();
-          }
-          if (response.code === "ok") {
-            DialogSystem.dismissUntil(level - 1);
-            new ColumnMappingDialog(operations, response);
-          } else {
-            elmts.errorContainer.text($.i18n('core-project/json-invalid', response.message));
-          }
-        },
-        "json",
-        function(e) {
-          elmts.errorContainer.text($.i18n('core-project/json-invalid', e.message));   
-        },
-    );
-
-    window.setTimeout(function() {
-      if (!done) {
-        dismissBusy = DialogSystem.showBusy();
-      }
-    }, 500);
-  });
 
   elmts.cancelButton.on('click',function() {
     DialogSystem.dismissUntil(level - 1);

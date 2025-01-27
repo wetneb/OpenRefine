@@ -14,12 +14,10 @@ describe(__filename, function () {
       .contains('Apply')
       .click();
       
-    // JSON for operations that will be applied
+    // Load a recipe file
     const recipeFile = { filePath: 'recipe.json', mimeType: 'application/json' };
     cy.get('#file-input[type="file"]').attachFile(recipeFile);
     
-    cy.get('.dialog-container button[bind="applyButton"]').click();
-
     // Column mapping dialog
     cy.get('.dialog-header').contains('Map recipe columns to project columns');
     cy.get('select[name="column_0"]').contains('Energ_Kcal');
@@ -27,6 +25,7 @@ describe(__filename, function () {
 
     cy.get('input[type="submit"]').contains('Run operations').click();
 
+    // Check the effects on the project data
     cy.get('table.data-table thead th[title="Energ_Kcal"]').should(
       'not.to.exist'
     );
@@ -55,18 +54,12 @@ describe(__filename, function () {
     cy.get('#refine-tabs-history .history-panel-controls')
       .contains('Apply')
       .click();
-      
-    cy.get('.dialog-container .history-operation-json').type(
-      "[{foo",
-      {
-        parseSpecialCharSequences: false,
-        delay: 0,
-        waitForAnimations: false,
-      }
-    );
-    cy.get('.dialog-container button[bind="applyButton"]').click();
 
-    cy.get('.dialog-container .history-operation-json-error').contains('Invalid JSON format');
+    // Load an invalid recipe file
+    const recipeFile = { filePath: 'donut-records.json', mimeType: 'application/json' };
+    cy.get('#file-input[type="file"]').attachFile(recipeFile);
+      
+    cy.get('.dialog-container .history-operation-json-error').contains('Invalid recipe file');
   });
 
 });

@@ -498,3 +498,27 @@ p.body-text {
 .padding-loose {
   padding: var(--padding-loose);
 }
+
+.file-input {
+    min-width: 200px;
+    height: 100px;
+    border: 2px solid #ccc;
+    border-radius: 5px;
+    padding: 5px;
+    box-sizing: border-box;
+}
+
+.file-input-container {
+    position: relative;
+    width: fit-content;
+}
+
+.file-input-text {
+    position: absolute;
+    top: 50%;
+    left: 0px;
+    width: 100%;
+    pointer-events: none;
+    text-align: center;
+    color: #555;
+}
