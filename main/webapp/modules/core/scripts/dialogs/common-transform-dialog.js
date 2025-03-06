@@ -116,16 +116,15 @@ commonTransformDialog.prototype._commit = function(expression) {
   });
   var doTextTransform = function(index, expression, onError, repeat, repeatCount) {
     if (index < columnNames.length) {
-      Refine.postCoreProcess(
-        "text-transform",
+      Refine.postOperation(
         {
+          op: "core/text-transform",
           columnName: columnNames[index], 
           expression: expression, 
           onError: onError,
           repeat: repeat,
           repeatCount: repeatCount
         },
-        null,
         { cellsChanged: true, rowIdsPreserved: true },
         { onDone: function() { doTextTransform(index + 1, expression, onError, repeat, repeatCount) } }
       );

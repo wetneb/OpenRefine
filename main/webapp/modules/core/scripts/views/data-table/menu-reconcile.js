@@ -46,19 +46,23 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
   };
 
   var doReconDiscardJudgments = function() {
-    Refine.postCoreProcess(
-      "recon-discard-judgments",
-      { columnName: column.name, clearData: false },
-      null,
+    Refine.postOperation(
+      {
+        op: "core/recon-discard-judgments",
+        columnName: column.name,
+        clearData: false
+      },
       { cellsChanged: true, columnStatsChanged: true, rowIdsPreserved: true, recordIdsPreserved: true }
     );
   };
 
   var doClearReconData = function() {
-    Refine.postCoreProcess(
-      "recon-discard-judgments",
-      { columnName: column.name, clearData: true },
-      null,
+    Refine.postOperation(
+      {
+        op: "core/recon-discard-judgments",
+        columnName: column.name,
+        clearData: true
+      },
       { cellsChanged: true, columnStatsChanged: true, rowIdsPreserved: true, recordIdsPreserved: true }
     );
   };
@@ -75,18 +79,17 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
       }
       if (service && service.view){
         
-        Refine.postCoreProcess
-        (
-          "add-column",
+        Refine.postOperation(
           {
+            op: "core/column-addition",
             baseColumnName: column.name,
             newColumnName: columnName,
             columnInsertIndex: columnIndex + 1,
-            onError: "set-to-blank"
+            onError: "set-to-blank",
+            expression: 'if(cell.recon.match!=null,"' + service.view.url + '".replace("{{id}}",escape(cell.recon.match.id,"url")),null)'
           },
-          { expression: 'if(cell.recon.match!=null,"' + service.view.url + '".replace("{{id}}",escape(cell.recon.match.id,"url")),null)' },
           { modelsChanged: true },
-          { onDone: dismissDialog},
+          { onDone: dismissDialog },
         );
       } else {
         alert($.i18n('core-views/service-does-not-associate-URLs-to-the-entities-it-contains'));
@@ -134,10 +137,11 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
   }
 
   var doReconMatchBestCandidates = function() {
-    Refine.postCoreProcess(
-      "recon-match-best-candidates",
-      { columnName: column.name },
-      null,
+    Refine.postOperation(
+      {
+        op: "core/recon-match-best-candidates",
+        columnName: column.name
+      },
       { cellsChanged: true, columnStatsChanged: true, rowIdsPreserved: true, recordIdsPreserved: true }
     );
   };
@@ -146,16 +150,15 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
     var headerText = $.i18n(shareNewTopics ? 'core-views/one-topic/header' : 'core-views/new-topic/header');
     var explanationText = $.i18n('core-views/recon-mark-new-warning');
     var onSelect = function(service, identifierSpace, schemaSpace) {
-      Refine.postCoreProcess(
-        "recon-mark-new-topics",
-        {
-          columnName: column.name,
-          shareNewTopics: shareNewTopics,
-          service: service,
-          identifierSpace: identifierSpace,
-          schemaSpace: schemaSpace
-        },
-        null,
+      Refine.postOperation(
+          {
+            op: "core/recon-mark-new-topics",
+            columnName: column.name,
+            shareNewTopics: shareNewTopics,
+            service: service,
+            identifierSpace: identifierSpace,
+            schemaSpace: schemaSpace
+          },
         { cellsChanged: true, columnStatsChanged: true, rowIdsPreserved: true, recordIdsPreserved: true }
       );
     };
@@ -210,17 +213,18 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
     input.suggest(sanitizeSuggestOptions(suggestOptions)).on("fb-select", function(e, data) {
         var types = data.notable ? data.notable : [];
       
-        Refine.postCoreProcess(
-        "recon-match-specific-topic-to-cells",
+        Refine.postOperation(
         {
+            op: "core/recon-match-specific-topic-to-cells",
             columnName: column.name,
-            topicID: data.id,
-            topicName: data.name,
-            types: types.join(","),
+            match: {
+              id: data.id,
+              name: data.name,
+              types: types
+            },
             identifierSpace: service.identifierSpace,
             schemaSpace: service.schemaSpace
         },
-        null,
         { cellsChanged: true, columnStatsChanged: true, rowIdsPreserved: true, recordIdsPreserved: true },
         { onDone: function() { DialogSystem.dismissUntil(level - 1); } }
         );
@@ -299,15 +303,14 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
     var headerText = $.i18n('core-views/use-values-as-identifiers/header');
     var explanationText = $.i18n('core-views/use-values-as-identifiers-note');
     var onSelect = function(service, identifierSpace, schemaSpace) {
-      Refine.postCoreProcess(
-        "recon-use-values-as-identifiers",
+      Refine.postOperation(
         {
+          op: "core/recon-use-values-as-identifiers",
           columnName: column.name,
           service: service,
           identifierSpace: identifierSpace,
           schemaSpace: schemaSpace
         },
-        null,
         { cellsChanged: true, columnStatsChanged: true, rowIdsPreserved: true, recordIdsPreserved: true }
       );
     };
@@ -340,66 +343,65 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
 
 
   var doCopyAcrossColumns = function() {
-    var frame = $(DOM.loadHTML("core", "scripts/views/data-table/copy-recon-across-columns-dialog.html"));
-    var elmts = DOM.bind(frame);
-    elmts.dialogHeader.text($.i18n('core-views/copy-recon-judg')+" " + column.name);
-    
-    elmts.or_views_copyToCol.text($.i18n('core-views/copy-to-col'));
-    elmts.or_views_copyOpt.text($.i18n('core-views/copy-opt'));
-    elmts.or_views_applyToCell.text($.i18n('core-views/apply-to-cell'));
-    elmts.or_views_whatToCopy.text($.i18n('core-views/what-to-copy'));
-    elmts.or_views_newRecon.text($.i18n('core-views/new-recon'));
-    elmts.or_views_matchRecon.text($.i18n('core-views/match-recon'));
-    elmts.okButton.text($.i18n('core-buttons/copy'));
-    elmts.cancelButton.text($.i18n('core-buttons/cancel'));
+  var frame = $(DOM.loadHTML("core", "scripts/views/data-table/copy-recon-across-columns-dialog.html"));
+  var elmts = DOM.bind(frame);
+  elmts.dialogHeader.text($.i18n('core-views/copy-recon-judg')+" " + column.name);
+  
+  elmts.or_views_copyToCol.text($.i18n('core-views/copy-to-col'));
+  elmts.or_views_copyOpt.text($.i18n('core-views/copy-opt'));
+  elmts.or_views_applyToCell.text($.i18n('core-views/apply-to-cell'));
+  elmts.or_views_whatToCopy.text($.i18n('core-views/what-to-copy'));
+  elmts.or_views_newRecon.text($.i18n('core-views/new-recon'));
+  elmts.or_views_matchRecon.text($.i18n('core-views/match-recon'));
+  elmts.okButton.text($.i18n('core-buttons/copy'));
+  elmts.cancelButton.text($.i18n('core-buttons/cancel'));
 
-    var columns = theProject.columnModel.columns;
-    for (var i = 0; i < columns.length; i++) {
-      var column2 = columns[i];
-      if (column !== column2) {
-        $('<option>').val(column2.name).text(column2.name).appendTo(elmts.toColumnSelect);
-      }
+  var columns = theProject.columnModel.columns;
+  for (var i = 0; i < columns.length; i++) {
+    var column2 = columns[i];
+    if (column !== column2) {
+      $('<option>').val(column2.name).text(column2.name).appendTo(elmts.toColumnSelect);
     }
+  }
 
-    var level = DialogSystem.showDialog(frame);
-    var dismiss = function() { DialogSystem.dismissUntil(level - 1); };
+  var level = DialogSystem.showDialog(frame);
+  var dismiss = function() { DialogSystem.dismissUntil(level - 1); };
 
-    elmts.cancelButton.on('click',dismiss);
-    elmts.okButton.on('click',function() {
-      var config = {
-        fromColumnName: column.name,
-        toColumnName: [],
-        judgment: [],
-        applyToJudgedCells: elmts.applyToJudgedCellsCheckbox[0].checked
-      };
+  elmts.cancelButton.on('click',dismiss);
+  elmts.okButton.on('click',function() {
+    var config = {
+      op: "core/recon-copy-across-columns", 
+      fromColumnName: column.name,
+      toColumnNames: [],
+      judgments: [],
+      applyToJudgedCells: elmts.applyToJudgedCellsCheckbox[0].checked
+    };
 
-      if (elmts.newCheckbox[0].checked) {
-        config.judgment.push("new");
-      }
-      if (elmts.matchCheckbox[0].checked) {
-        config.judgment.push("matched");
-      }
-      elmts.toColumnSelect.find("option").each(function() {
-        if (this.selected) {
-          config.toColumnName.push(this.value);
-        }
-      });
-
-      if (config.toColumnName.length === 0) {
-        alert($.i18n('core-views/warning-other-col'));
-      } else if (config.judgment.length === 0) {
-        alert($.i18n('core-views/warning-sel-judg'));
-      } else {
-        Refine.postCoreProcess(
-          "recon-copy-across-columns", 
-          null,
-          config,
-          { rowsChanged: true, rowIdsPreserved: true, recordIdsPreserved: true },
-          { onDone: dismiss }
-        );
+    if (elmts.newCheckbox[0].checked) {
+      config.judgments.push("new");
+    }
+    if (elmts.matchCheckbox[0].checked) {
+      config.judgments.push("matched");
+    }
+    elmts.toColumnSelect.find("option").each(function() {
+      if (this.selected) {
+        config.toColumnNames.push(this.value);
       }
     });
-  };
+
+    if (config.toColumnNames.length === 0) {
+      alert($.i18n('core-views/warning-other-col'));
+    } else if (config.judgments.length === 0) {
+      alert($.i18n('core-views/warning-sel-judg'));
+    } else {
+      Refine.postOperation(
+        config,
+        { rowsChanged: true, rowIdsPreserved: true, recordIdsPreserved: true },
+        { onDone: dismiss }
+      );
+    }
+  });
+};
 
   MenuSystem.appendTo(menu, [ "core/reconcile" ], [
     {
