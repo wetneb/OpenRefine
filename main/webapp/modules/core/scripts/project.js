@@ -403,12 +403,7 @@ Refine.postOperations = function(operations, updateOptions, callbacks) {
         }
       },
       onError: function(o) {
-        var operationsApplied = o.results.length - 1;
-        var errorMessage = o.results[o.results.length - 1].errorMessage;
-        if (operationsApplied) {
-            errorMessage = $.i18n('core-project/some-operations-applied-but-error', operationsApplied, errorMessage);
-            Refine.update({ everythingChanged: true });
-        }
+        var errorMessage = o.message;
         if (callbacks.onError) {
           callbacks.onError(errorMessage);
         } else {
