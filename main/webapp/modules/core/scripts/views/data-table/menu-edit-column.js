@@ -358,7 +358,7 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
             columnsToDelete = columnsToDelete.filter(colName => colName != column.name);
           }
           return [{
-              op: "core/column-removal",
+              op: "core/column-multi-removal",
               columnNames : columnsToDelete
           }];
         } else {
