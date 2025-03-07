@@ -413,7 +413,8 @@ DataTableColumnHeaderUI.extendMenu(function(column, columnHeaderUI, menu) {
             onError: onError,
             expression
           }].concat(deleteColumns()),
-          { modelsChanged: true, rowIdsPreserved: true, recordIdsPreserved: true }
+          { modelsChanged: true, rowIdsPreserved: true, recordIdsPreserved: true },
+          { onDone: dismiss }
         );
       } 
       else {
