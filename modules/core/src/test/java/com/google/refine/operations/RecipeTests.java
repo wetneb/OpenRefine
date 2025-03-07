@@ -3,6 +3,7 @@ package com.google.refine.operations;
 
 import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertThrows;
+import static org.testng.Assert.fail;
 
 import java.util.Collections;
 import java.util.List;
@@ -13,6 +14,7 @@ import org.testng.annotations.Test;
 
 import com.google.refine.model.AbstractOperation;
 import com.google.refine.model.ColumnsDiff;
+import com.google.refine.operations.Recipe.RecipeValidationException;
 import com.google.refine.util.ParsingUtilities;
 import com.google.refine.util.TestUtils;
 
@@ -146,13 +148,23 @@ public class RecipeTests {
 
     @Test
     public void testValidateMethod() {
-        assertThrows(IllegalArgumentException.class, () -> new Recipe(List.of(
+        assertThrows(RecipeValidationException.class, () -> new Recipe(List.of(
                 new UnknownOperation("some-operation", "Some description"))).validate());
 
-        assertThrows(IllegalArgumentException.class, () -> new Recipe(Collections.singletonList(null)).validate());
+        assertThrows(RecipeValidationException.class, () -> new Recipe(Collections.singletonList(null)).validate());
 
         new Recipe(List.of(
                 new ColumnRemovalOperation("foo"))).validate();
+
+        Recipe longer = new Recipe(List.of(
+                new ColumnRemovalOperation("foo"),
+                new UnknownOperation("some-operation", "Some description")));
+        try {
+            longer.validate();
+            fail("No RecipeValidationException thrown");
+        } catch (RecipeValidationException e) {
+            assertEquals(e.index, 1);
+        }
     }
 
     @Test
