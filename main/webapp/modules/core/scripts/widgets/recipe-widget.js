@@ -66,6 +66,7 @@ class RecipeVisualizer {
         let columnColor = '#888';
         let columnWidth = 2;
         let dependencyRadius = 5;
+        let columnNameHeight = 25;
 
         // Define arrow marker
         let defs = $(document.createElementNS('http://www.w3.org/2000/svg', 'defs'))
@@ -86,8 +87,16 @@ class RecipeVisualizer {
 
         // Compute diagram boundaries
         let maxX = columnDistance * 2;
+        let inputColumnCount = 0;
+        let outputColumnCount = 0;
         for (const column of operationsWithIds.columns) {
             maxX = Math.max(maxX, (columnPositions.get(column.id) + 2) * columnDistance);
+            if (column.start === 0) {
+              inputColumnCount++;
+            }
+            if (column.end === operationsWithIds.translatedOperations.length) {
+              outputColumnCount++;
+            }
         }
         let maxY = operationsWithIds.translatedOperations.length * sliceHeight;
 
@@ -111,17 +120,31 @@ class RecipeVisualizer {
         // Draw all column lines
         let edgesGroup = $(document.createElementNS('http://www.w3.org/2000/svg', 'g'))
           .appendTo(svg);
+        let inputColumns = [];
+        let outputColumns = [];
         for(const column of operationsWithIds.columns) {
             let xPos = (columnPositions.get(column.id) + 1) * columnDistance;
             for(const name of column.names) {
               let start = name.start;
               let end = name.end === undefined ? column.end : name.end;
+              let y1 = (start - 0.5) * sliceHeight;
+              let y2 = (end + 0.5) * sliceHeight;
+              if (start === 0) {
+                y1 = -1 * inputColumnCount * columnNameHeight;
+                inputColumns.push({xPos, column, name: name.name});
+              }
+              if (end === operationsWithIds.translatedOperations.length) {
+                if (start !== 0) {
+                  outputColumns.push({xPos, column, name: name.name});
+                }
+                y2 += outputColumnCount * columnNameHeight;
+              }
               let line = $(document.createElementNS('http://www.w3.org/2000/svg', 'line'))
                 .attr('id', `column-${column.id}-${start}`)
                 .attr('x1', xPos)
-                .attr('y1', (start - 0.5) * sliceHeight)
+                .attr('y1', y1)
                 .attr('x2', xPos)
-                .attr('y2', (end + 0.5) * sliceHeight)
+                .attr('y2', y2)
                 .attr("stroke", columnColor)
                 .attr("stroke-width", columnWidth)
                 .attr("alt", name.name)
@@ -135,15 +158,15 @@ class RecipeVisualizer {
                 .attr('fill-opacity', 0)
                 .appendTo(svg);
               this.setUpTooltip(svg, hoverArea, line, 2, name.name, true);
-              if (start === 0) {
-                this.drawBoundaryColumnName(svg, xPos,  -0.6 * sliceHeight, false, name.name);
-              }
               if (end === operationsWithIds.translatedOperations.length) {
-                this.drawBoundaryColumnName(svg, xPos,  (end + 0.8) * sliceHeight, true, name.name);
                 line.attr('marker-end', 'url(#arrow)');
               }
             }
         }
+
+        // Draw input and output column names
+        this.drawBoundaryColumnNames(svg, inputColumns, -1 * inputColumnCount * columnNameHeight, columnNameHeight);
+        this.drawBoundaryColumnNames(svg, outputColumns, (operationsWithIds.translatedOperations.length + 0.5) * sliceHeight, columnNameHeight);
 
         // Draw all operations
         let sliceId = 0;
@@ -351,16 +374,30 @@ class RecipeVisualizer {
       });
     }
 
-    drawBoundaryColumnName(svg, xPos, yPos, output, name) {
-      let angle = output ? 45 : -45;
-      let g = $(document.createElementNS('http://www.w3.org/2000/svg', 'g'))
-        .attr('transform', `rotate(${angle}, ${xPos}, ${yPos})`)
+    drawBoundaryColumnNames(svg, columns, yOffset, columnNameHeight) {
+      columns.sort((a, b) => a.xPos - b.xPos);
+      let i = 0;
+      for (const column of columns) {
+        let g = $(document.createElementNS('http://www.w3.org/2000/svg', 'g'))
         .appendTo(svg);
-      let txt = $(document.createElementNS('http://www.w3.org/2000/svg', 'text'))
-        .attr('x', xPos)
-        .attr('y', yPos)
-        .text(name)
-        .appendTo(g);
+        let fo = $(document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject'))
+          .attr('x', column.xPos)
+          .attr('y', yOffset + (i + 0)*columnNameHeight)
+          .width("100%")
+          .height(columnNameHeight)
+          .appendTo(g);
+        let div = $(document.createElement('div'))
+          .addClass('recipe-tooltip')
+          .appendTo(fo);
+        $(document.createElement('div'))
+          .addClass('recipe-tooltip-triangle')
+          .appendTo(div);
+        $(document.createElement('div'))
+          .addClass('recipe-tooltip-inner')
+          .text(column.name)
+          .appendTo(div);
+        i++;
+      }
     }
 
     computeColumnPositions(operationsWithIds) {
