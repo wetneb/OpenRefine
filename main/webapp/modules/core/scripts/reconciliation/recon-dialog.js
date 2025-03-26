@@ -47,6 +47,7 @@ ReconDialog.prototype._createDialog = function() {
 
   this._elmts = DOM.bind(dialog);
   this._elmts.dialogHeader.text($.i18n('core-recon/recon-col',this._column.name));
+  this._elmts.dialogHeader.prepend($('<img>').attr('src', 'images/operations/reconcile.svg'));
 
   this._elmts.servicePanelMessage.html($.i18n('core-recon/pick-service'));
   this._elmts.addStandardServiceButton.html($.i18n('core-buttons/add-std-svc')+"...");
